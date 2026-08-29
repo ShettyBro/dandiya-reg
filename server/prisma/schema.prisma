@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  FINANCE
+  VOLUNTEER
+  TEAM_LEADER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum RegistrationStatus {
+  SUBMITTED
+  PAYMENT_PENDING
+  PAYMENT_SUBMITTED
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROOF_SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum UploadPurpose {
+  PARTICIPANT_PHOTO
+  PAYMENT_PROOF
+}
+
+enum CredentialType {
+  PARTICIPANT
+  STAFF_GUEST_ADMIN
+}
+
+enum AttendanceState {
+  NOT_ENTERED
+  ENTERED
+  OVERRIDE_ENTRY
+}
+
+enum EmailJobStatus {
+  PENDING
+  PROCESSING
+  SENT
+  RETRY
+  FAILED
+}
+
+enum EmailTemplateKey {
+  REGISTRATION_RECEIVED
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  VOLUNTEER_INVITE
+  PASSWORD_RESET
+}
+
+model Event {
+  id                 String   @id @default(uuid())
+  name               String
+  eventDate          DateTime
+  venue              String
+  registrationOpen   Boolean  @default(true)
+  registrationDeadline DateTime?
+  capacity           Int
+  priceInPaise       Int
+  erpPaymentUrl      String
+  paymentInstructions String
+  attendanceEnabled  Boolean  @default(true)
+  paymentsEnabled    Boolean  @default(true)
+  maintenanceMode    Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  registrations Registration[]
+
+  @@map("events")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  volunteerProfile      VolunteerProfile?
+  verifiedPayments       Payment[]              @relation("VerifiedByUser")
+  attendanceOverrides    AttendanceOverride[]
+  scannedAttendances     Attendance[]           @relation("LastScannerUser")
+  auditLogs              AuditLog[]
+  refreshTokens          RefreshToken[]
+
+  @@index([role, status])
+  @@map("users")
+}
+
+model VolunteerProfile {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String
+  gate          String?
+  zone          String?
+  shiftStart    DateTime?
+  shiftEnd      DateTime?
+  staffCredentialId String? @unique
+  staffCredential PassCredential? @relation(fields: [staffCredentialId], references: [id])
+  mustChangePassword Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("volunteer_profiles")
+}
+
+model Registration {
+  id             String              @id @default(uuid())
+  event          Event               @relation(fields: [eventId], references: [id])
+  eventId        String
+  publicCode     String              @unique
+  eightDigitCode String              @unique
+  name           String
+  email          String
+  phone          String
+  college        String
+  semester       String
+  branch         String
+  photoObjectKey String?
+  status         RegistrationStatus  @default(SUBMITTED)
+  idempotencyKey String              @unique
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  payment          Payment?
+  passCredential   PassCredential?
+  attendance       Attendance?
+  uploadIntents    UploadIntent[]
+  emailJobs        EmailJob[]
+  attendanceOverrides AttendanceOverride[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@map("registrations")
+}
+
+model UploadIntent {
+  id             String        @id @default(uuid())
+  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+  purpose        UploadPurpose
+  objectKey      String        @unique
+  expectedMime   String
+  maxSizeBytes   Int
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([registrationId, purpose])
+  @@map("upload_intents")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String        @unique
+  transactionId  String?       @unique
+  amountInPaise  Int
+  proofObjectKey String?
+  status         PaymentStatus @default(PENDING)
+  submittedAt    DateTime?
+  verifiedBy     User?         @relation("VerifiedByUser", fields: [verifiedById], references: [id])
+  verifiedById   String?
+  verifiedAt     DateTime?
+  rejectionReason String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, submittedAt])
+  @@map("payments")
+}
+
+model PassCredential {
+  id               String         @id @default(uuid())
+  registration     Registration?  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId   String?        @unique
+  credentialType   CredentialType
+  opaqueTokenHash  String         @unique
+  active           Boolean        @default(true)
+  revokedAt        DateTime?
+  label            String?
+  createdAt        DateTime       @default(now())
+
+  volunteerProfile VolunteerProfile?
+
+  @@index([credentialType, active])
+  @@map("pass_credentials")
+}
+
+model Attendance {
+  id                String          @id @default(uuid())
+  registration      Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId    String          @unique
+  state             AttendanceState @default(NOT_ENTERED)
+  entryCount        Int             @default(0)
+  firstEntryAt      DateTime?
+  lastEntryAt       DateTime?
+  lastScannerUser   User?           @relation("LastScannerUser", fields: [lastScannerUserId], references: [id])
+  lastScannerUserId String?
+  lastGate          String?
+  updatedAt         DateTime        @updatedAt
+
+  @@index([state])
+  @@map("attendance")
+}
+
+model AttendanceOverride {
+  id             String       @id @default(uuid())
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+  teamLeaderUser User         @relation(fields: [teamLeaderUserId], references: [id])
+  teamLeaderUserId String
+  reasonText     String
+  originalState  AttendanceState
+  createdAt      DateTime     @default(now())
+
+  @@index([registrationId])
+  @@map("attendance_overrides")
+}
+
+model EmailJob {
+  id                String           @id @default(uuid())
+  type              EmailTemplateKey
+  recipient         String
+  registration      Registration?    @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  registrationId    String?
+  payloadJson       Json
+  status            EmailJobStatus   @default(PENDING)
+  attempts          Int              @default(0)
+  nextAttemptAt     DateTime         @default(now())
+  lockedUntil       DateTime?
+  providerMessageId String?
+  lastError         String?
+  uniquenessKey     String           @unique
+  createdAt         DateTime         @default(now())
+  sentAt            DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@map("email_jobs")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorUser    User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorUserId  String?
+  action       String
+  entityType   String
+  entityId     String
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  requestId    String?
+
+  @@index([entityType, entityId, createdAt])
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}

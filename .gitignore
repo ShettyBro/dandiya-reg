@@ -1,0 +1,43 @@
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials/
+secrets/
+
+# Dependencies / builds
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.vite/
+*.tsbuildinfo
+
+# Logs / temp runtime data
+*.log
+logs/
+tmp/
+temp/
+docs/
+
+# Claude Code / AI working artifacts
+ai/
+CLAUDE.md
+scripts-tmp-*
+
+# Local IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test artifacts
+playwright-report/
+test-results/
+*.har

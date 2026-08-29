@@ -1,0 +1,39 @@
+import { cn } from "../../lib/cn.js";
+
+const STEPS = ["Details", "Photo", "Payment", "Done"];
+
+export function ProgressIndicator({ current }: { current: number }) {
+  return (
+    <ol className="mb-8 flex items-center gap-2">
+      {STEPS.map((label, index) => {
+        const stepNumber = index + 1;
+        const active = stepNumber === current;
+        const complete = stepNumber < current;
+
+        return (
+          <li key={label} className="flex flex-1 items-center gap-2">
+            <div
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                complete && "bg-festival-gold text-midnight-950",
+                active && "border-2 border-festival-gold text-festival-gold",
+                !active && !complete && "border border-white/20 text-white/40"
+              )}
+            >
+              {stepNumber}
+            </div>
+            <span
+              className={cn(
+                "hidden text-xs sm:block",
+                active || complete ? "text-white/85" : "text-white/40"
+              )}
+            >
+              {label}
+            </span>
+            {stepNumber < STEPS.length && <div className="h-px flex-1 bg-white/10" />}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}

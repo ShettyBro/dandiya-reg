@@ -1,0 +1,3 @@
+dandiya-api.sudeepbro.works {
+    reverse_proxy dandiya-api:3000
+}
