@@ -204,6 +204,7 @@ model PassCredential {
   active           Boolean        @default(true)
   revokedAt        DateTime?
   label            String?
+  publicCode       String?        @unique
   createdAt        DateTime       @default(now())
 
   volunteerProfile VolunteerProfile?

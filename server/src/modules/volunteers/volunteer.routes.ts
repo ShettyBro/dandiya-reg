@@ -1,12 +1,14 @@
 import { Router } from "express";
 import type { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
+import QRCode from "qrcode";
 import { z } from "zod";
 import { sendError } from "../../app/middleware/errors.js";
 import { stringParam } from "../../app/middleware/params.js";
 import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 import { requireActiveUser } from "../auth/require-active-user.middleware.js";
 import { recordAuditLog } from "../audit/audit.service.js";
+import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
 import { createVolunteer, resetVolunteerPassword, updateVolunteer, VolunteerNotFoundError } from "./volunteer.service.js";
 import type { Env } from "../../app/config/env.js";
 
@@ -32,6 +34,43 @@ const updateSchema = z.object({
 
 export function createVolunteerRouter(prisma: PrismaClient, env: Env): Router {
   const router = Router();
+
+  router.get(
+    "/volunteers/me/pass",
+    requireAuth(env),
+    requireRole("VOLUNTEER", "TEAM_LEADER"),
+    requireActiveUser(prisma),
+    async (req, res) => {
+      if (!req.authUser) {
+        sendError(req, res, 401, "UNAUTHENTICATED", "Missing authenticated user");
+        return;
+      }
+
+      const profile = await prisma.volunteerProfile.findUnique({ where: { userId: req.authUser.id } });
+      const credential = profile?.staffCredentialId
+        ? await prisma.passCredential.findUnique({ where: { id: profile.staffCredentialId } })
+        : null;
+
+      if (!credential || !credential.active || credential.revokedAt) {
+        sendError(req, res, 404, "PASS_NOT_AVAILABLE", "No active staff pass for this account");
+        return;
+      }
+
+      const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credential.id);
+      const qrImageDataUrl = await QRCode.toDataURL(qrPayload, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 320
+      });
+
+      res.status(200).json({
+        publicCode: credential.publicCode,
+        label: credential.label,
+        qrPayload,
+        qrImageDataUrl
+      });
+    }
+  );
 
   router.get(
     "/admin/volunteers",

@@ -13,3 +13,7 @@ export function generatePublicCode(): string {
 export function generateEightDigitCode(): string {
   return String(randomInt(0, 100_000_000)).padStart(8, "0");
 }
+
+export function generateStaffPublicCode(): string {
+  return `${generatePublicCode()}-V`;
+}

@@ -13,6 +13,7 @@ export function VolunteerChangePasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -28,12 +29,15 @@ export function VolunteerChangePasswordPage() {
         body: { currentPassword, newPassword }
       });
       await refetch();
-      navigate("/vol/home", { replace: true });
+      setSuccess(true);
+      setTimeout(() => navigate("/vol/home", { replace: true }), 900);
     } catch (submitError) {
       if (submitError instanceof ApiError && submitError.status === 401) {
         setError("Current password is incorrect.");
+      } else if (submitError instanceof ApiError && submitError.status === 403) {
+        setError("Your session could not be verified. Please sign out and sign in again.");
       } else {
-        setError("Could not change password. Try again.");
+        setError("Could not change password. Please check your connection and try again.");
       }
     } finally {
       setSubmitting(false);
@@ -48,36 +52,43 @@ export function VolunteerChangePasswordPage() {
           Your account was created with a temporary password. Set your own before continuing.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
-          <FormField
-            label="Temporary / current password"
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-          <FormField
-            label="New password"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            minLength={8}
-            autoComplete="new-password"
-          />
-          {error && <p className="text-sm text-red-300">{error}</p>}
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : "Save and continue"}
-          </Button>
-          <button
-            type="button"
-            onClick={() => logout().then(() => navigate("/vol/login", { replace: true }))}
-            className="text-xs text-white/40 underline"
-          >
-            Sign out instead
-          </button>
-        </form>
+        {success ? (
+          <div className="mt-6 flex flex-col items-center gap-2 py-4 text-center">
+            <p className="text-sm font-medium text-emerald-300">Password changed successfully.</p>
+            <p className="text-xs text-white/50">Taking you to your home screen...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+            <FormField
+              label="Temporary / current password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+            <FormField
+              label="New password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            {error && <p className="text-sm text-red-300">{error}</p>}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Saving..." : "Save and continue"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => logout().then(() => navigate("/vol/login", { replace: true }))}
+              className="text-xs text-white/40 underline"
+            >
+              Sign out instead
+            </button>
+          </form>
+        )}
       </GlassPanel>
     </div>
   );

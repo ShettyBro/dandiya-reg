@@ -5,8 +5,17 @@ import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { useAuth, type AuthUser } from "../../lib/hooks/useAuth.js";
+import { useInstallPrompt } from "../../lib/hooks/useInstallPrompt.js";
+import { apiRequest, ApiError } from "../../lib/api.js";
 
 type CameraStatus = "checking" | "granted" | "denied" | "unavailable";
+
+interface StaffPass {
+  publicCode: string | null;
+  label: string | null;
+  qrPayload: string;
+  qrImageDataUrl: string;
+}
 
 function formatShiftTime(iso: string | null): string | null {
   if (!iso) {
@@ -19,7 +28,20 @@ export function VolunteerHomePage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { canInstall, installed, promptInstall } = useInstallPrompt();
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("checking");
+  const [pass, setPass] = useState<StaffPass | null>(null);
+  const [passError, setPassError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiRequest<StaffPass>("/volunteers/me/pass")
+      .then(setPass)
+      .catch((error) => {
+        if (error instanceof ApiError) {
+          setPassError(error.message);
+        }
+      });
+  }, []);
 
   async function requestCameraAccess() {
     setCameraStatus("checking");
@@ -50,6 +72,13 @@ export function VolunteerHomePage() {
 
   return (
     <Container className="max-w-md py-10">
+      <div className="mb-6 flex items-center gap-2.5">
+        <img src="/icons/icon-512.png" alt="Dandiya Night 2026" className="h-8 w-8" />
+        <span className="font-display text-base font-semibold text-white">
+          Dandiya Night <span className="text-festival-gold">2026</span>
+        </span>
+      </div>
+
       <div className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.12em] text-white/50">
@@ -68,6 +97,33 @@ export function VolunteerHomePage() {
           <SignOut size={22} />
         </button>
       </div>
+
+      {canInstall && !installed && (
+        <button
+          type="button"
+          onClick={promptInstall}
+          className="mb-4 w-full rounded-xl border border-festival-gold/40 bg-festival-gold/10 px-4 py-2 text-sm font-medium text-festival-gold"
+        >
+          Install app on this device
+        </button>
+      )}
+
+      {pass && (
+        <GlassPanel className="mb-4 flex flex-col items-center gap-3 p-6 text-center">
+          <p className="text-xs uppercase tracking-[0.12em] text-white/50">Your staff pass</p>
+          <img src={pass.qrImageDataUrl} alt="Staff QR pass" className="h-44 w-44 rounded-xl bg-white p-2" />
+          {pass.publicCode && (
+            <p className="font-mono text-sm tracking-[0.15em] text-white/80">{pass.publicCode}</p>
+          )}
+          <p className="text-xs text-white/40">Show this at the gate for entry.</p>
+        </GlassPanel>
+      )}
+      {!pass && passError && (
+        <GlassPanel className="mb-4 flex items-center gap-2 border-amber-400/40 p-4 text-sm text-amber-200">
+          <Warning size={18} />
+          Staff pass unavailable right now.
+        </GlassPanel>
+      )}
 
       {cameraStatus === "denied" && (
         <GlassPanel className="mb-4 flex flex-wrap items-center justify-between gap-3 border-amber-400/40 p-4">

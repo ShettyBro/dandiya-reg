@@ -33,7 +33,7 @@ export async function lookupCredential(prisma: PrismaClient, rawToken: string): 
       credentialType: "STAFF_GUEST_ADMIN",
       registrationId: null,
       name: credential.label,
-      publicCode: null,
+      publicCode: credential.publicCode,
       photoObjectKey: null,
       attendanceState: null,
       eligibleForAllow: true,
