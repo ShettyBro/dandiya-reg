@@ -43,6 +43,9 @@ const AdminPaymentsPage = lazy(() =>
 const AdminSettingsPage = lazy(() =>
   import("./routes/admin/AdminSettingsPage.js").then((m) => ({ default: m.AdminSettingsPage }))
 );
+const AdminLogsPage = lazy(() =>
+  import("./routes/admin/AdminLogsPage.js").then((m) => ({ default: m.AdminLogsPage }))
+);
 
 const FinanceLoginPage = lazy(() =>
   import("./routes/finance/FinanceLoginPage.js").then((m) => ({ default: m.FinanceLoginPage }))
@@ -109,6 +112,7 @@ export function App() {
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/volunteers" element={<AdminVolunteersPage />} />
           <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+          <Route path="/admin/logs" element={<AdminLogsPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
         </Route>
 

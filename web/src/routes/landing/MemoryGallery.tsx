@@ -236,7 +236,7 @@ export function MemoryGallery() {
 
         <LedStrip />
 
-        <div className="flex items-start">
+        <div className="grid grid-cols-2 gap-4 sm:flex sm:items-start sm:gap-0">
           {Array.from({ length: SLOT_COUNT }, (_, slotIndex) => (
             <HangingPoster
               key={slotIndex}

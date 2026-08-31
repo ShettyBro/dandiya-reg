@@ -4,7 +4,9 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { randomUUID } from "node:crypto";
 import { pinoHttp } from "pino-http";
+import pino from "pino";
 import type { PrismaClient } from "@prisma/client";
+import { logRingBufferStream } from "../lib/log-stream.js";
 import { healthRouter } from "../modules/health/health.routes.js";
 import { createAuthRouter } from "../modules/auth/auth.routes.js";
 import { createEventRouter } from "../modules/event/event.routes.js";
@@ -17,6 +19,8 @@ import { createDashboardRouter } from "../modules/admin/dashboard.routes.js";
 import { createAdminRegistrationsRouter } from "../modules/admin/registrations.routes.js";
 import { createAdminSettingsRouter } from "../modules/admin/settings.routes.js";
 import { createAdminCredentialsRouter } from "../modules/admin/credentials.routes.js";
+import { createAdminLogsRouter } from "../modules/admin/logs.routes.js";
+import { createAdminSystemRouter } from "../modules/admin/system.routes.js";
 import { createVolunteerRouter } from "../modules/volunteers/volunteer.routes.js";
 import { createExportsRouter } from "../modules/exports/exports.routes.js";
 import { createAuditLogRouter } from "../modules/audit/audit.routes.js";
@@ -39,7 +43,8 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
     pinoHttp({
       genReqId: (req) => req.headers["x-request-id"]?.toString() ?? randomUUID(),
       redact: ["req.headers.authorization", "req.headers.cookie"],
-      level: env.NODE_ENV === "test" ? "silent" : "info"
+      level: env.NODE_ENV === "test" ? "silent" : "info",
+      stream: pino.multistream([{ stream: process.stdout }, { stream: logRingBufferStream }])
     })
   );
 
@@ -55,6 +60,8 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   app.use("/api/v1", createAdminRegistrationsRouter(prisma, env));
   app.use("/api/v1", createAdminSettingsRouter(prisma, env));
   app.use("/api/v1", createAdminCredentialsRouter(prisma, env));
+  app.use("/api/v1", createAdminLogsRouter(prisma, env));
+  app.use("/api/v1", createAdminSystemRouter(prisma, env));
   app.use("/api/v1", createVolunteerRouter(prisma, env));
   app.use("/api/v1", createExportsRouter(prisma, env));
   app.use("/api/v1", createAuditLogRouter(prisma, env));

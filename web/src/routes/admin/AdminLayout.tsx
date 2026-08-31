@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { ChartBar, CreditCard, GearSix, UsersThree } from "@phosphor-icons/react";
+import { ChartBar, CreditCard, GearSix, Terminal, UsersThree } from "@phosphor-icons/react";
 import { StaffShell, type StaffNavItem } from "../../components/staff/StaffShell.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
@@ -7,6 +7,7 @@ const NAV_ITEMS: StaffNavItem[] = [
   { to: "/admin/dashboard", label: "Dashboard", icon: ChartBar },
   { to: "/admin/volunteers", label: "Volunteers", icon: UsersThree },
   { to: "/admin/payments", label: "Payments", icon: CreditCard },
+  { to: "/admin/logs", label: "Logs", icon: Terminal },
   { to: "/admin/settings", label: "Settings", icon: GearSix }
 ];
 

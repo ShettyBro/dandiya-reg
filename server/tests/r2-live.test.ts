@@ -17,6 +17,7 @@ const r2 = getR2Client(env);
 
 const createdRegistrationIds: string[] = [];
 const createdObjectKeys: string[] = [];
+const createdUserIds: string[] = [];
 
 async function createTestRegistration(suffix: string) {
   const response = await request(app)
@@ -67,6 +68,9 @@ afterAll(async () => {
   await prisma.uploadIntent.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.emailJob.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.registration.deleteMany({ where: { id: { in: createdRegistrationIds } } });
+  await prisma.refreshToken.deleteMany({ where: { userId: { in: createdUserIds } } });
+  await prisma.auditLog.deleteMany({ where: { actorUserId: { in: createdUserIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
   await prisma.$disconnect();
 });
 
@@ -192,6 +196,7 @@ describe("live R2 upload flow", () => {
     const finance = await prisma.user.create({
       data: { email: financeEmail, passwordHash, role: "FINANCE", status: "ACTIVE" }
     });
+    createdUserIds.push(finance.id);
 
     const login = await request(app)
       .post("/api/v1/auth/login")
@@ -208,8 +213,5 @@ describe("live R2 upload flow", () => {
     expect(fetchResponse.status).toBe(200);
     const fetchedBytes = Buffer.from(await fetchResponse.arrayBuffer());
     expect(fetchedBytes.byteLength).toBe(proofImage.byteLength);
-
-    await prisma.refreshToken.deleteMany({ where: { userId: finance.id } });
-    await prisma.user.delete({ where: { id: finance.id } });
   });
 });
