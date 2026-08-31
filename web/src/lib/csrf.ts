@@ -1,4 +1,9 @@
-export function readCsrfToken(): string | undefined {
-  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1] ?? "") : undefined;
+let cachedCsrfToken: string | undefined;
+
+export function setCsrfToken(token: string | undefined): void {
+  cachedCsrfToken = token;
+}
+
+export function getCsrfToken(): string | undefined {
+  return cachedCsrfToken;
 }

@@ -6,6 +6,7 @@ import { loginRateLimiter } from "../../lib/security/rate-limit.js";
 import {
   ACCESS_TOKEN_COOKIE,
   clearAuthCookies,
+  CSRF_TOKEN_COOKIE,
   REFRESH_TOKEN_COOKIE,
   setAuthCookies
 } from "../../lib/security/cookies.js";
@@ -66,7 +67,8 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
       res.status(200).json({
         role: user.role,
         email: user.email,
-        mustChangePassword: profile?.mustChangePassword ?? false
+        mustChangePassword: profile?.mustChangePassword ?? false,
+        csrfToken: session.csrfToken
       });
     } catch (error) {
       if (error instanceof AccountDisabledError) {
@@ -110,7 +112,11 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
     try {
       const session = await rotateRefreshToken(prisma, env, refreshToken);
       setAuthCookies(res, env, session);
-      res.status(200).json({ role: session.user.role, email: session.user.email });
+      res.status(200).json({
+        role: session.user.role,
+        email: session.user.email,
+        csrfToken: session.csrfToken
+      });
     } catch (error) {
       if (error instanceof InvalidRefreshTokenError) {
         clearAuthCookies(res, env);
@@ -138,6 +144,7 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
       email: user?.email,
       status: user?.status,
       mustChangePassword: user?.volunteerProfile?.mustChangePassword ?? false,
+      csrfToken: req.cookies?.[CSRF_TOKEN_COOKIE] as string | undefined,
       profile: user?.volunteerProfile
         ? {
             name: user.volunteerProfile.name,

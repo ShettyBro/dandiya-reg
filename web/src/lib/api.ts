@@ -1,4 +1,4 @@
-import { readCsrfToken } from "./csrf.js";
+import { getCsrfToken, setCsrfToken } from "./csrf.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
 
@@ -29,7 +29,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers["Content-Type"] = "application/json";
   }
   if (method !== "GET") {
-    const csrfToken = readCsrfToken();
+    const csrfToken = getCsrfToken();
     if (csrfToken) {
       headers["X-CSRF-Token"] = csrfToken;
     }
@@ -48,6 +48,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   const contentType = response.headers.get("content-type") ?? "";
   const data = contentType.includes("application/json") ? await response.json() : await response.text();
+
+  if (data && typeof data === "object" && typeof (data as Record<string, unknown>).csrfToken === "string") {
+    setCsrfToken((data as Record<string, unknown>).csrfToken as string);
+  }
 
   if (!response.ok) {
     const envelope = typeof data === "object" && data ? (data as Record<string, unknown>) : {};
