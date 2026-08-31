@@ -9,7 +9,7 @@ export function Hero() {
   const { config } = useEventConfig();
 
   return (
-    <section className="relative flex min-h-[100dvh] items-center pt-16">
+    <section className="relative flex items-center py-20 pt-24 sm:min-h-[100dvh] sm:py-0 sm:pt-16">
       <Container className="relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

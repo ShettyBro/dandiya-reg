@@ -80,7 +80,7 @@ function FloatingDancers({ flip = false }: { flip?: boolean }) {
 
 function LedStrip() {
   return (
-    <div className="relative h-20">
+    <div className="relative hidden h-20 sm:block">
       <div className="absolute inset-y-0 left-[9%] right-[9%]">
         <svg
           viewBox={`0 0 ${STRIP_WIDTH} ${STRIP_HEIGHT}`}
@@ -170,9 +170,12 @@ function HangingPoster({
   const filename = GALLERY_IMAGE_FILENAMES[displayIndex] ?? "";
 
   return (
-    <div className="flex flex-1 flex-col items-center px-2.5 sm:px-4" style={{ marginTop }}>
-      <div className="h-5 w-px bg-white/25" />
-      <div className="h-2 w-2 shrink-0 rounded-full bg-festival-gold/80" />
+    <div
+      className="flex flex-1 flex-col items-center px-2.5 sm:mt-[var(--card-drop)] sm:px-4"
+      style={{ "--card-drop": `${marginTop}px` } as React.CSSProperties}
+    >
+      <div className="hidden h-5 w-px bg-white/25 sm:block" />
+      <div className="hidden h-2 w-2 shrink-0 rounded-full bg-festival-gold/80 sm:block" />
       <motion.div
         className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border-[3px] border-festival-gold/70 bg-midnight-900"
         animate={{

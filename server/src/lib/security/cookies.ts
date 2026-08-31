@@ -6,10 +6,11 @@ export const REFRESH_TOKEN_COOKIE = "refresh_token";
 export const CSRF_TOKEN_COOKIE = "csrf_token";
 
 function baseCookieOptions(env: Env): CookieOptions {
+  const isProduction = env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     path: "/api/v1"
   };
 }
