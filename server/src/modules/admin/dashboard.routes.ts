@@ -10,7 +10,7 @@ export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
   router.get(
     "/admin/dashboard",
     requireAuth(env),
-    requireRole("ADMIN"),
+    requireRole("ADMIN", "FINANCE"),
     requireActiveUser(prisma),
     async (_req, res) => {
       const [

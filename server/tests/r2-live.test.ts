@@ -65,6 +65,7 @@ afterAll(async () => {
   await prisma.attendance.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.payment.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.uploadIntent.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
+  await prisma.emailJob.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.registration.deleteMany({ where: { id: { in: createdRegistrationIds } } });
   await prisma.$disconnect();
 });

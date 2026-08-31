@@ -225,7 +225,7 @@ export function VolunteerScanPage() {
           onAllow={handleAllow}
           onOverride={handleOverride}
           onNext={scanNext}
-          onSignInAgain={() => navigate("/volunteer/login", { replace: true })}
+          onSignInAgain={() => navigate("/vol/login", { replace: true })}
         />
       )}
     </Container>

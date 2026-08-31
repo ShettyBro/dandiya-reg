@@ -1,8 +1,12 @@
+import { useEffect, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
-import { SignOut, MapPin, Clock } from "@phosphor-icons/react";
+import { SignOut, MapPin, Clock, Camera, Warning } from "@phosphor-icons/react";
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
+import { Button } from "../../components/ui/Button.js";
 import { useAuth, type AuthUser } from "../../lib/hooks/useAuth.js";
+
+type CameraStatus = "checking" | "granted" | "denied" | "unavailable";
 
 function formatShiftTime(iso: string | null): string | null {
   if (!iso) {
@@ -15,10 +19,30 @@ export function VolunteerHomePage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>("checking");
+
+  async function requestCameraAccess() {
+    setCameraStatus("checking");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach((track) => track.stop());
+      setCameraStatus("granted");
+    } catch (error) {
+      if (error instanceof DOMException && (error.name === "NotFoundError" || error.name === "DevicesNotFoundError")) {
+        setCameraStatus("unavailable");
+      } else {
+        setCameraStatus("denied");
+      }
+    }
+  }
+
+  useEffect(() => {
+    requestCameraAccess();
+  }, []);
 
   async function handleLogout() {
     await logout();
-    navigate("/volunteer/login", { replace: true });
+    navigate("/vol/login", { replace: true });
   }
 
   const shiftStart = formatShiftTime(user.profile?.shiftStart ?? null);
@@ -44,6 +68,25 @@ export function VolunteerHomePage() {
           <SignOut size={22} />
         </button>
       </div>
+
+      {cameraStatus === "denied" && (
+        <GlassPanel className="mb-4 flex flex-wrap items-center justify-between gap-3 border-amber-400/40 p-4">
+          <div className="flex items-center gap-2 text-sm text-amber-200">
+            <Camera size={18} />
+            Camera access is needed to scan QR codes at the gate.
+          </div>
+          <Button type="button" variant="secondary" onClick={requestCameraAccess}>
+            Allow camera
+          </Button>
+        </GlassPanel>
+      )}
+
+      {cameraStatus === "unavailable" && (
+        <GlassPanel className="mb-4 flex items-center gap-2 border-red-400/40 p-4 text-sm text-red-200">
+          <Warning size={18} />
+          No camera was found on this device. Scanning won't be available here.
+        </GlassPanel>
+      )}
 
       <GlassPanel className="flex flex-col gap-4 p-6">
         <div className="flex items-center gap-3 text-sm text-white/80">

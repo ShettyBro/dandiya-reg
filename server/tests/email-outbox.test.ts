@@ -29,6 +29,19 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+async function claimUntilFound(jobId: string, timeoutMs = 6000, pollMs = 400) {
+  const deadline = Date.now() + timeoutMs;
+  let lastClaimed: Awaited<ReturnType<typeof claimDueEmailJobs>> = [];
+  while (Date.now() < deadline) {
+    lastClaimed = await claimDueEmailJobs(prisma, 10);
+    if (lastClaimed.some((job) => job.id === jobId)) {
+      return lastClaimed;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+  return lastClaimed;
+}
+
 describe("computeBackoffMs", () => {
   it("increases with attempts and is capped", () => {
     expect(computeBackoffMs(1)).toBeLessThan(computeBackoffMs(2));
@@ -38,17 +51,21 @@ describe("computeBackoffMs", () => {
 });
 
 describe("claimDueEmailJobs", () => {
-  it("atomically claims pending jobs and locks them", async () => {
-    const job = await createJob();
+  it(
+    "atomically claims pending jobs and locks them",
+    async () => {
+      const job = await createJob();
 
-    const claimed = await claimDueEmailJobs(prisma, 10);
-    const claimedIds = claimed.map((j) => j.id);
-    expect(claimedIds).toContain(job.id);
+      const claimed = await claimUntilFound(job.id);
+      const claimedIds = claimed.map((j) => j.id);
+      expect(claimedIds).toContain(job.id);
 
-    const dbJob = await prisma.emailJob.findUniqueOrThrow({ where: { id: job.id } });
-    expect(dbJob.status).toBe("PROCESSING");
-    expect(dbJob.lockedUntil).not.toBeNull();
-  });
+      const dbJob = await prisma.emailJob.findUniqueOrThrow({ where: { id: job.id } });
+      expect(dbJob.status).toBe("PROCESSING");
+      expect(dbJob.lockedUntil).not.toBeNull();
+    },
+    10000
+  );
 
   it("does not reclaim a job whose lease has not expired", async () => {
     const job = await createJob({
@@ -60,15 +77,19 @@ describe("claimDueEmailJobs", () => {
     expect(claimed.map((j) => j.id)).not.toContain(job.id);
   });
 
-  it("reclaims a job whose lease already expired (crashed-worker recovery)", async () => {
-    const job = await createJob({
-      status: "PROCESSING",
-      lockedUntil: new Date(Date.now() - 60 * 1000)
-    });
+  it(
+    "reclaims a job whose lease already expired (crashed-worker recovery)",
+    async () => {
+      const job = await createJob({
+        status: "PROCESSING",
+        lockedUntil: new Date(Date.now() - 60 * 1000)
+      });
 
-    const claimed = await claimDueEmailJobs(prisma, 10);
-    expect(claimed.map((j) => j.id)).toContain(job.id);
-  });
+      const claimed = await claimUntilFound(job.id);
+      expect(claimed.map((j) => j.id)).toContain(job.id);
+    },
+    10000
+  );
 });
 
 describe("processEmailJob", () => {

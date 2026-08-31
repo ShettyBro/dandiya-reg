@@ -10,11 +10,11 @@ vi.mock("../lib/hooks/useAuth.js", () => ({
 describe("VolunteerLayout", () => {
   it("redirects to the volunteer login page when not authenticated", () => {
     render(
-      <MemoryRouter initialEntries={["/volunteer/home"]}>
+      <MemoryRouter initialEntries={["/vol/home"]}>
         <Routes>
-          <Route path="/volunteer/login" element={<div>Login screen</div>} />
+          <Route path="/vol/login" element={<div>Login screen</div>} />
           <Route element={<VolunteerLayout />}>
-            <Route path="/volunteer/home" element={<div>Home screen</div>} />
+            <Route path="/vol/home" element={<div>Home screen</div>} />
           </Route>
         </Routes>
       </MemoryRouter>

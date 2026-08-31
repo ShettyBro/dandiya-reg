@@ -25,6 +25,38 @@ const VolunteerChangePasswordPage = lazy(() =>
   }))
 );
 
+const AdminLoginPage = lazy(() =>
+  import("./routes/admin/AdminLoginPage.js").then((m) => ({ default: m.AdminLoginPage }))
+);
+const AdminLayout = lazy(() =>
+  import("./routes/admin/AdminLayout.js").then((m) => ({ default: m.AdminLayout }))
+);
+const AdminDashboardPage = lazy(() =>
+  import("./routes/admin/AdminDashboardPage.js").then((m) => ({ default: m.AdminDashboardPage }))
+);
+const AdminVolunteersPage = lazy(() =>
+  import("./routes/admin/AdminVolunteersPage.js").then((m) => ({ default: m.AdminVolunteersPage }))
+);
+const AdminPaymentsPage = lazy(() =>
+  import("./routes/admin/AdminPaymentsPage.js").then((m) => ({ default: m.AdminPaymentsPage }))
+);
+const AdminSettingsPage = lazy(() =>
+  import("./routes/admin/AdminSettingsPage.js").then((m) => ({ default: m.AdminSettingsPage }))
+);
+
+const FinanceLoginPage = lazy(() =>
+  import("./routes/finance/FinanceLoginPage.js").then((m) => ({ default: m.FinanceLoginPage }))
+);
+const FinanceLayout = lazy(() =>
+  import("./routes/finance/FinanceLayout.js").then((m) => ({ default: m.FinanceLayout }))
+);
+const FinanceDashboardPage = lazy(() =>
+  import("./routes/finance/FinanceDashboardPage.js").then((m) => ({ default: m.FinanceDashboardPage }))
+);
+const FinancePaymentsPage = lazy(() =>
+  import("./routes/finance/FinancePaymentsPage.js").then((m) => ({ default: m.FinancePaymentsPage }))
+);
+
 function VolunteerFallback() {
   return <div className="flex min-h-[100dvh] items-center justify-center bg-midnight-950 text-white/50">Loading...</div>;
 }
@@ -40,7 +72,7 @@ export function App() {
         <Route path="/terms" element={<TermsPage />} />
 
         <Route
-          path="/volunteer/login"
+          path="/vol/login"
           element={
             <Suspense fallback={<VolunteerFallback />}>
               <VolunteerLoginPage />
@@ -54,9 +86,49 @@ export function App() {
             </Suspense>
           }
         >
-          <Route path="/volunteer/home" element={<VolunteerHomePage />} />
-          <Route path="/volunteer/scan" element={<VolunteerScanPage />} />
-          <Route path="/volunteer/change-password" element={<VolunteerChangePasswordPage />} />
+          <Route path="/vol/home" element={<VolunteerHomePage />} />
+          <Route path="/vol/scan" element={<VolunteerScanPage />} />
+          <Route path="/vol/change-password" element={<VolunteerChangePasswordPage />} />
+        </Route>
+
+        <Route
+          path="/ad-login"
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <AdminLoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <AdminLayout />
+            </Suspense>
+          }
+        >
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/volunteers" element={<AdminVolunteersPage />} />
+          <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+          <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        </Route>
+
+        <Route
+          path="/fin-login"
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <FinanceLoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <FinanceLayout />
+            </Suspense>
+          }
+        >
+          <Route path="/finance/dashboard" element={<FinanceDashboardPage />} />
+          <Route path="/finance/payments" element={<FinancePaymentsPage />} />
         </Route>
       </Routes>
     </ErrorBoundary>

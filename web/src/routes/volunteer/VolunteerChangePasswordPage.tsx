@@ -28,7 +28,7 @@ export function VolunteerChangePasswordPage() {
         body: { currentPassword, newPassword }
       });
       await refetch();
-      navigate("/volunteer/home", { replace: true });
+      navigate("/vol/home", { replace: true });
     } catch (submitError) {
       if (submitError instanceof ApiError && submitError.status === 401) {
         setError("Current password is incorrect.");
@@ -72,7 +72,7 @@ export function VolunteerChangePasswordPage() {
           </Button>
           <button
             type="button"
-            onClick={() => logout().then(() => navigate("/volunteer/login", { replace: true }))}
+            onClick={() => logout().then(() => navigate("/vol/login", { replace: true }))}
             className="text-xs text-white/40 underline"
           >
             Sign out instead

@@ -3,8 +3,8 @@ import { House, QrCode } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn.js";
 
 const TABS = [
-  { to: "/volunteer/home", label: "Home", icon: House },
-  { to: "/volunteer/scan", label: "Scan", icon: QrCode }
+  { to: "/vol/home", label: "Home", icon: House },
+  { to: "/vol/scan", label: "Scan", icon: QrCode }
 ];
 
 export function BottomNav() {

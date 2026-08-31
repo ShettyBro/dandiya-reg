@@ -27,6 +27,17 @@ const settingsSchema = z
 export function createAdminSettingsRouter(prisma: PrismaClient, env: Env): Router {
   const router = Router();
 
+  router.get(
+    "/admin/settings",
+    requireAuth(env),
+    requireRole("ADMIN"),
+    requireActiveUser(prisma),
+    async (_req, res) => {
+      const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
+      res.status(200).json(event);
+    }
+  );
+
   router.post(
     "/admin/settings",
     requireAuth(env),

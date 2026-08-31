@@ -3,10 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { Button } from "../../components/ui/Button.js";
+import { apiRequest } from "../../lib/api.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
-export function VolunteerLoginPage() {
-  const { login } = useAuth();
+export function StaffLoginPage({
+  title,
+  subtitle,
+  allowedRoles,
+  redirectTo
+}: {
+  title: string;
+  subtitle: string;
+  allowedRoles: Array<"ADMIN" | "FINANCE">;
+  redirectTo: string;
+}) {
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +30,13 @@ export function VolunteerLoginPage() {
     setError(null);
     try {
       await login(email, password);
-      navigate("/vol/home", { replace: true });
+      const me = await apiRequest<{ role: string }>("/auth/me");
+      if (!allowedRoles.includes(me.role as "ADMIN" | "FINANCE")) {
+        await logout();
+        setError("This account does not have access to this panel.");
+        return;
+      }
+      navigate(redirectTo, { replace: true });
     } catch {
       setError("Invalid email or password.");
     } finally {
@@ -30,8 +47,8 @@ export function VolunteerLoginPage() {
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-midnight-950 px-5">
       <GlassPanel className="w-full max-w-sm p-6 sm:p-8">
-        <h1 className="font-display text-xl font-semibold text-white">Volunteer sign in</h1>
-        <p className="mt-1 text-sm text-white/60">Dandiya Night 2026 scanner portal</p>
+        <h1 className="font-display text-xl font-semibold text-white">{title}</h1>
+        <p className="mt-1 text-sm text-white/60">{subtitle}</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
           <FormField

@@ -12,7 +12,7 @@ export default defineConfig({
         name: "Dandiya Night 2026 Volunteer",
         short_name: "DN26 Volunteer",
         description: "Volunteer scanner portal for Dandiya Night 2026",
-        start_url: "/volunteer/home",
+        start_url: "/vol/home",
         scope: "/",
         display: "standalone",
         background_color: "#0f1122",

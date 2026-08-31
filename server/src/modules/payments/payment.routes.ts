@@ -115,7 +115,26 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
           orderBy: { submittedAt: "asc" },
           skip: (parsed.data.page - 1) * parsed.data.pageSize,
           take: parsed.data.pageSize,
-          include: { registration: { select: { name: true, publicCode: true, email: true } } }
+          include: {
+            registration: {
+              select: {
+                name: true,
+                publicCode: true,
+                email: true,
+                emailJobs: {
+                  select: {
+                    type: true,
+                    status: true,
+                    attempts: true,
+                    sentAt: true,
+                    lastError: true,
+                    createdAt: true
+                  },
+                  orderBy: { createdAt: "desc" }
+                }
+              }
+            }
+          }
         }),
         prisma.payment.count({ where })
       ]);
