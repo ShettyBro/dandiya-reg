@@ -8,12 +8,13 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icons/apple-touch-icon.png"],
+      scope: "/vol/",
       manifest: {
         name: "Dandiya Night 2026 Volunteer",
         short_name: "DN26 Volunteer",
         description: "Volunteer scanner portal for Dandiya Night 2026",
         start_url: "/vol/home",
-        scope: "/",
+        scope: "/vol/",
         display: "standalone",
         background_color: "#0f1122",
         theme_color: "#0f1122",
