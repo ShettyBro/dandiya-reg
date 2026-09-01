@@ -17,7 +17,7 @@ export function BambooGallery({ className }: { className?: string }) {
 
   return (
     <div
-      className={cn("fixed inset-0 -z-10 overflow-hidden pointer-events-none", className)}
+      className={cn("fixed inset-0 -z-10 h-dvh w-full overflow-hidden pointer-events-none", className)}
       aria-hidden="true"
     >
       <div className="flex h-[116%] w-[116%] -translate-x-[7%] -translate-y-[7%] -rotate-6 gap-2.5 sm:gap-3">
