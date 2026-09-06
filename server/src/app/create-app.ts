@@ -30,7 +30,21 @@ import type { Env } from "./config/env.js";
 export function createApp(env: Env, prisma: PrismaClient): Express {
   const app = express();
 
+  // The app is only ever reached through exactly one proxy hop (Caddy, on the same Docker host/
+  // network) — Cloudflare Tunnel forwards to Caddy, which reverse-proxies to this app. Without this,
+  // express-rate-limit (v7+) hard-throws whenever it sees an X-Forwarded-For header (added by Caddy)
+  // while trust proxy is unset, breaking every rate-limited route in production.
+  app.set("trust proxy", 1);
+
   app.disable("x-powered-by");
+  app.use(
+    pinoHttp({
+      genReqId: (req) => req.headers["x-request-id"]?.toString() ?? randomUUID(),
+      redact: ["req.headers.authorization", "req.headers.cookie"],
+      level: env.NODE_ENV === "test" ? "silent" : "info",
+      stream: pino.multistream([{ stream: process.stdout }, { stream: logRingBufferStream }])
+    })
+  );
   app.use(helmet());
   app.use(
     cors({
@@ -40,14 +54,6 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   );
   app.use(cookieParser());
   app.use(express.json({ limit: "1mb" }));
-  app.use(
-    pinoHttp({
-      genReqId: (req) => req.headers["x-request-id"]?.toString() ?? randomUUID(),
-      redact: ["req.headers.authorization", "req.headers.cookie"],
-      level: env.NODE_ENV === "test" ? "silent" : "info",
-      stream: pino.multistream([{ stream: process.stdout }, { stream: logRingBufferStream }])
-    })
-  );
 
   app.use("/api/v1", healthRouter);
   app.use("/api/v1", createAuthRouter(prisma, env));
@@ -78,6 +84,7 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   });
 
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    console.error("RAW UNHANDLED ERROR", err);
     req.log?.error({ err }, "unhandled error");
     res.status(500).json({
       code: "INTERNAL_ERROR",

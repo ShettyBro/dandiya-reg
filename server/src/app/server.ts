@@ -2,6 +2,13 @@ import { loadEnv } from "./config/env.js";
 import { createApp } from "./create-app.js";
 import { getPrismaClient } from "../db/client.js";
 
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("UNHANDLED REJECTION", reason);
+});
+
 const env = loadEnv();
 const prisma = getPrismaClient();
 const app = createApp(env, prisma);

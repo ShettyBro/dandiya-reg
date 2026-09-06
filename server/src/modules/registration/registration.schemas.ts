@@ -37,7 +37,13 @@ const acharyaEmailSchema = z
 
 const nameSchema = z.string().trim().min(2).max(120).transform(lowercaseText);
 
-const institutionSchema = z.enum(ACHARYA_INSTITUTIONS);
+// Accepts any casing (the frontend displays Title Case for readability) and normalizes to the
+// stored lowercase form before checking it against the fixed institution list.
+const institutionSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.enum(ACHARYA_INSTITUTIONS));
 
 export const acharyaStudentSchema = z.object({
   registrationType: z.literal("ACHARYA_STUDENT"),

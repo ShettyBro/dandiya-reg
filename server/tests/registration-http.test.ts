@@ -74,6 +74,19 @@ describe("POST /api/v1/registrations", () => {
     createdRegistrationIds.push(response.body.registrationId);
   });
 
+  it("accepts a Title Case institution value from the frontend and stores it lowercase", async () => {
+    const response = await request(app)
+      .post("/api/v1/registrations")
+      .set("Idempotency-Key", `http-titlecase-institution-${Date.now()}`)
+      .send({ ...validPayload("titlecase"), institution: "Acharya Institute of Graduate Studies" });
+
+    expect(response.status).toBe(201);
+    createdRegistrationIds.push(response.body.registrationId);
+
+    const stored = await prisma.registration.findUniqueOrThrow({ where: { id: response.body.registrationId } });
+    expect(stored.institution).toBe("acharya institute of graduate studies");
+  });
+
   it("rejects an invalid phone number", async () => {
     const response = await request(app)
       .post("/api/v1/registrations")
