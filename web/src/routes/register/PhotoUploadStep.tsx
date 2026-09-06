@@ -79,7 +79,7 @@ export function PhotoUploadStep({
       <h2 className="font-display text-xl font-semibold text-white">Passport-style photo</h2>
       <p className="mt-1 text-sm text-white/60">Square, well-lit, JPG/PNG, max 1MB. This appears on your pass.</p>
 
-      <div className="mt-6 flex flex-col items-center gap-5">
+      <div className="mt-6 flex flex-col items-center gap-4">
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -91,6 +91,16 @@ export function PhotoUploadStep({
             <Camera size={36} className="text-white/40" />
           )}
         </button>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-5 py-2 text-sm font-semibold text-festival-gold"
+        >
+          {file ? "Choose a different photo" : "Choose file"}
+        </button>
+        {file && <p className="text-xs text-white/50">{file.name}</p>}
+
         <input
           ref={inputRef}
           type="file"
