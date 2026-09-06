@@ -20,7 +20,7 @@ async function writeHeartbeat(): Promise<void> {
 async function runOnce(): Promise<void> {
   const jobs = await claimDueEmailJobs(prisma, env.EMAIL_WORKER_BATCH_SIZE);
   for (const job of jobs) {
-    const outcome = await processEmailJob(prisma, job, sender);
+    const outcome = await processEmailJob(prisma, env, job, sender);
     console.log(`email job ${job.id} (${job.type}) -> ${outcome}`);
   }
   await writeHeartbeat();

@@ -73,7 +73,7 @@ export function AdminDashboardPage() {
         <StatCard label="Total collected" value={formatPriceInPaise(metrics.totalCollectionInPaise)} accent="emerald" />
         <StatCard label="Entered" value={String(metrics.entered)} />
         <StatCard
-          label="Remaining capacity"
+          label="Vs. planning capacity (not a cap)"
           value={metrics.remainingCapacity === null ? "—" : String(metrics.remainingCapacity)}
         />
         <StatCard label="Team Leader overrides" value={String(metrics.overrideCount)} accent="red" />

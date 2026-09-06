@@ -3,7 +3,7 @@ import { Camera } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { apiRequest, ApiError } from "../../lib/api.js";
-import { putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
+import { IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 
 interface PresignResponse {
   uploadUrl: string;
@@ -32,7 +32,7 @@ export function PhotoUploadStep({
       setPreviewUrl(null);
       return;
     }
-    const validationError = validateImageFile(selected);
+    const validationError = validateImageFile(selected, IDENTITY_IMAGE_MAX_BYTES);
     if (validationError) {
       setError(validationError);
       return;
@@ -77,7 +77,7 @@ export function PhotoUploadStep({
   return (
     <GlassPanel className="p-6 sm:p-8">
       <h2 className="font-display text-xl font-semibold text-white">Passport-style photo</h2>
-      <p className="mt-1 text-sm text-white/60">Square, well-lit, max 2MB. This appears on your pass.</p>
+      <p className="mt-1 text-sm text-white/60">Square, well-lit, JPG/PNG, max 1MB. This appears on your pass.</p>
 
       <div className="mt-6 flex flex-col items-center gap-5">
         <button
@@ -94,7 +94,7 @@ export function PhotoUploadStep({
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png"
           className="hidden"
           onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
         />

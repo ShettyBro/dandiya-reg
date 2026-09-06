@@ -10,15 +10,16 @@ export async function putFileToPresignedUrl(uploadUrl: string, file: File): Prom
   }
 }
 
-const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const IDENTITY_IMAGE_MAX_BYTES = 1 * 1024 * 1024;
+export const PAYMENT_PROOF_MAX_BYTES = 2 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/png"];
 
-export function validateImageFile(file: File): string | null {
+export function validateImageFile(file: File, maxSizeBytes: number = IDENTITY_IMAGE_MAX_BYTES): string | null {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return "Please upload a JPG, PNG, or WEBP image.";
+    return "Please upload a JPG or PNG image.";
   }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return "Image must be 2MB or smaller.";
+  if (file.size > maxSizeBytes) {
+    return `Image must be ${Math.round(maxSizeBytes / (1024 * 1024))}MB or smaller.`;
   }
   return null;
 }

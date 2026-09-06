@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { ChartBar, CreditCard } from "@phosphor-icons/react";
+import { ChartBar, CreditCard, IdentificationCard } from "@phosphor-icons/react";
 import { StaffShell, type StaffNavItem } from "../../components/staff/StaffShell.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
 const NAV_ITEMS: StaffNavItem[] = [
   { to: "/finance/dashboard", label: "Dashboard", icon: ChartBar },
-  { to: "/finance/payments", label: "Payments", icon: CreditCard }
+  { to: "/finance/payments", label: "Payments", icon: CreditCard },
+  { to: "/finance/identity", label: "Identity", icon: IdentificationCard }
 ];
 
 export function FinanceLayout() {

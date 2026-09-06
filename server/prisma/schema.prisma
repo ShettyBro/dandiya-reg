@@ -20,12 +20,25 @@ enum UserStatus {
   DISABLED
 }
 
+enum RegistrationType {
+  ACHARYA_STUDENT
+  ACHARYA_FACULTY
+  NON_ACHARYAN_STUDENT
+}
+
 enum RegistrationStatus {
-  SUBMITTED
   PAYMENT_PENDING
+  IDENTITY_PENDING
+  IDENTITY_REJECTED
   PAYMENT_SUBMITTED
   PAYMENT_APPROVED
   PAYMENT_REJECTED
+}
+
+enum IdentityStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum PaymentStatus {
@@ -38,6 +51,8 @@ enum PaymentStatus {
 enum UploadPurpose {
   PARTICIPANT_PHOTO
   PAYMENT_PROOF
+  AADHAAR_IMAGE
+  COLLEGE_ID_IMAGE
 }
 
 enum CredentialType {
@@ -63,6 +78,7 @@ enum EmailTemplateKey {
   REGISTRATION_RECEIVED
   PAYMENT_APPROVED
   PAYMENT_REJECTED
+  IDENTITY_REJECTED
   VOLUNTEER_INVITE
   PASSWORD_RESET
 }
@@ -75,6 +91,7 @@ model Event {
   registrationOpen   Boolean  @default(true)
   registrationDeadline DateTime?
   capacity           Int
+  gateClosesAt       DateTime?
   priceInPaise       Int
   erpPaymentUrl      String
   paymentInstructions String
@@ -101,6 +118,7 @@ model User {
 
   volunteerProfile      VolunteerProfile?
   verifiedPayments       Payment[]              @relation("VerifiedByUser")
+  identityVerifiedRegistrations Registration[]  @relation("IdentityVerifiedByUser")
   attendanceOverrides    AttendanceOverride[]
   scannedAttendances     Attendance[]           @relation("LastScannerUser")
   auditLogs              AuditLog[]
@@ -129,22 +147,46 @@ model VolunteerProfile {
 }
 
 model Registration {
-  id             String              @id @default(uuid())
-  event          Event               @relation(fields: [eventId], references: [id])
-  eventId        String
-  publicCode     String              @unique
-  eightDigitCode String              @unique
-  name           String
-  email          String
-  phone          String
-  college        String
-  semester       String
-  branch         String
-  photoObjectKey String?
-  status         RegistrationStatus  @default(SUBMITTED)
-  idempotencyKey String              @unique
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  id               String             @id @default(uuid())
+  event            Event              @relation(fields: [eventId], references: [id])
+  eventId          String
+  registrationType RegistrationType
+  publicCode       String             @unique
+  eightDigitCode   String             @unique
+  name             String
+  email            String
+  phone            String
+  photoObjectKey   String?
+  status           RegistrationStatus @default(PAYMENT_PENDING)
+  idempotencyKey   String             @unique
+
+  // Acharya Student + Acharya Faculty
+  institution String?
+
+  // Acharya Student only
+  auid String?
+  year Int?
+
+  // Acharya Faculty only
+  employeeId String?
+
+  // Non-Acharyan Student only
+  collegeName             String?
+  aadhaarNumber           String?
+  aadhaarImageObjectKey   String?
+  collegeIdImageObjectKey String?
+  identityStatus          IdentityStatus?
+  identityRejectionReason String?
+  identityVerifiedBy      User?           @relation("IdentityVerifiedByUser", fields: [identityVerifiedById], references: [id])
+  identityVerifiedById    String?
+  identityVerifiedAt      DateTime?
+
+  resubmissionOf   Registration?  @relation("Resubmission", fields: [resubmissionOfId], references: [id])
+  resubmissionOfId String?
+  resubmissions    Registration[] @relation("Resubmission")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   payment          Payment?
   passCredential   PassCredential?
@@ -156,6 +198,10 @@ model Registration {
   @@index([email])
   @@index([phone])
   @@index([status])
+  @@index([registrationType, status])
+  @@index([auid])
+  @@index([employeeId])
+  @@index([aadhaarNumber])
   @@map("registrations")
 }
 
@@ -179,7 +225,7 @@ model Payment {
   id             String        @id @default(uuid())
   registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   registrationId String        @unique
-  transactionId  String?       @unique
+  transactionId  String?
   amountInPaise  Int
   proofObjectKey String?
   status         PaymentStatus @default(PENDING)
@@ -192,6 +238,7 @@ model Payment {
   updatedAt      DateTime      @updatedAt
 
   @@index([status, submittedAt])
+  @@index([transactionId])
   @@map("payments")
 }
 

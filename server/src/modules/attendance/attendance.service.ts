@@ -1,10 +1,12 @@
 import type { CredentialType, PrismaClient } from "@prisma/client";
 import { hashCredentialToken } from "../../lib/qr/credential.js";
 import { recordAuditLog } from "../audit/audit.service.js";
+import type { Env } from "../../app/config/env.js";
 
 export class CredentialNotFoundError extends Error {}
 export class AlreadyEnteredError extends Error {}
 export class NotYetEnteredError extends Error {}
+export class OutsideEntryWindowError extends Error {}
 
 export interface ScanLookupResult {
   credentialType: CredentialType;
@@ -70,7 +72,11 @@ export type AllowEntryResult =
   | { type: "STAFF_GUEST_ADMIN"; label: string | null }
   | { type: "PARTICIPANT"; registrationId: string; name: string };
 
-export async function allowEntry(prisma: PrismaClient, params: AllowEntryParams): Promise<AllowEntryResult> {
+export async function allowEntry(
+  prisma: PrismaClient,
+  env: Env,
+  params: AllowEntryParams
+): Promise<AllowEntryResult> {
   const tokenHash = hashCredentialToken(params.rawToken);
   const credential = await prisma.passCredential.findUnique({
     where: { opaqueTokenHash: tokenHash },
@@ -96,6 +102,14 @@ export async function allowEntry(prisma: PrismaClient, params: AllowEntryParams)
   const registration = credential.registration;
   if (!registration) {
     throw new CredentialNotFoundError();
+  }
+
+  const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
+  const now = Date.now();
+  const entryStarted = now >= event.eventDate.getTime();
+  const gateStillOpen = !event.gateClosesAt || now <= event.gateClosesAt.getTime();
+  if (!entryStarted || !gateStillOpen) {
+    throw new OutsideEntryWindowError();
   }
 
   const result = await prisma.attendance.updateMany({

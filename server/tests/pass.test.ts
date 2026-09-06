@@ -24,17 +24,22 @@ function extractCookie(setCookieHeader: string[] | undefined, name: string): str
 let financeCookies: string[];
 let financeCsrfToken: string;
 
+function randomPhone(): string {
+  return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
+}
+
 async function createApprovedRegistration(suffix: string) {
   const created = await request(app)
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `pass-test-${suffix}-${Date.now()}`)
     .send({
+      registrationType: "ACHARYA_STUDENT",
       name: "Pass Test User",
-      phone: "9991112222",
-      email: `pass-test-${suffix}@acharya.ac.in`,
-      college: "Acharya Institute",
-      semester: "6",
-      branch: "MECH"
+      phone: randomPhone(),
+      email: `pass-test-${suffix}-${Date.now()}@acharya.ac.in`,
+      auid: `pass-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology",
+      year: 2
     });
   createdRegistrationIds.push(created.body.registrationId);
 
@@ -101,12 +106,13 @@ describe("POST /api/v1/pass/lookup", () => {
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `pass-lookup-${Date.now()}`)
       .send({
+        registrationType: "ACHARYA_STUDENT",
         name: "Not Approved Yet",
-        phone: "9990001111",
+        phone: randomPhone(),
         email: `pass-not-approved-${Date.now()}@acharya.ac.in`,
-        college: "Acharya Institute",
-        semester: "2",
-        branch: "CSE"
+        auid: `pass-na-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        institution: "acharya institute of technology",
+        year: 2
       });
     createdRegistrationIds.push(created.body.registrationId);
 
@@ -131,12 +137,13 @@ describe("GET /api/v1/pass/:registrationId", () => {
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `pass-notapproved-${Date.now()}`)
       .send({
+        registrationType: "ACHARYA_STUDENT",
         name: "Still Pending",
-        phone: "9993334444",
+        phone: randomPhone(),
         email: `pass-pending-${Date.now()}@acharya.ac.in`,
-        college: "Acharya Institute",
-        semester: "1",
-        branch: "CSE"
+        auid: `pass-sp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        institution: "acharya institute of technology",
+        year: 2
       });
     createdRegistrationIds.push(created.body.registrationId);
 
@@ -155,7 +162,7 @@ describe("GET /api/v1/pass/:registrationId", () => {
       `/api/v1/pass/${registration.registrationId}?code=${registration.publicCode}`
     );
     expect(first.status).toBe(200);
-    expect(first.body.name).toBe("Pass Test User");
+    expect(first.body.name).toBe("pass test user");
     expect(first.body.publicCode).toBe(registration.publicCode);
     expect(typeof first.body.qrPayload).toBe("string");
     expect(first.body.qrImageDataUrl).toMatch(/^data:image\/png;base64,/);

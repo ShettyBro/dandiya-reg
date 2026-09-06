@@ -13,6 +13,7 @@ import {
   CredentialNotFoundError,
   lookupCredential,
   NotYetEnteredError,
+  OutsideEntryWindowError,
   overrideEntry
 } from "./attendance.service.js";
 import type { Env } from "../../app/config/env.js";
@@ -88,7 +89,7 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       try {
-        const result = await allowEntry(prisma, {
+        const result = await allowEntry(prisma, env, {
           rawToken: parsed.data.token,
           scannerUserId: req.authUser.id,
           gate: parsed.data.gate,
@@ -102,6 +103,10 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
         }
         if (error instanceof AlreadyEnteredError) {
           sendError(req, res, 409, "ALREADY_ENTERED", "This participant has already entered");
+          return;
+        }
+        if (error instanceof OutsideEntryWindowError) {
+          sendError(req, res, 409, "OUTSIDE_ENTRY_WINDOW", "Normal entry is only allowed during the event's entry window");
           return;
         }
         throw error;

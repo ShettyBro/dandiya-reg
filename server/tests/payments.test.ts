@@ -30,17 +30,22 @@ function extractCookie(setCookieHeader: string[] | undefined, name: string): str
   return line?.split(";")[0]?.split("=")[1];
 }
 
+function randomPhone(): string {
+  return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
+}
+
 async function createTestRegistration(suffix: string) {
   const response = await request(app)
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `pay-test-${suffix}-${Date.now()}`)
     .send({
+      registrationType: "ACHARYA_STUDENT",
       name: "Payment Test User",
-      phone: "9998887777",
-      email: `pay-test-${suffix}@acharya.ac.in`,
-      college: "Acharya Institute",
-      semester: "4",
-      branch: "ECE"
+      phone: randomPhone(),
+      email: `pay-test-${suffix}-${Date.now()}@acharya.ac.in`,
+      auid: `pay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology",
+      year: 2
     });
   createdRegistrationIds.push(response.body.registrationId);
   return response.body as { registrationId: string; publicCode: string };

@@ -8,15 +8,14 @@ import { presignPutUrl } from "../../lib/r2/presign.js";
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   extensionForMime,
-  MAX_UPLOAD_SIZE_BYTES,
-  participantPhotoKey,
-  paymentProofKey
+  maxSizeForPurpose,
+  objectKeyForPurpose
 } from "../../lib/r2/object-keys.js";
 import type { Env } from "../../app/config/env.js";
 
 const presignSchema = z.object({
   registrationId: z.string().uuid(),
-  purpose: z.enum(["PARTICIPANT_PHOTO", "PAYMENT_PROOF"]),
+  purpose: z.enum(["PARTICIPANT_PHOTO", "PAYMENT_PROOF", "AADHAAR_IMAGE", "COLLEGE_ID_IMAGE"]),
   contentType: z.enum(ALLOWED_IMAGE_MIME_TYPES as [string, ...string[]])
 });
 
@@ -44,11 +43,8 @@ export function createUploadsRouter(prisma: PrismaClient, env: Env): Router {
       return;
     }
 
-    const objectKey =
-      parsed.data.purpose === "PARTICIPANT_PHOTO"
-        ? participantPhotoKey(registration.id, extension)
-        : paymentProofKey(registration.id, extension);
-
+    const objectKey = objectKeyForPurpose(parsed.data.purpose, registration.id, extension);
+    const maxSizeBytes = maxSizeForPurpose(parsed.data.purpose);
     const expiresAt = new Date(Date.now() + env.R2_PRESIGN_UPLOAD_TTL * 1000);
 
     try {
@@ -67,7 +63,7 @@ export function createUploadsRouter(prisma: PrismaClient, env: Env): Router {
           purpose: parsed.data.purpose,
           objectKey,
           expectedMime: parsed.data.contentType,
-          maxSizeBytes: MAX_UPLOAD_SIZE_BYTES,
+          maxSizeBytes,
           expiresAt
         }
       });

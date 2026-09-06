@@ -24,6 +24,6 @@ describe("LandingPage", () => {
     );
 
     expect(screen.getByText("The essentials")).toBeTruthy();
-    expect(screen.getByText("Entry rules")).toBeTruthy();
+    expect(screen.getByText("Event do's & don'ts")).toBeTruthy();
   });
 });

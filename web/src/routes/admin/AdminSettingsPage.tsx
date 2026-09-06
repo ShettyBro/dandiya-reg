@@ -153,7 +153,7 @@ export function AdminSettingsPage() {
           }
         />
         <FormField
-          label="Capacity"
+          label="Capacity (planning estimate only — not enforced, registration is unlimited)"
           type="number"
           value={String(settings.capacity)}
           onChange={(e) => setSettings({ ...settings, capacity: Number(e.target.value) })}

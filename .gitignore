@@ -30,6 +30,14 @@ docs/
 ai/
 CLAUDE.md
 scripts-tmp-*
+*_FINAL.*
+*_NEW.*
+*_V2.*
+temp.*
+scratch.*
+output.*
+diag-*.cjs
+render-*-samples.*
 
 # Local IDE / OS
 .DS_Store

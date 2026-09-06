@@ -20,34 +20,65 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+function randomPhone(): string {
+  return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
+}
+
 function validPayload(suffix: string) {
   return {
+    registrationType: "ACHARYA_STUDENT",
     name: "Http Test User",
-    phone: "9876543210",
+    phone: randomPhone(),
     email: `http-test-${suffix}@acharya.ac.in`,
-    college: "Acharya Institute of Technology",
-    semester: "3",
-    branch: "ISE"
+    auid: `http-auid-${suffix}-${Date.now()}`,
+    institution: "acharya institute of technology",
+    year: 2
   };
 }
 
 describe("GET /api/v1/event/config", () => {
-  it("reports the event as open with remaining capacity", async () => {
+  it("reports the event as open", async () => {
     const response = await request(app).get("/api/v1/event/config");
 
     expect(response.status).toBe(200);
     expect(typeof response.body.registrationOpen).toBe("boolean");
-    expect(typeof response.body.remainingCapacity).toBe("number");
     expect(typeof response.body.priceInPaise).toBe("number");
   });
 });
 
 describe("POST /api/v1/registrations", () => {
-  it("rejects a non-college email domain", async () => {
+  it("rejects a non-acharya.ac.in email domain for an Acharya Student", async () => {
     const response = await request(app)
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `http-bad-email-${Date.now()}`)
       .send({ ...validPayload("bad"), email: "someone@gmail.com" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("accepts a Non-Acharyan Student with any email domain and no AUID/institution", async () => {
+    const response = await request(app)
+      .post("/api/v1/registrations")
+      .set("Idempotency-Key", `http-non-acharyan-${Date.now()}`)
+      .send({
+        registrationType: "NON_ACHARYAN_STUDENT",
+        name: "Outside Student",
+        phone: randomPhone(),
+        email: "someone@gmail.com",
+        collegeName: "Some Other College",
+        aadhaarNumber: `${Date.now()}`
+      });
+
+    expect(response.status).toBe(201);
+    createdRegistrationIds.push(response.body.registrationId);
+  });
+
+  it("rejects an invalid phone number", async () => {
+    const response = await request(app)
+      .post("/api/v1/registrations")
+      .set("Idempotency-Key", `http-bad-phone-${Date.now()}`)
+      .send({ ...validPayload("bad-phone"), phone: "12345" });
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe("VALIDATION_ERROR");

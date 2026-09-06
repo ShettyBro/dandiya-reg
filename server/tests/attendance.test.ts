@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
 import { createApp } from "../src/app/create-app.js";
@@ -35,12 +35,13 @@ async function createParticipantWithCredential(suffix: string) {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `att-test-${suffix}-${Date.now()}`)
     .send({
+      registrationType: "ACHARYA_STUDENT",
       name: `Attendance Test ${suffix}`,
-      phone: "9887766554",
-      email: `att-test-${suffix}@acharya.ac.in`,
-      college: "Acharya Institute",
-      semester: "5",
-      branch: "CSE"
+      phone: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
+      email: `att-test-${suffix}-${Date.now()}@acharya.ac.in`,
+      auid: `att-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+      institution: "acharya institute of technology",
+      year: 2
     });
   const registrationId = created.body.registrationId as string;
   createdRegistrationIds.push(registrationId);
@@ -76,6 +77,19 @@ async function createStaffCredential() {
   createdCredentialIds.push(credentialId);
   return { credentialId, token };
 }
+
+// Normal /scan/allow entry is time-gated to the event's real entry window (Phase U9), which is
+// in the future relative to whenever these tests actually run — fake only Date (not timers used
+// by Prisma's async I/O) so entry-window checks (and everything issued afterward, like login JWTs)
+// see a time inside the window consistently.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
+});
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 beforeAll(async () => {
   const passwordHash = await hashPassword(PASSWORD);
@@ -310,6 +324,70 @@ describe("Team Leader override", () => {
       where: { action: "ATTENDANCE_OVERRIDE", entityId: participant.registrationId }
     });
     expect(auditRow).not.toBeNull();
+  });
+});
+
+describe("entry window", () => {
+  it("blocks normal entry before the event's entry window opens", async () => {
+    const participant = await createParticipantWithCredential("before-window");
+    vi.setSystemTime(new Date("2026-10-15T09:00:00.000Z"));
+    try {
+      const response = await request(app)
+        .post("/api/v1/scan/allow")
+        .set("Cookie", volunteerCookies)
+        .set("X-CSRF-Token", volunteerCsrf)
+        .send({ token: participant.token });
+
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe("OUTSIDE_ENTRY_WINDOW");
+    } finally {
+      vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
+    }
+  });
+
+  it("blocks normal entry after the gate has closed", async () => {
+    const participant = await createParticipantWithCredential("after-window");
+    vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"));
+    try {
+      const freshLogin = await request(app)
+        .post("/api/v1/auth/login")
+        .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
+      const freshCookies = freshLogin.headers["set-cookie"] as unknown as string[];
+      const freshCsrf = extractCookie(freshCookies, "csrf_token") ?? "";
+
+      const response = await request(app)
+        .post("/api/v1/scan/allow")
+        .set("Cookie", freshCookies)
+        .set("X-CSRF-Token", freshCsrf)
+        .send({ token: participant.token });
+
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe("OUTSIDE_ENTRY_WINDOW");
+    } finally {
+      vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
+    }
+  });
+
+  it("does not time-gate STAFF_GUEST_ADMIN unrestricted entry outside the window", async () => {
+    const staff = await createStaffCredential();
+    vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"));
+    try {
+      const freshLogin = await request(app)
+        .post("/api/v1/auth/login")
+        .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
+      const freshCookies = freshLogin.headers["set-cookie"] as unknown as string[];
+      const freshCsrf = extractCookie(freshCookies, "csrf_token") ?? "";
+
+      const response = await request(app)
+        .post("/api/v1/scan/allow")
+        .set("Cookie", freshCookies)
+        .set("X-CSRF-Token", freshCsrf)
+        .send({ token: staff.token });
+
+      expect(response.status).toBe(200);
+    } finally {
+      vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
+    }
   });
 });
 

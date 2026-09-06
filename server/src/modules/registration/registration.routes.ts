@@ -9,36 +9,28 @@ import {
   uploadPresignRateLimiter
 } from "../../lib/security/rate-limit.js";
 import {
-  CapacityExceededError,
   createRegistration,
+  DuplicateAadhaarError,
+  DuplicateAuidError,
+  DuplicateEmployeeIdError,
+  DuplicatePhoneError,
   getRegistrationByPublicCode,
   RegistrationClosedError
 } from "./registration.service.js";
+import { registrationSchema } from "./registration.schemas.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { validateUploadedImage, ImageValidationError } from "../../lib/r2/validate-image.js";
 import type { Env } from "../../app/config/env.js";
 
-const ACHARYA_EMAIL_DOMAIN = "@acharya.ac.in";
-
-const registrationSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  phone: z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Invalid phone number"),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .email()
-    .refine((value) => value.endsWith(ACHARYA_EMAIL_DOMAIN), {
-      message: `Only ${ACHARYA_EMAIL_DOMAIN} college email addresses are eligible to register`
-    }),
-  college: z.string().trim().min(2).max(200),
-  semester: z.string().trim().min(1).max(20),
-  branch: z.string().trim().min(2).max(100)
-});
-
 const photoBindSchema = z.object({
   objectKey: z.string().min(1)
 });
+
+const IMAGE_BIND_PURPOSES = {
+  photo: { purpose: "PARTICIPANT_PHOTO", field: "photoObjectKey", requireSquare: true },
+  "aadhaar-image": { purpose: "AADHAAR_IMAGE", field: "aadhaarImageObjectKey", requireSquare: false },
+  "college-id-image": { purpose: "COLLEGE_ID_IMAGE", field: "collegeIdImageObjectKey", requireSquare: false }
+} as const;
 
 export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router {
   const router = Router();
@@ -58,7 +50,7 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
 
     try {
       const registration = await createRegistration(prisma, env.EVENT_ID, {
-        ...parsed.data,
+        data: parsed.data,
         idempotencyKey
       });
 
@@ -73,8 +65,20 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
         sendError(req, res, 409, "REGISTRATION_CLOSED", "Registration is currently closed");
         return;
       }
-      if (error instanceof CapacityExceededError) {
-        sendError(req, res, 409, "CAPACITY_EXCEEDED", "Event capacity has been reached");
+      if (error instanceof DuplicateAuidError) {
+        sendError(req, res, 409, "DUPLICATE_AUID", "This AUID is already registered");
+        return;
+      }
+      if (error instanceof DuplicateEmployeeIdError) {
+        sendError(req, res, 409, "DUPLICATE_EMPLOYEE_ID", "This Employee ID is already registered");
+        return;
+      }
+      if (error instanceof DuplicateAadhaarError) {
+        sendError(req, res, 409, "DUPLICATE_AADHAAR", "This Aadhaar number is already registered");
+        return;
+      }
+      if (error instanceof DuplicatePhoneError) {
+        sendError(req, res, 409, "DUPLICATE_PHONE", "This phone number is already registered for this category");
         return;
       }
       throw error;
@@ -96,68 +100,70 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
       name: registration.name,
       status: registration.status,
       paymentStatus: payment?.status ?? null,
-      rejectionReason: payment?.rejectionReason ?? null
+      rejectionReason: payment?.rejectionReason ?? registration.identityRejectionReason ?? null
     });
   });
 
-  router.patch("/registrations/:id/photo", uploadPresignRateLimiter, async (req, res) => {
-    const parsed = photoBindSchema.safeParse(req.body);
-    if (!parsed.success) {
-      sendError(req, res, 400, "VALIDATION_ERROR", "Invalid photo binding payload", parsed.error.flatten());
-      return;
-    }
+  for (const [path, config] of Object.entries(IMAGE_BIND_PURPOSES)) {
+    router.patch(`/registrations/:id/${path}`, uploadPresignRateLimiter, async (req, res) => {
+      const parsed = photoBindSchema.safeParse(req.body);
+      if (!parsed.success) {
+        sendError(req, res, 400, "VALIDATION_ERROR", "Invalid image binding payload", parsed.error.flatten());
+        return;
+      }
 
-    const registrationId = stringParam(req.params.id);
-    if (!registrationId) {
-      sendError(req, res, 400, "VALIDATION_ERROR", "Missing registration id");
-      return;
-    }
+      const registrationId = stringParam(req.params.id);
+      if (!registrationId) {
+        sendError(req, res, 400, "VALIDATION_ERROR", "Missing registration id");
+        return;
+      }
 
-    const intent = await prisma.uploadIntent.findUnique({
-      where: { objectKey: parsed.data.objectKey }
-    });
-
-    if (
-      !intent ||
-      intent.registrationId !== registrationId ||
-      intent.purpose !== "PARTICIPANT_PHOTO" ||
-      intent.consumedAt ||
-      intent.expiresAt.getTime() < Date.now()
-    ) {
-      sendError(req, res, 400, "INVALID_UPLOAD_INTENT", "Upload intent is invalid, expired, or already used");
-      return;
-    }
-
-    try {
-      const client = getR2Client(env);
-      await validateUploadedImage(client, env.R2_BUCKET_NAME, intent.objectKey, intent.maxSizeBytes, {
-        requireSquareAspectRatio: true
+      const intent = await prisma.uploadIntent.findUnique({
+        where: { objectKey: parsed.data.objectKey }
       });
-    } catch (error) {
-      if (error instanceof R2NotConfiguredError) {
-        sendError(req, res, 503, "R2_NOT_CONFIGURED", "Object storage is not configured yet");
+
+      if (
+        !intent ||
+        intent.registrationId !== registrationId ||
+        intent.purpose !== config.purpose ||
+        intent.consumedAt ||
+        intent.expiresAt.getTime() < Date.now()
+      ) {
+        sendError(req, res, 400, "INVALID_UPLOAD_INTENT", "Upload intent is invalid, expired, or already used");
         return;
       }
-      if (error instanceof ImageValidationError) {
-        sendError(req, res, 422, "IMAGE_VALIDATION_FAILED", error.message);
-        return;
+
+      try {
+        const client = getR2Client(env);
+        await validateUploadedImage(client, env.R2_BUCKET_NAME, intent.objectKey, intent.maxSizeBytes, {
+          requireSquareAspectRatio: config.requireSquare
+        });
+      } catch (error) {
+        if (error instanceof R2NotConfiguredError) {
+          sendError(req, res, 503, "R2_NOT_CONFIGURED", "Object storage is not configured yet");
+          return;
+        }
+        if (error instanceof ImageValidationError) {
+          sendError(req, res, 422, "IMAGE_VALIDATION_FAILED", error.message);
+          return;
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    await prisma.$transaction([
-      prisma.uploadIntent.update({
-        where: { id: intent.id },
-        data: { consumedAt: new Date() }
-      }),
-      prisma.registration.update({
-        where: { id: registrationId },
-        data: { photoObjectKey: intent.objectKey }
-      })
-    ]);
+      await prisma.$transaction([
+        prisma.uploadIntent.update({
+          where: { id: intent.id },
+          data: { consumedAt: new Date() }
+        }),
+        prisma.registration.update({
+          where: { id: registrationId },
+          data: { [config.field]: intent.objectKey }
+        })
+      ]);
 
-    res.status(200).json({ photoObjectKey: intent.objectKey });
-  });
+      res.status(200).json({ [config.field]: intent.objectKey });
+    });
+  }
 
   return router;
 }

@@ -29,6 +29,8 @@ interface PaymentItem {
     name: string;
     publicCode: string;
     email: string;
+    registrationType: "ACHARYA_STUDENT" | "ACHARYA_FACULTY" | "NON_ACHARYAN_STUDENT";
+    identityStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
     emailJobs: EmailJobSummary[];
   };
 }
@@ -168,7 +170,10 @@ export function PaymentsPanel() {
         <div className="flex flex-col gap-3">
           {items.map((payment) => {
             const isExpanded = expandedId === payment.id;
-            const canAct = payment.status === "PROOF_SUBMITTED";
+            const identityBlocked =
+              payment.registration.registrationType === "NON_ACHARYAN_STUDENT" &&
+              payment.registration.identityStatus !== "APPROVED";
+            const canAct = payment.status === "PROOF_SUBMITTED" && !identityBlocked;
             return (
               <GlassPanel key={payment.id} className="overflow-hidden p-0">
                 <button
@@ -279,6 +284,13 @@ export function PaymentsPanel() {
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {identityBlocked && payment.status === "PROOF_SUBMITTED" && (
+                      <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-200">
+                        This is a Non-Acharyan registration — identity must be approved on the Identity
+                        review page before payment can be approved or rejected.
                       </div>
                     )}
 

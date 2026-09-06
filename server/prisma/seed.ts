@@ -16,14 +16,15 @@ async function main(): Promise<void> {
     create: {
       id: eventId,
       name: "Dandiya Night 2026",
-      eventDate: new Date("2026-10-17T18:00:00.000Z"),
-      venue: "TBD — set via admin event settings",
+      eventDate: new Date("2026-10-15T09:30:00.000Z"),
+      gateClosesAt: new Date("2026-10-15T11:30:00.000Z"),
+      venue: "Acharya Stadium",
       registrationOpen: true,
-      capacity: 500,
-      priceInPaise: 30000,
-      erpPaymentUrl: process.env.ERP_PAYMENT_URL ?? "https://erp.example.edu/pay",
+      capacity: 3000,
+      priceInPaise: 15100,
+      erpPaymentUrl: process.env.ERP_PAYMENT_URL ?? "https://www.acharyaerptech.in/ExternalPayment/370",
       paymentInstructions:
-        "Pay the event fee through the college ERP, then return here with the transaction ID and a screenshot."
+        "Pay the event fee (₹151) through the college ERP, then return here with the transaction ID and a screenshot."
     }
   });
 

@@ -4,6 +4,7 @@ import { Container } from "../../components/ui/Container.js";
 import { LinkButton } from "../../components/ui/Button.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { formatEventDate, useEventConfig } from "../../lib/hooks/useEventConfig.js";
+import { Countdown } from "../../components/Countdown.js";
 
 export function Hero() {
   const { config } = useEventConfig();
@@ -30,6 +31,12 @@ export function Hero() {
               Live raas, dhol beats, and a night of color at {config?.venue ?? "campus grounds"}. Dress
               sharp, dance sharper.
             </p>
+
+            {config && (
+              <div className="mt-8">
+                <Countdown targetIso={config.eventDate} />
+              </div>
+            )}
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <LinkButton to="/register" className="w-full sm:w-auto">

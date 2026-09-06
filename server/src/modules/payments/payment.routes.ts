@@ -13,6 +13,7 @@ import { MAX_UPLOAD_SIZE_BYTES } from "../../lib/r2/object-keys.js";
 import {
   approvePayment,
   DuplicateTransactionIdError,
+  IdentityNotApprovedError,
   InvalidUploadIntentError,
   PaymentNotFoundError,
   PaymentNotInReviewableStateError,
@@ -121,6 +122,8 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
                 name: true,
                 publicCode: true,
                 email: true,
+                registrationType: true,
+                identityStatus: true,
                 emailJobs: {
                   select: {
                     type: true,
@@ -203,6 +206,10 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
           sendError(req, res, 409, "NOT_REVIEWABLE", "Payment is not in a state that can be approved");
           return;
         }
+        if (error instanceof IdentityNotApprovedError) {
+          sendError(req, res, 409, "IDENTITY_NOT_APPROVED", "Identity must be approved before payment can be reviewed");
+          return;
+        }
         throw error;
       }
     }
@@ -238,6 +245,10 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
       } catch (error) {
         if (error instanceof PaymentNotInReviewableStateError) {
           sendError(req, res, 409, "NOT_REVIEWABLE", "Payment is not in a state that can be rejected");
+          return;
+        }
+        if (error instanceof IdentityNotApprovedError) {
+          sendError(req, res, 409, "IDENTITY_NOT_APPROVED", "Identity must be approved before payment can be reviewed");
           return;
         }
         throw error;

@@ -17,12 +17,15 @@ interface StatusResponse {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  SUBMITTED: "Submitted",
   PAYMENT_PENDING: "Awaiting payment",
+  IDENTITY_PENDING: "Identity verification pending",
+  IDENTITY_REJECTED: "Identity verification issue",
   PAYMENT_SUBMITTED: "Verification pending",
   PAYMENT_APPROVED: "Approved",
   PAYMENT_REJECTED: "Payment rejected"
 };
+
+const REJECTED_STATUSES = new Set(["PAYMENT_REJECTED", "IDENTITY_REJECTED"]);
 
 export function StatusPage() {
   const [searchParams] = useSearchParams();
@@ -78,8 +81,14 @@ export function StatusPage() {
                 <p className="mt-1 font-display text-lg font-semibold text-white">
                   {STATUS_LABELS[result.status] ?? result.status}
                 </p>
-                {result.status === "PAYMENT_REJECTED" && result.rejectionReason && (
-                  <p className="mt-2 text-sm text-red-300">Reason: {result.rejectionReason}</p>
+                {REJECTED_STATUSES.has(result.status) && result.rejectionReason && (
+                  <>
+                    <p className="mt-2 text-sm text-red-300">Reason: {result.rejectionReason}</p>
+                    <p className="mt-2 text-xs text-white/50">
+                      You can register again using your existing payment proof if it wasn't the issue — do
+                      not make another payment unless asked to.
+                    </p>
+                  </>
                 )}
               </div>
             )}

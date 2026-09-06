@@ -19,11 +19,9 @@ export async function getEventAvailability(
     ? event.registrationDeadline.getTime() < Date.now()
     : false;
 
-  const isOpen =
-    event.registrationOpen &&
-    !event.maintenanceMode &&
-    !deadlinePassed &&
-    remainingCapacity > 0;
+  // Capacity is advisory/display-only per the three-type registration update — registration
+  // volume is explicitly unlimited and must never be gated on remainingCapacity.
+  const isOpen = event.registrationOpen && !event.maintenanceMode && !deadlinePassed;
 
   return { event, registeredCount, isOpen, remainingCapacity };
 }

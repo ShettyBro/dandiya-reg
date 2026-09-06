@@ -9,6 +9,7 @@ export class InvalidUploadIntentError extends Error {}
 export class DuplicateTransactionIdError extends Error {}
 export class PaymentNotSubmittableError extends Error {}
 export class PaymentNotInReviewableStateError extends Error {}
+export class IdentityNotApprovedError extends Error {}
 
 export interface SubmitPaymentProofInput {
   registrationId: string;
@@ -64,24 +65,17 @@ export async function submitPaymentProof(
         where: { registrationId: input.registrationId }
       });
 
-      await tx.registration.update({
-        where: { id: input.registrationId },
-        data: { status: "PAYMENT_SUBMITTED" }
-      });
-
-      const registration = await tx.registration.findUniqueOrThrow({
+      const registrationBefore = await tx.registration.findUniqueOrThrow({
         where: { id: input.registrationId }
       });
 
-      await tx.emailJob.upsert({
-        where: { uniquenessKey: `registration-received-${input.registrationId}` },
-        update: {},
-        create: {
-          type: "REGISTRATION_RECEIVED",
-          recipient: registration.email,
-          registrationId: registration.id,
-          payloadJson: { publicCode: registration.publicCode, name: registration.name },
-          uniquenessKey: `registration-received-${input.registrationId}`
+      await tx.registration.update({
+        where: { id: input.registrationId },
+        data: {
+          status:
+            registrationBefore.registrationType === "NON_ACHARYAN_STUDENT"
+              ? "IDENTITY_PENDING"
+              : "PAYMENT_SUBMITTED"
         }
       });
 
@@ -103,6 +97,17 @@ export async function approvePayment(
   requestId: string | null
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const pending = await tx.payment.findUnique({
+      where: { id: paymentId },
+      include: { registration: true }
+    });
+    if (
+      pending?.registration.registrationType === "NON_ACHARYAN_STUDENT" &&
+      pending.registration.identityStatus !== "APPROVED"
+    ) {
+      throw new IdentityNotApprovedError();
+    }
+
     const result = await tx.payment.updateMany({
       where: { id: paymentId, status: "PROOF_SUBMITTED" },
       data: { status: "APPROVED", verifiedById: verifiedByUserId, verifiedAt: new Date() }
@@ -167,6 +172,17 @@ export async function rejectPayment(
   requestId: string | null
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const pending = await tx.payment.findUnique({
+      where: { id: paymentId },
+      include: { registration: true }
+    });
+    if (
+      pending?.registration.registrationType === "NON_ACHARYAN_STUDENT" &&
+      pending.registration.identityStatus !== "APPROVED"
+    ) {
+      throw new IdentityNotApprovedError();
+    }
+
     const result = await tx.payment.updateMany({
       where: { id: paymentId, status: "PROOF_SUBMITTED" },
       data: {

@@ -11,6 +11,7 @@ import { healthRouter } from "../modules/health/health.routes.js";
 import { createAuthRouter } from "../modules/auth/auth.routes.js";
 import { createEventRouter } from "../modules/event/event.routes.js";
 import { createRegistrationRouter } from "../modules/registration/registration.routes.js";
+import { createIdentityRouter } from "../modules/registration/identity.routes.js";
 import { createUploadsRouter } from "../modules/uploads/uploads.routes.js";
 import { createPaymentRouter } from "../modules/payments/payment.routes.js";
 import { createPassRouter } from "../modules/pass/pass.routes.js";
@@ -52,6 +53,7 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   app.use("/api/v1", createAuthRouter(prisma, env));
   app.use("/api/v1", createEventRouter(prisma, env));
   app.use("/api/v1", createRegistrationRouter(prisma, env));
+  app.use("/api/v1", createIdentityRouter(prisma, env));
   app.use("/api/v1", createUploadsRouter(prisma, env));
   app.use("/api/v1", createPaymentRouter(prisma, env));
   app.use("/api/v1", createPassRouter(prisma, env));

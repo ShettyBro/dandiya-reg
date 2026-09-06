@@ -1,21 +1,40 @@
-import type { PrismaClient, Registration } from "@prisma/client";
+import type { PrismaClient, Registration, RegistrationType } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { generateEightDigitCode, generatePublicCode } from "../../lib/security/codes.js";
+import type { RegistrationInput } from "./registration.schemas.js";
 
 export class RegistrationClosedError extends Error {}
-export class CapacityExceededError extends Error {}
+export class DuplicateAuidError extends Error {}
+export class DuplicateEmployeeIdError extends Error {}
+export class DuplicateAadhaarError extends Error {}
+export class DuplicatePhoneError extends Error {}
 
 export interface CreateRegistrationInput {
-  name: string;
-  phone: string;
-  email: string;
-  college: string;
-  semester: string;
-  branch: string;
+  data: RegistrationInput;
   idempotencyKey: string;
 }
 
 const UNIQUE_CODE_MAX_ATTEMPTS = 5;
+const REJECTED_STATUSES = ["PAYMENT_REJECTED", "IDENTITY_REJECTED"] as const;
+
+async function findActiveDuplicate(
+  tx: Prisma.TransactionClient,
+  where: Prisma.RegistrationWhereInput
+): Promise<Registration | null> {
+  return tx.registration.findFirst({
+    where: { ...where, status: { notIn: [...REJECTED_STATUSES] } }
+  });
+}
+
+async function findMostRecentRejected(
+  tx: Prisma.TransactionClient,
+  where: Prisma.RegistrationWhereInput
+): Promise<Registration | null> {
+  return tx.registration.findFirst({
+    where: { ...where, status: { in: [...REJECTED_STATUSES] } },
+    orderBy: { createdAt: "desc" }
+  });
+}
 
 export async function createRegistration(
   prisma: PrismaClient,
@@ -29,17 +48,12 @@ export async function createRegistration(
     return existing;
   }
 
+  const { data } = input;
+
   for (let attempt = 0; attempt < UNIQUE_CODE_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await prisma.$transaction(async (tx) => {
-        const eventRows = await tx.$queryRaw<
-          { id: string; capacity: number; registrationOpen: boolean; registrationDeadline: Date | null; maintenanceMode: boolean; priceInPaise: number }[]
-        >`SELECT id, capacity, "registrationOpen", "registrationDeadline", "maintenanceMode", "priceInPaise" FROM events WHERE id = ${eventId} FOR UPDATE`;
-
-        const event = eventRows[0];
-        if (!event) {
-          throw new Error("Event not found");
-        }
+        const event = await tx.event.findUniqueOrThrow({ where: { id: eventId } });
 
         const deadlinePassed = event.registrationDeadline
           ? event.registrationDeadline.getTime() < Date.now()
@@ -49,10 +63,31 @@ export async function createRegistration(
           throw new RegistrationClosedError();
         }
 
-        const registeredCount = await tx.registration.count({ where: { eventId } });
-        if (registeredCount >= event.capacity) {
-          throw new CapacityExceededError();
+        const phoneDuplicate = await findActiveDuplicate(tx, {
+          phone: data.phone,
+          registrationType: data.registrationType as RegistrationType
+        });
+        if (phoneDuplicate) {
+          throw new DuplicatePhoneError();
         }
+
+        if (data.registrationType === "ACHARYA_STUDENT") {
+          const dup = await findActiveDuplicate(tx, { auid: data.auid });
+          if (dup) throw new DuplicateAuidError();
+        } else if (data.registrationType === "ACHARYA_FACULTY") {
+          const dup = await findActiveDuplicate(tx, { employeeId: data.employeeId });
+          if (dup) throw new DuplicateEmployeeIdError();
+        } else {
+          const dup = await findActiveDuplicate(tx, { aadhaarNumber: data.aadhaarNumber });
+          if (dup) throw new DuplicateAadhaarError();
+        }
+
+        const resubmissionOf =
+          data.registrationType === "ACHARYA_STUDENT"
+            ? await findMostRecentRejected(tx, { auid: data.auid })
+            : data.registrationType === "ACHARYA_FACULTY"
+              ? await findMostRecentRejected(tx, { employeeId: data.employeeId })
+              : await findMostRecentRejected(tx, { aadhaarNumber: data.aadhaarNumber });
 
         const publicCode = generatePublicCode();
         const eightDigitCode = generateEightDigitCode();
@@ -60,16 +95,24 @@ export async function createRegistration(
         const registration = await tx.registration.create({
           data: {
             eventId,
+            registrationType: data.registrationType,
             publicCode,
             eightDigitCode,
-            name: input.name,
-            email: input.email,
-            phone: input.phone,
-            college: input.college,
-            semester: input.semester,
-            branch: input.branch,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
             idempotencyKey: input.idempotencyKey,
-            status: "PAYMENT_PENDING"
+            status: "PAYMENT_PENDING",
+            resubmissionOfId: resubmissionOf?.id ?? null,
+            ...(data.registrationType === "ACHARYA_STUDENT"
+              ? { auid: data.auid, institution: data.institution, year: data.year }
+              : data.registrationType === "ACHARYA_FACULTY"
+                ? { employeeId: data.employeeId, institution: data.institution }
+                : {
+                    collegeName: data.collegeName,
+                    aadhaarNumber: data.aadhaarNumber,
+                    identityStatus: "PENDING" as const
+                  })
           }
         });
 
@@ -91,17 +134,35 @@ export async function createRegistration(
         return registration;
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002" &&
-        attempt < UNIQUE_CODE_MAX_ATTEMPTS - 1
-      ) {
-        continue;
-      }
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        // The identity-key partial unique indexes (Phase U1) are a concurrency backstop, not just
+        // an optimization — two requests can both pass the pre-check (`findActiveDuplicate`) before
+        // either commits. Retrying blindly on any P2002 would just replay the same doomed identity
+        // fields and eventually surface a misleading "failed to allocate a code" error, so these
+        // must be identified and rejected immediately instead of retried. Prisma resolves even a
+        // hand-authored partial unique index back to the underlying column name(s) in
+        // `error.meta.target` (verified directly against a live Postgres constraint violation),
+        // not the index name itself.
+        const target = error.meta?.target;
+        const targetFields = Array.isArray(target) ? target : typeof target === "string" ? [target] : [];
+        if (targetFields.includes("auid")) {
+          throw new DuplicateAuidError();
+        }
+        if (targetFields.includes("employeeId")) {
+          throw new DuplicateEmployeeIdError();
+        }
+        if (targetFields.includes("aadhaarNumber")) {
+          throw new DuplicateAadhaarError();
+        }
+        if (targetFields.includes("phone")) {
+          throw new DuplicatePhoneError();
+        }
+
+        // Otherwise this is a publicCode/eightDigitCode collision (astronomically rare, safe to
+        // retry with freshly-generated codes) or an idempotencyKey replay.
+        if (attempt < UNIQUE_CODE_MAX_ATTEMPTS - 1) {
+          continue;
+        }
         const existingByKey = await prisma.registration.findUnique({
           where: { idempotencyKey: input.idempotencyKey }
         });

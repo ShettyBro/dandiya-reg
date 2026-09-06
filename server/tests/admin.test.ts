@@ -22,6 +22,7 @@ const createdCredentialIds: string[] = [];
 let adminCookies: string[];
 let adminCsrf: string;
 let volunteerCookies: string[];
+let originalPaymentInstructions: string;
 
 function extractCookie(setCookieHeader: string[] | undefined, name: string): string | undefined {
   const line = setCookieHeader?.find((entry) => entry.startsWith(`${name}=`));
@@ -29,6 +30,9 @@ function extractCookie(setCookieHeader: string[] | undefined, name: string): str
 }
 
 beforeAll(async () => {
+  const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
+  originalPaymentInstructions = event.paymentInstructions;
+
   const passwordHash = await hashPassword(PASSWORD);
   const admin = await prisma.user.create({
     data: { email: ADMIN_EMAIL, passwordHash, role: "ADMIN", status: "ACTIVE" }
@@ -52,17 +56,22 @@ beforeAll(async () => {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `admin-test-${Date.now()}`)
     .send({
+      registrationType: "ACHARYA_STUDENT",
       name: "Admin Test Participant",
-      phone: "9776655443",
+      phone: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
       email: `admin-participant-${Date.now()}@acharya.ac.in`,
-      college: "Acharya Institute",
-      semester: "7",
-      branch: "CSE"
+      auid: `admin-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology",
+      year: 3
     });
   createdRegistrationIds.push(registration.body.registrationId);
 });
 
 afterAll(async () => {
+  await prisma.event.update({
+    where: { id: env.EVENT_ID },
+    data: { paymentInstructions: originalPaymentInstructions }
+  });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...createdRegistrationIds, ...createdUserIds, ...createdCredentialIds] } } });
   await prisma.passCredential.deleteMany({ where: { id: { in: createdCredentialIds } } });
   await prisma.attendance.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
@@ -257,7 +266,7 @@ describe("exports", () => {
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toContain("text/csv");
     expect(response.text).toContain("registrationId");
-    expect(response.text).toContain("Admin Test Participant");
+    expect(response.text).toContain("admin test participant");
   });
 
   it("rejects an unsupported export type", async () => {

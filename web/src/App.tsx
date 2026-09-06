@@ -46,6 +46,9 @@ const AdminSettingsPage = lazy(() =>
 const AdminLogsPage = lazy(() =>
   import("./routes/admin/AdminLogsPage.js").then((m) => ({ default: m.AdminLogsPage }))
 );
+const AdminIdentityPage = lazy(() =>
+  import("./routes/admin/AdminIdentityPage.js").then((m) => ({ default: m.AdminIdentityPage }))
+);
 
 const FinanceLoginPage = lazy(() =>
   import("./routes/finance/FinanceLoginPage.js").then((m) => ({ default: m.FinanceLoginPage }))
@@ -58,6 +61,9 @@ const FinanceDashboardPage = lazy(() =>
 );
 const FinancePaymentsPage = lazy(() =>
   import("./routes/finance/FinancePaymentsPage.js").then((m) => ({ default: m.FinancePaymentsPage }))
+);
+const FinanceIdentityPage = lazy(() =>
+  import("./routes/finance/FinanceIdentityPage.js").then((m) => ({ default: m.FinanceIdentityPage }))
 );
 
 function VolunteerFallback() {
@@ -112,6 +118,7 @@ export function App() {
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/volunteers" element={<AdminVolunteersPage />} />
           <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+          <Route path="/admin/identity" element={<AdminIdentityPage />} />
           <Route path="/admin/logs" element={<AdminLogsPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
         </Route>
@@ -133,6 +140,7 @@ export function App() {
         >
           <Route path="/finance/dashboard" element={<FinanceDashboardPage />} />
           <Route path="/finance/payments" element={<FinancePaymentsPage />} />
+          <Route path="/finance/identity" element={<FinanceIdentityPage />} />
         </Route>
       </Routes>
     </ErrorBoundary>

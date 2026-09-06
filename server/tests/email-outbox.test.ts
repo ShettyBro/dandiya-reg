@@ -6,7 +6,9 @@ import {
   computeBackoffMs
 } from "../src/modules/email/email-outbox.service.js";
 import { processEmailJob } from "../src/modules/email/email-processor.js";
+import { loadEnv } from "../src/app/config/env.js";
 
+const env = loadEnv();
 const prisma = new PrismaClient();
 const createdJobIds: string[] = [];
 
@@ -96,7 +98,7 @@ describe("processEmailJob", () => {
   it("marks a job SENT when the sender succeeds", async () => {
     const job = await createJob();
 
-    const outcome = await processEmailJob(prisma, job, async () => ({ providerMessageId: "msg-123" }));
+    const outcome = await processEmailJob(prisma, env, job, async () => ({ providerMessageId: "msg-123" }));
 
     expect(outcome).toBe("sent");
     const dbJob = await prisma.emailJob.findUniqueOrThrow({ where: { id: job.id } });
@@ -107,7 +109,7 @@ describe("processEmailJob", () => {
   it("marks a job RETRY when Brevo is transiently unavailable", async () => {
     const job = await createJob();
 
-    const outcome = await processEmailJob(prisma, job, async () => {
+    const outcome = await processEmailJob(prisma, env, job, async () => {
       throw new BrevoTransientError("Brevo transient error: HTTP 503");
     });
 
@@ -122,7 +124,7 @@ describe("processEmailJob", () => {
   it("marks a job FAILED immediately on a permanent Brevo error", async () => {
     const job = await createJob();
 
-    const outcome = await processEmailJob(prisma, job, async () => {
+    const outcome = await processEmailJob(prisma, env, job, async () => {
       throw new BrevoPermanentError("Brevo rejected the request: HTTP 400 invalid recipient");
     });
 
@@ -134,7 +136,7 @@ describe("processEmailJob", () => {
   it("marks a job FAILED after exhausting max attempts on repeated transient failures", async () => {
     let job = await createJob({ attempts: 7 });
 
-    const outcome = await processEmailJob(prisma, job, async () => {
+    const outcome = await processEmailJob(prisma, env, job, async () => {
       throw new BrevoTransientError("still failing");
     });
 
