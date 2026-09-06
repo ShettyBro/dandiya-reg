@@ -1,10 +1,36 @@
 import { useState, type FormEvent } from "react";
 import { FormField } from "../../components/ui/FormField.js";
-import { SelectField } from "../../components/ui/SelectField.js";
+import { CustomSelect } from "../../components/ui/CustomSelect.js";
 import { Button } from "../../components/ui/Button.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { apiRequest, ApiError } from "../../lib/api.js";
 import { ACHARYA_INSTITUTIONS, YEAR_OPTIONS, type RegistrationType } from "./registrationTypes.js";
+
+const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
+const EMAIL_SHAPE_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizePhoneForCheck(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+
+function phoneError(value: string): string | null {
+  if (!value) return null;
+  return INDIAN_PHONE_REGEX.test(normalizePhoneForCheck(value))
+    ? null
+    : "Enter a valid 10-digit mobile number starting with 6-9";
+}
+
+function emailError(value: string, requireAcharyaDomain: boolean): string | null {
+  if (!value) return null;
+  if (!EMAIL_SHAPE_REGEX.test(value.trim())) return "Enter a valid email address";
+  if (requireAcharyaDomain && !value.trim().toLowerCase().endsWith("@acharya.ac.in")) {
+    return "Must be a valid @acharya.ac.in email address";
+  }
+  return null;
+}
 
 interface CreateRegistrationResponse {
   registrationId: string;
@@ -48,10 +74,20 @@ export function PersonalDetailsStep({
   const [aadhaarNumber, setAadhaarNumber] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState<{ phone?: boolean; email?: boolean }>({});
+
+  const requireAcharyaDomain = registrationType !== "NON_ACHARYAN_STUDENT";
+  const phoneValidationError = phoneError(phone);
+  const emailValidationError = emailError(email, requireAcharyaDomain);
+  const hasBlockingFieldErrors = Boolean(phoneValidationError || emailValidationError);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
+    setTouched({ phone: true, email: true });
+    if (hasBlockingFieldErrors) {
+      return;
+    }
     setSubmitting(true);
 
     const base = { registrationType, name, phone, email };
@@ -103,6 +139,8 @@ export function PersonalDetailsStep({
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
+          error={touched.phone ? (phoneValidationError ?? undefined) : undefined}
           required
           autoComplete="tel"
           placeholder="9876543210"
@@ -114,6 +152,8 @@ export function PersonalDetailsStep({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+            error={touched.email ? (emailValidationError ?? undefined) : undefined}
             required
             autoComplete="email"
           />
@@ -124,6 +164,8 @@ export function PersonalDetailsStep({
             placeholder="you@acharya.ac.in"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+            error={touched.email ? (emailValidationError ?? undefined) : undefined}
             required
             autoComplete="email"
           />
@@ -132,42 +174,36 @@ export function PersonalDetailsStep({
         {registrationType === "ACHARYA_STUDENT" && (
           <>
             <FormField label="AUID" value={auid} onChange={(e) => setAuid(e.target.value)} required />
-            <SelectField label="Institution" value={institution} onChange={(e) => setInstitution(e.target.value)} required>
-              <option value="" disabled>
-                Select your institution
-              </option>
-              {ACHARYA_INSTITUTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField label="Year" value={year} onChange={(e) => setYear(e.target.value)} required>
-              <option value="" disabled>
-                Select your year
-              </option>
-              {YEAR_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  Year {option}
-                </option>
-              ))}
-            </SelectField>
+            <CustomSelect
+              label="Institution"
+              value={institution}
+              onChange={setInstitution}
+              placeholder="Select your institution"
+              required
+              options={ACHARYA_INSTITUTIONS.map((option) => ({ value: option, label: option }))}
+            />
+            <CustomSelect
+              label="Year"
+              value={year}
+              onChange={setYear}
+              placeholder="Select your year"
+              required
+              options={YEAR_OPTIONS.map((option) => ({ value: String(option), label: `Year ${option}` }))}
+            />
           </>
         )}
 
         {registrationType === "ACHARYA_FACULTY" && (
           <>
             <FormField label="Employee ID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required />
-            <SelectField label="Institution" value={institution} onChange={(e) => setInstitution(e.target.value)} required>
-              <option value="" disabled>
-                Select your institution
-              </option>
-              {ACHARYA_INSTITUTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </SelectField>
+            <CustomSelect
+              label="Institution"
+              value={institution}
+              onChange={setInstitution}
+              placeholder="Select your institution"
+              required
+              options={ACHARYA_INSTITUTIONS.map((option) => ({ value: option, label: option }))}
+            />
           </>
         )}
 
@@ -191,7 +227,7 @@ export function PersonalDetailsStep({
 
         {formError && <p className="text-sm text-red-300">{formError}</p>}
 
-        <Button type="submit" disabled={submitting} className="mt-2">
+        <Button type="submit" disabled={submitting || (Boolean(touched.phone || touched.email) && hasBlockingFieldErrors)} className="mt-2">
           {submitting ? "Submitting..." : "Continue"}
         </Button>
       </form>

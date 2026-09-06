@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
+import { CustomSelect } from "../../components/ui/CustomSelect.js";
 import { apiRequest, ApiError } from "../../lib/api.js";
 
 interface VolunteerProfile {
@@ -164,21 +165,15 @@ export function AdminVolunteersPage() {
               required
             />
             <FormField label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-white/85">Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as "VOLUNTEER" | "TEAM_LEADER")}
-                className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400/60"
-              >
-                <option value="VOLUNTEER" className="bg-midnight-900">
-                  Volunteer
-                </option>
-                <option value="TEAM_LEADER" className="bg-midnight-900">
-                  Team Leader
-                </option>
-              </select>
-            </div>
+            <CustomSelect
+              label="Role"
+              value={role}
+              onChange={(value) => setRole(value as "VOLUNTEER" | "TEAM_LEADER")}
+              options={[
+                { value: "VOLUNTEER", label: "Volunteer" },
+                { value: "TEAM_LEADER", label: "Team Leader" }
+              ]}
+            />
             <FormField label="Gate (optional)" value={gate} onChange={(e) => setGate(e.target.value)} />
             <FormField label="Zone (optional)" value={zone} onChange={(e) => setZone(e.target.value)} />
             {formError && <p className="col-span-full text-sm text-red-300">{formError}</p>}

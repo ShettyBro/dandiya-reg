@@ -149,7 +149,7 @@ export function PaymentStep({
               type="checkbox"
               checked={ackInstructions}
               onChange={(e) => setAckInstructions(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5 accent-festival-gold"
             />
             I understand the above payment instructions.
           </label>
@@ -158,7 +158,7 @@ export function PaymentStep({
               type="checkbox"
               checked={ackNoRefund}
               onChange={(e) => setAckNoRefund(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5 accent-festival-gold"
             />
             I have read and understood the above instructions and agree to the no-refund policy.
           </label>
