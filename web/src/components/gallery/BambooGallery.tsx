@@ -25,7 +25,7 @@ export function BambooGallery({ className }: { className?: string }) {
           if (column.length === 0) {
             return null;
           }
-          const loopImages = [...column, ...column];
+          const loopImages = [...column, ...column, ...column, ...column, ...column, ...column];
           return (
             <div
               key={columnIndex}

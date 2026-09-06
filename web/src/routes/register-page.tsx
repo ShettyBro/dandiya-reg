@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SiteNav } from "../components/layout/SiteNav.js";
 import { SiteFooter } from "../components/layout/SiteFooter.js";
+import { BambooGallery } from "../components/gallery/BambooGallery.js";
 import { Container } from "../components/ui/Container.js";
 import { GlassPanel } from "../components/ui/GlassPanel.js";
 import { useEventConfig } from "../lib/hooks/useEventConfig.js";
@@ -19,58 +20,20 @@ function createIdempotencyKey(): string {
     : `idem-${Date.now()}-${Math.random()}`;
 }
 
-const PROGRESS_STORAGE_KEY = "dn26:registration-progress";
-
-interface StoredProgress {
-  step: number;
-  registrationType: RegistrationType | null;
-  registrationId: string | null;
-  publicCode: string | null;
-}
-
-function loadStoredProgress(): StoredProgress | null {
-  try {
-    const raw = window.sessionStorage.getItem(PROGRESS_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredProgress;
-    if (typeof parsed.step !== "number") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 export function RegisterPage() {
   const { config } = useEventConfig();
   const [idempotencyKey] = useState(createIdempotencyKey);
-  const stored = useState(loadStoredProgress)[0];
-  const [step, setStep] = useState(stored?.step ?? 0);
-  const [registrationType, setRegistrationType] = useState<RegistrationType | null>(
-    stored?.registrationType ?? null
-  );
-  const [registrationId, setRegistrationId] = useState<string | null>(stored?.registrationId ?? null);
-  const [publicCode, setPublicCode] = useState<string | null>(stored?.publicCode ?? null);
+  const [step, setStep] = useState(0);
+  const [registrationType, setRegistrationType] = useState<RegistrationType | null>(null);
+  const [registrationId, setRegistrationId] = useState<string | null>(null);
+  const [publicCode, setPublicCode] = useState<string | null>(null);
   const closedForNewRegistrations = step === 0 && config !== null && !config.registrationOpen;
 
-  useEffect(() => {
-    if (step === 0 && !registrationId) {
-      window.sessionStorage.removeItem(PROGRESS_STORAGE_KEY);
-      return;
-    }
-    try {
-      window.sessionStorage.setItem(
-        PROGRESS_STORAGE_KEY,
-        JSON.stringify({ step, registrationType, registrationId, publicCode })
-      );
-    } catch (error) {
-      void error;
-    }
-  }, [step, registrationType, registrationId, publicCode]);
-
   return (
-    <div className="flex min-h-screen flex-col bg-midnight-950">
-      <SiteNav />
-      <main className="flex-1 py-16">
+    <div className="relative flex min-h-screen flex-col bg-midnight-950">
+      <BambooGallery />
+      <SiteNav minimal />
+      <main className="relative z-10 flex-1 py-16">
         <Container className="max-w-xl">
           <h1 className="mb-2 font-display text-2xl font-semibold text-white sm:text-3xl">Register</h1>
           <p className="mb-8 text-sm text-white/60">Mobile-friendly, takes about two minutes.</p>
@@ -110,7 +73,6 @@ export function RegisterPage() {
             <PhotoUploadStep
               registrationId={registrationId}
               onComplete={() => setStep(registrationType === "NON_ACHARYAN_STUDENT" ? 3 : 4)}
-              onSkip={() => setStep(registrationType === "NON_ACHARYAN_STUDENT" ? 3 : 4)}
             />
           )}
 
@@ -125,7 +87,9 @@ export function RegisterPage() {
           {step === 5 && publicCode && <SuccessStep publicCode={publicCode} />}
         </Container>
       </main>
-      <SiteFooter />
+      <div className="relative z-10">
+        <SiteFooter />
+      </div>
     </div>
   );
 }

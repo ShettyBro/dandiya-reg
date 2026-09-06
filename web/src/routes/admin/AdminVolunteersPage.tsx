@@ -3,7 +3,7 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { CustomSelect } from "../../components/ui/CustomSelect.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 
 interface VolunteerProfile {
   name: string;
@@ -48,7 +48,13 @@ export function AdminVolunteersPage() {
     setError(null);
     apiRequest<{ items: VolunteerUser[] }>("/admin/volunteers")
       .then((data) => setVolunteers(data.items))
-      .catch(() => setError("Could not load volunteers."))
+      .catch((error) =>
+        setError(
+          error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
+            ? error.message
+            : "Could not load volunteers."
+        )
+      )
       .finally(() => setLoading(false));
   }
 
@@ -85,7 +91,9 @@ export function AdminVolunteersPage() {
       setShowForm(false);
       fetchVolunteers();
     } catch (createError) {
-      if (createError instanceof ApiError && createError.code === "EMAIL_ALREADY_EXISTS") {
+      if (createError instanceof ApiError && createError.code === SERVER_UNREACHABLE_CODE) {
+        setFormError(createError.message);
+      } else if (createError instanceof ApiError && createError.code === "EMAIL_ALREADY_EXISTS") {
         setFormError("A user with this email already exists.");
       } else {
         setFormError("Could not create volunteer.");
@@ -103,8 +111,12 @@ export function AdminVolunteersPage() {
         body: { status: volunteer.status === "ACTIVE" ? "DISABLED" : "ACTIVE" }
       });
       fetchVolunteers();
-    } catch {
-      setError("Could not update volunteer status.");
+    } catch (toggleError) {
+      setError(
+        toggleError instanceof ApiError && toggleError.code === SERVER_UNREACHABLE_CODE
+          ? toggleError.message
+          : "Could not update volunteer status."
+      );
     } finally {
       setBusyId(null);
     }
@@ -118,8 +130,12 @@ export function AdminVolunteersPage() {
         { method: "POST" }
       );
       setCredential({ email: result.email, temporaryPassword: result.temporaryPassword });
-    } catch {
-      setError("Could not reset password.");
+    } catch (resetError) {
+      setError(
+        resetError instanceof ApiError && resetError.code === SERVER_UNREACHABLE_CODE
+          ? resetError.message
+          : "Could not reset password."
+      );
     } finally {
       setBusyId(null);
     }

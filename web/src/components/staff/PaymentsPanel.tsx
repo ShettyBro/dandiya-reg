@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CaretDown, LinkSimple } from "@phosphor-icons/react";
 import { GlassPanel } from "../ui/GlassPanel.js";
 import { Button } from "../ui/Button.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 type PaymentStatus = "PENDING" | "PROOF_SUBMITTED" | "APPROVED" | "REJECTED";
@@ -73,7 +73,13 @@ export function PaymentsPanel() {
     const query = filter === "ALL" ? "" : `?status=${filter}`;
     apiRequest<{ items: PaymentItem[] }>(`/admin/payments${query}`)
       .then((data) => setItems(data.items))
-      .catch(() => setError("Could not load payments."))
+      .catch((error) =>
+        setError(
+          error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
+            ? error.message
+            : "Could not load payments."
+        )
+      )
       .finally(() => setLoading(false));
   }, [filter]);
 
@@ -86,8 +92,12 @@ export function PaymentsPanel() {
     try {
       const data = await apiRequest<{ url: string }>(`/admin/payments/${paymentId}/proof-url`);
       setProofUrls((prev) => ({ ...prev, [paymentId]: data.url }));
-    } catch {
-      setError("Could not load the payment screenshot.");
+    } catch (proofError) {
+      setError(
+        proofError instanceof ApiError && proofError.code === SERVER_UNREACHABLE_CODE
+          ? proofError.message
+          : "Could not load the payment screenshot."
+      );
     } finally {
       setProofLoading(null);
     }

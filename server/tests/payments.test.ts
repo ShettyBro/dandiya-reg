@@ -7,6 +7,7 @@ import { hashPassword } from "../src/lib/security/password.js";
 import {
   DuplicateTransactionIdError,
   InvalidUploadIntentError,
+  PhotoRequiredError,
   submitPaymentProof
 } from "../src/modules/payments/payment.service.js";
 
@@ -48,6 +49,10 @@ async function createTestRegistration(suffix: string) {
       year: 2
     });
   createdRegistrationIds.push(response.body.registrationId);
+  await prisma.registration.update({
+    where: { id: response.body.registrationId },
+    data: { photoObjectKey: `test-photo/${response.body.registrationId}.jpg` }
+  });
   return response.body as { registrationId: string; publicCode: string };
 }
 
@@ -64,11 +69,6 @@ async function createProofIntent(registrationId: string, objectKey: string) {
   });
 }
 
-// Submitting proof at the service layer, bypassing the HTTP route's R2 image-validation gate
-// (added in Phase 13 — see ai/DECISIONS.md), since a real proof object can only exist in R2
-// after an actual presigned upload, and R2 credentials are not available in this environment.
-// The HTTP-level gate itself is covered separately below ("returns 503 ... before ever
-// reaching upload-intent validation").
 async function submitProofDirect(registrationId: string, transactionId: string, proofObjectKey: string) {
   return submitPaymentProof(prisma, { registrationId, transactionId, proofObjectKey });
 }
@@ -152,6 +152,20 @@ describe("payment proof submission (service layer)", () => {
     await expect(submitProofDirect(second.registrationId, txnId, secondKey)).rejects.toBeInstanceOf(
       DuplicateTransactionIdError
     );
+  });
+
+  it("rejects submission when the mandatory participant photo is missing", async () => {
+    const registration = await createTestRegistration("no-photo");
+    await prisma.registration.update({
+      where: { id: registration.registrationId },
+      data: { photoObjectKey: null }
+    });
+    const objectKey = `payments/${registration.registrationId}/proof/no-photo.jpg`;
+    await createProofIntent(registration.registrationId, objectKey);
+
+    await expect(
+      submitProofDirect(registration.registrationId, `TXN-NOPHOTO-${Date.now()}`, objectKey)
+    ).rejects.toBeInstanceOf(PhotoRequiredError);
   });
 });
 

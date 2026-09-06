@@ -1,5 +1,6 @@
 import { SiteNav } from "../components/layout/SiteNav.js";
 import { SiteFooter } from "../components/layout/SiteFooter.js";
+import { BambooGallery } from "../components/gallery/BambooGallery.js";
 import { Container } from "../components/ui/Container.js";
 import { GlassPanel } from "../components/ui/GlassPanel.js";
 
@@ -28,9 +29,10 @@ const SECTIONS = [
 
 export function TermsPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-midnight-950">
+    <div className="relative flex min-h-screen flex-col bg-midnight-950">
+      <BambooGallery />
       <SiteNav />
-      <main className="flex-1 py-16">
+      <main className="relative z-10 flex-1 py-16">
         <Container className="max-w-2xl">
           <h1 className="mb-8 font-display text-2xl font-semibold text-white sm:text-3xl">
             Terms and event policies

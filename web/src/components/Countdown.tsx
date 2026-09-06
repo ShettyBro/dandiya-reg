@@ -4,6 +4,7 @@ interface CountdownParts {
   months: number;
   days: number;
   hours: number;
+  minutes: number;
 }
 
 function computeParts(target: Date, now: Date): CountdownParts | null {
@@ -26,8 +27,9 @@ function computeParts(target: Date, now: Date): CountdownParts | null {
   const remainingMs = target.getTime() - cursor.getTime();
   const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
   const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
 
-  return { months, days, hours };
+  return { months, days, hours, minutes };
 }
 
 function pad(value: number): string {
@@ -57,7 +59,8 @@ export function Countdown({ targetIso }: { targetIso: string }) {
           {[
             { label: "Months", value: parts.months },
             { label: "Days", value: parts.days },
-            { label: "Hours", value: parts.hours }
+            { label: "Hours", value: parts.hours },
+            { label: "Minutes", value: parts.minutes }
           ].map((unit) => (
             <div key={unit.label} className="flex flex-col items-center">
               <span className="font-display text-3xl font-bold text-festival-gold sm:text-4xl">

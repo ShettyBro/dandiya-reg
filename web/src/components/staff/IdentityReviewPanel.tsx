@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CaretDown } from "@phosphor-icons/react";
 import { GlassPanel } from "../ui/GlassPanel.js";
 import { Button } from "../ui/Button.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 
 type RegistrationStatus =
   | "PAYMENT_PENDING"
@@ -56,7 +56,13 @@ export function IdentityReviewPanel() {
     const query = filter === "ALL" ? "" : `?status=${filter}`;
     apiRequest<{ items: ListItem[] }>(`/admin/identity/non-acharyan${query}`)
       .then((data) => setItems(data.items))
-      .catch(() => setError("Could not load registrations."))
+      .catch((error) =>
+        setError(
+          error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
+            ? error.message
+            : "Could not load registrations."
+        )
+      )
       .finally(() => setLoading(false));
   }, [filter]);
 
@@ -71,8 +77,12 @@ export function IdentityReviewPanel() {
       try {
         const detail = await apiRequest<DetailItem>(`/admin/identity/non-acharyan/${id}`);
         setDetails((prev) => ({ ...prev, [id]: detail }));
-      } catch {
-        setError("Could not load identity details.");
+      } catch (detailError) {
+        setError(
+          detailError instanceof ApiError && detailError.code === SERVER_UNREACHABLE_CODE
+            ? detailError.message
+            : "Could not load identity details."
+        );
       } finally {
         setDetailLoading(null);
       }

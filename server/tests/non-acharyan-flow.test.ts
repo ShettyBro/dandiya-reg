@@ -41,6 +41,14 @@ async function createNonAcharyanRegistration(suffix: string) {
       aadhaarNumber: `${Date.now()}${Math.floor(Math.random() * 1000)}`
     });
   createdRegistrationIds.push(created.body.registrationId);
+  await prisma.registration.update({
+    where: { id: created.body.registrationId },
+    data: {
+      photoObjectKey: `test-photo/${created.body.registrationId}.jpg`,
+      aadhaarImageObjectKey: `test-aadhaar/${created.body.registrationId}.jpg`,
+      collegeIdImageObjectKey: `test-college-id/${created.body.registrationId}.jpg`
+    }
+  });
   return created.body as { registrationId: string; publicCode: string };
 }
 

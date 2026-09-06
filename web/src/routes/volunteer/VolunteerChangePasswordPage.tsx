@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { Button } from "../../components/ui/Button.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
 export function VolunteerChangePasswordPage() {
@@ -32,7 +32,9 @@ export function VolunteerChangePasswordPage() {
       setSuccess(true);
       setTimeout(() => navigate("/vol/home", { replace: true }), 900);
     } catch (submitError) {
-      if (submitError instanceof ApiError && submitError.status === 401) {
+      if (submitError instanceof ApiError && submitError.code === SERVER_UNREACHABLE_CODE) {
+        setError(submitError.message);
+      } else if (submitError instanceof ApiError && submitError.status === 401) {
         setError("Current password is incorrect.");
       } else if (submitError instanceof ApiError && submitError.status === 403) {
         setError("Your session could not be verified. Please sign out and sign in again.");

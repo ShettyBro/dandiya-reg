@@ -10,6 +10,7 @@ export class DuplicateTransactionIdError extends Error {}
 export class PaymentNotSubmittableError extends Error {}
 export class PaymentNotInReviewableStateError extends Error {}
 export class IdentityNotApprovedError extends Error {}
+export class PhotoRequiredError extends Error {}
 
 export interface SubmitPaymentProofInput {
   registrationId: string;
@@ -35,6 +36,19 @@ export async function submitPaymentProof(
     intent.expiresAt.getTime() < Date.now()
   ) {
     throw new InvalidUploadIntentError();
+  }
+
+  const registrationForPhotoCheck = await prisma.registration.findUniqueOrThrow({
+    where: { id: input.registrationId }
+  });
+  if (!registrationForPhotoCheck.photoObjectKey) {
+    throw new PhotoRequiredError();
+  }
+  if (
+    registrationForPhotoCheck.registrationType === "NON_ACHARYAN_STUDENT" &&
+    (!registrationForPhotoCheck.aadhaarImageObjectKey || !registrationForPhotoCheck.collegeIdImageObjectKey)
+  ) {
+    throw new PhotoRequiredError();
   }
 
   try {

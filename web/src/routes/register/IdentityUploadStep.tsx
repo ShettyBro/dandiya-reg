@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IdentificationCard } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 
 interface PresignResponse {
@@ -90,7 +90,9 @@ export function IdentityUploadStep({
       await uploadOne(collegeIdImage, "COLLEGE_ID_IMAGE", "college-id-image");
       onComplete();
     } catch (error) {
-      if (error instanceof ApiError && error.code === "IMAGE_VALIDATION_FAILED") {
+      if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
+        setFormError(error.message);
+      } else if (error instanceof ApiError && error.code === "IMAGE_VALIDATION_FAILED") {
         setFormError("One of the images could not be validated. Try a clear JPG/PNG under 1MB.");
       } else {
         setFormError("Upload failed. Please try again.");

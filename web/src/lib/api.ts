@@ -2,6 +2,9 @@ import { getCsrfToken, setCsrfToken } from "./csrf.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
 
+export const SERVER_UNREACHABLE_CODE = "SERVER_UNREACHABLE";
+export const SERVER_UNREACHABLE_MESSAGE = "Server not reachable/down. Contact Sudeep 9480063530 immediately.";
+
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -35,12 +38,17 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    credentials: "include",
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      credentials: "include",
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+    });
+  } catch {
+    throw new ApiError(0, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE, null);
+  }
 
   if (response.status === 204) {
     return undefined as T;
@@ -54,6 +62,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
+    if ([502, 503, 504].includes(response.status)) {
+      throw new ApiError(response.status, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE, null);
+    }
     const envelope = typeof data === "object" && data ? (data as Record<string, unknown>) : {};
     throw new ApiError(
       response.status,

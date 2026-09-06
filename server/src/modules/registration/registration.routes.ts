@@ -12,6 +12,7 @@ import {
   createRegistration,
   DuplicateAadhaarError,
   DuplicateAuidError,
+  DuplicateEmailError,
   DuplicateEmployeeIdError,
   DuplicatePhoneError,
   getRegistrationByPublicCode,
@@ -78,7 +79,11 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
         return;
       }
       if (error instanceof DuplicatePhoneError) {
-        sendError(req, res, 409, "DUPLICATE_PHONE", "This phone number is already registered for this category");
+        sendError(req, res, 409, "DUPLICATE_PHONE", "This phone number is already registered");
+        return;
+      }
+      if (error instanceof DuplicateEmailError) {
+        sendError(req, res, 409, "DUPLICATE_EMAIL", "This email address is already registered");
         return;
       }
       throw error;

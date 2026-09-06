@@ -184,6 +184,11 @@ describe("live R2 upload flow", () => {
       proofImage
     );
 
+    await prisma.registration.update({
+      where: { id: registration.registrationId },
+      data: { photoObjectKey: `test-photo/${registration.registrationId}.jpg` }
+    });
+
     const payment = await submitPaymentProof(prisma, {
       registrationId: registration.registrationId,
       transactionId: `TXN-R2LIVE-${Date.now()}`,

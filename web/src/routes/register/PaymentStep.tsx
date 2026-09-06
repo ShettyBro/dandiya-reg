@@ -3,7 +3,7 @@ import { ArrowSquareOut, QrCode, X } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { PAYMENT_PROOF_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 import { formatPriceInPaise, useEventConfig } from "../../lib/hooks/useEventConfig.js";
 
@@ -92,10 +92,14 @@ export function PaymentStep({
 
       onComplete();
     } catch (submitError) {
-      if (submitError instanceof ApiError && submitError.code === "DUPLICATE_TRANSACTION_ID") {
+      if (submitError instanceof ApiError && submitError.code === SERVER_UNREACHABLE_CODE) {
+        setError(submitError.message);
+      } else if (submitError instanceof ApiError && submitError.code === "DUPLICATE_TRANSACTION_ID") {
         setError("This transaction ID has already been used for another registration.");
       } else if (submitError instanceof ApiError && submitError.code === "R2_NOT_CONFIGURED") {
         setError("Proof storage isn't ready yet on our end. Please try again shortly.");
+      } else if (submitError instanceof ApiError && submitError.code === "PHOTO_REQUIRED") {
+        setError("Required photo uploads are missing. Please go back and complete them first.");
       } else {
         setError("Could not submit payment proof. Please try again.");
       }

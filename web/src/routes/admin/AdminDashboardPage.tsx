@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { StatCard } from "../../components/staff/StatCard.js";
-import { apiRequest } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 interface DashboardMetrics {
@@ -29,8 +29,14 @@ export function AdminDashboardPage() {
       .then((data) => {
         if (!cancelled) setMetrics(data);
       })
-      .catch(() => {
-        if (!cancelled) setError("Could not load dashboard metrics.");
+      .catch((error) => {
+        if (!cancelled) {
+          setError(
+            error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
+              ? error.message
+              : "Could not load dashboard metrics."
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

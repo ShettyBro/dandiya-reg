@@ -49,7 +49,8 @@ const DUPLICATE_MESSAGES: Record<string, string> = {
   DUPLICATE_AUID: "This AUID is already registered.",
   DUPLICATE_EMPLOYEE_ID: "This Employee ID is already registered.",
   DUPLICATE_AADHAAR: "This Aadhaar number is already registered.",
-  DUPLICATE_PHONE: "This phone number is already registered for this category."
+  DUPLICATE_PHONE: "This phone number is already registered.",
+  DUPLICATE_EMAIL: "This email address is already registered."
 };
 
 export function PersonalDetailsStep({

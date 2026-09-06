@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
-import { apiRequest } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 
 interface EventSettings {
   name: string;
@@ -69,7 +69,13 @@ export function AdminSettingsPage() {
   useEffect(() => {
     apiRequest<EventSettings>("/admin/settings")
       .then(setSettings)
-      .catch(() => setError("Could not load settings."))
+      .catch((error) =>
+        setError(
+          error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
+            ? error.message
+            : "Could not load settings."
+        )
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -99,8 +105,12 @@ export function AdminSettingsPage() {
       });
       setSettings(updated);
       setSaved(true);
-    } catch {
-      setError("Could not save settings.");
+    } catch (saveError) {
+      setError(
+        saveError instanceof ApiError && saveError.code === SERVER_UNREACHABLE_CODE
+          ? saveError.message
+          : "Could not save settings."
+      );
     } finally {
       setSaving(false);
     }

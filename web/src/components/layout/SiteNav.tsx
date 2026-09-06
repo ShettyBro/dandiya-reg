@@ -11,8 +11,23 @@ const NAV_LINKS = [
   { label: "Check Status", to: "/registration/status" }
 ];
 
-export function SiteNav() {
+export function SiteNav({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
+
+  if (minimal) {
+    return (
+      <header className="sticky top-0 z-40 bg-transparent">
+        <Container className="flex h-16 items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5">
+            <img src="/icons/icon-512.png" alt="Acharya" className="h-9 w-auto sm:h-10" />
+            <span className="font-display text-lg font-semibold tracking-tight text-white">
+              Dandiya Night <span className="text-festival-gold">2026</span>
+            </span>
+          </Link>
+        </Container>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-40 bg-transparent">

@@ -42,6 +42,10 @@ async function createApprovedRegistration(suffix: string) {
       year: 2
     });
   createdRegistrationIds.push(created.body.registrationId);
+  await prisma.registration.update({
+    where: { id: created.body.registrationId },
+    data: { photoObjectKey: `test-photo/${created.body.registrationId}.jpg` }
+  });
 
   const objectKey = `payments/${created.body.registrationId}/proof/pass-test.jpg`;
   await prisma.uploadIntent.create({

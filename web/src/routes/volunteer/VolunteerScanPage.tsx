@@ -5,7 +5,7 @@ import { CameraRotate, Flashlight, QrCode, Warning } from "@phosphor-icons/react
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
 import type { AuthUser } from "../../lib/hooks/useAuth.js";
 
 const SCANNER_ELEMENT_ID = "volunteer-qr-reader";
@@ -110,7 +110,9 @@ export function VolunteerScanPage() {
       });
       setResult({ kind: "lookup", data: lookup });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
+        setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
+      } else if (error instanceof ApiError && error.status === 401) {
         setResult({ kind: "session-expired" });
       } else if (error instanceof ApiError && error.code === "CREDENTIAL_NOT_FOUND") {
         setResult({ kind: "not-found" });
@@ -135,7 +137,9 @@ export function VolunteerScanPage() {
       });
       setResult({ kind: "allowed", label: response.name ?? response.label ?? "Entry allowed" });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
+        setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
+      } else if (error instanceof ApiError && error.status === 401) {
         setResult({ kind: "session-expired" });
       } else if (error instanceof ApiError && error.code === "ALREADY_ENTERED") {
         setResult({ kind: "blocked", message: "Someone already scanned this a moment ago." });
@@ -160,7 +164,9 @@ export function VolunteerScanPage() {
       });
       setResult({ kind: "overridden", label: response.name });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
+        setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
+      } else if (error instanceof ApiError && error.status === 401) {
         setResult({ kind: "session-expired" });
       } else {
         setResult({ kind: "blocked", message: "Override failed. Try again." });

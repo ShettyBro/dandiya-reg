@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
+import { BambooGallery } from "../../components/gallery/BambooGallery.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { Button } from "../../components/ui/Button.js";
-import { apiRequest } from "../../lib/api.js";
+import { apiRequest, ApiError } from "../../lib/api.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
 export function StaffLoginPage({
@@ -37,16 +38,17 @@ export function StaffLoginPage({
         return;
       }
       navigate(redirectTo, { replace: true });
-    } catch {
-      setError("Invalid email or password.");
+    } catch (error) {
+      setError(error instanceof ApiError ? error.message : "Invalid email or password.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-midnight-950 px-5">
-      <GlassPanel className="w-full max-w-sm p-6 sm:p-8">
+    <div className="relative flex min-h-[100dvh] items-center justify-center bg-midnight-950 px-5">
+      <BambooGallery />
+      <GlassPanel className="relative z-10 w-full max-w-sm p-6 sm:p-8">
         <h1 className="font-display text-xl font-semibold text-white">{title}</h1>
         <p className="mt-1 text-sm text-white/60">{subtitle}</p>
 

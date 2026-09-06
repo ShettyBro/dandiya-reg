@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Camera } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
-import { apiRequest, ApiError } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 
 interface PresignResponse {
@@ -12,12 +12,10 @@ interface PresignResponse {
 
 export function PhotoUploadStep({
   registrationId,
-  onComplete,
-  onSkip
+  onComplete
 }: {
   registrationId: string;
   onComplete: () => void;
-  onSkip: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -62,8 +60,10 @@ export function PhotoUploadStep({
 
       onComplete();
     } catch (uploadError) {
-      if (uploadError instanceof ApiError && uploadError.code === "R2_NOT_CONFIGURED") {
-        setError("Photo storage isn't ready yet on our end. You can continue and add it later.");
+      if (uploadError instanceof ApiError && uploadError.code === SERVER_UNREACHABLE_CODE) {
+        setError(uploadError.message);
+      } else if (uploadError instanceof ApiError && uploadError.code === "R2_NOT_CONFIGURED") {
+        setError("Photo storage isn't ready yet on our end. Please try again shortly.");
       } else if (uploadError instanceof ApiError && uploadError.code === "IMAGE_VALIDATION_FAILED") {
         setError("That image doesn't look like a valid passport-style photo. Try a square, well-lit photo.");
       } else {
@@ -111,19 +111,9 @@ export function PhotoUploadStep({
 
         {error && <p className="text-sm text-red-300">{error}</p>}
 
-        <div className="flex w-full flex-col gap-3 sm:flex-row">
-          <Button
-            type="button"
-            onClick={handleUpload}
-            disabled={!file || uploading}
-            className="w-full sm:flex-1"
-          >
-            {uploading ? "Uploading..." : "Upload and continue"}
-          </Button>
-          <Button type="button" variant="ghost" onClick={onSkip} className="w-full sm:w-auto">
-            Add later
-          </Button>
-        </div>
+        <Button type="button" onClick={handleUpload} disabled={!file || uploading} className="w-full">
+          {uploading ? "Uploading..." : "Upload and continue"}
+        </Button>
       </div>
     </GlassPanel>
   );

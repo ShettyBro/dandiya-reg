@@ -18,6 +18,7 @@ import {
   PaymentNotFoundError,
   PaymentNotInReviewableStateError,
   PaymentNotSubmittableError,
+  PhotoRequiredError,
   rejectPayment,
   submitPaymentProof
 } from "./payment.service.js";
@@ -91,6 +92,10 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
       }
       if (error instanceof DuplicateTransactionIdError) {
         sendError(req, res, 409, "DUPLICATE_TRANSACTION_ID", "This transaction ID has already been used");
+        return;
+      }
+      if (error instanceof PhotoRequiredError) {
+        sendError(req, res, 409, "PHOTO_REQUIRED", "Required photo uploads are missing for this registration");
         return;
       }
       throw error;

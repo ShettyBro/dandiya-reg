@@ -2,11 +2,12 @@ import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SiteNav } from "../components/layout/SiteNav.js";
 import { SiteFooter } from "../components/layout/SiteFooter.js";
+import { BambooGallery } from "../components/gallery/BambooGallery.js";
 import { Container } from "../components/ui/Container.js";
 import { GlassPanel } from "../components/ui/GlassPanel.js";
 import { FormField } from "../components/ui/FormField.js";
 import { Button } from "../components/ui/Button.js";
-import { apiRequest, ApiError } from "../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../lib/api.js";
 
 interface StatusResponse {
   publicCode: string;
@@ -45,7 +46,9 @@ export function StatusPage() {
       );
       setResult(response);
     } catch (fetchError) {
-      if (fetchError instanceof ApiError && fetchError.status === 404) {
+      if (fetchError instanceof ApiError && fetchError.code === SERVER_UNREACHABLE_CODE) {
+        setError(fetchError.message);
+      } else if (fetchError instanceof ApiError && fetchError.status === 404) {
         setError("No registration found for that code.");
       } else {
         setError("Something went wrong. Please try again.");
@@ -56,9 +59,10 @@ export function StatusPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-midnight-950">
+    <div className="relative flex min-h-screen flex-col bg-midnight-950">
+      <BambooGallery />
       <SiteNav />
-      <main className="flex-1 py-16">
+      <main className="relative z-10 flex-1 py-16">
         <Container className="max-w-md">
           <h1 className="mb-2 font-display text-2xl font-semibold text-white sm:text-3xl">
             Check registration status

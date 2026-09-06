@@ -1,4 +1,4 @@
-import type { PrismaClient, Registration, RegistrationType } from "@prisma/client";
+import type { PrismaClient, Registration } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { generateEightDigitCode, generatePublicCode } from "../../lib/security/codes.js";
 import type { RegistrationInput } from "./registration.schemas.js";
@@ -8,6 +8,7 @@ export class DuplicateAuidError extends Error {}
 export class DuplicateEmployeeIdError extends Error {}
 export class DuplicateAadhaarError extends Error {}
 export class DuplicatePhoneError extends Error {}
+export class DuplicateEmailError extends Error {}
 
 export interface CreateRegistrationInput {
   data: RegistrationInput;
@@ -63,12 +64,14 @@ export async function createRegistration(
           throw new RegistrationClosedError();
         }
 
-        const phoneDuplicate = await findActiveDuplicate(tx, {
-          phone: data.phone,
-          registrationType: data.registrationType as RegistrationType
-        });
+        const phoneDuplicate = await findActiveDuplicate(tx, { phone: data.phone });
         if (phoneDuplicate) {
           throw new DuplicatePhoneError();
+        }
+
+        const emailDuplicate = await findActiveDuplicate(tx, { email: data.email });
+        if (emailDuplicate) {
+          throw new DuplicateEmailError();
         }
 
         if (data.registrationType === "ACHARYA_STUDENT") {
@@ -135,14 +138,6 @@ export async function createRegistration(
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        // The identity-key partial unique indexes (Phase U1) are a concurrency backstop, not just
-        // an optimization — two requests can both pass the pre-check (`findActiveDuplicate`) before
-        // either commits. Retrying blindly on any P2002 would just replay the same doomed identity
-        // fields and eventually surface a misleading "failed to allocate a code" error, so these
-        // must be identified and rejected immediately instead of retried. Prisma resolves even a
-        // hand-authored partial unique index back to the underlying column name(s) in
-        // `error.meta.target` (verified directly against a live Postgres constraint violation),
-        // not the index name itself.
         const target = error.meta?.target;
         const targetFields = Array.isArray(target) ? target : typeof target === "string" ? [target] : [];
         if (targetFields.includes("auid")) {
@@ -157,9 +152,10 @@ export async function createRegistration(
         if (targetFields.includes("phone")) {
           throw new DuplicatePhoneError();
         }
+        if (targetFields.includes("email")) {
+          throw new DuplicateEmailError();
+        }
 
-        // Otherwise this is a publicCode/eightDigitCode collision (astronomically rare, safe to
-        // retry with freshly-generated codes) or an idempotencyKey replay.
         if (attempt < UNIQUE_CODE_MAX_ATTEMPTS - 1) {
           continue;
         }

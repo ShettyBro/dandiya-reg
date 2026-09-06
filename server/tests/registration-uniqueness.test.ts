@@ -4,6 +4,7 @@ import {
   createRegistration,
   DuplicateAadhaarError,
   DuplicateAuidError,
+  DuplicateEmailError,
   DuplicateEmployeeIdError,
   DuplicatePhoneError,
   RegistrationClosedError
@@ -150,6 +151,26 @@ describe("lifecycle-aware uniqueness", () => {
     const phone = `9${String(Date.now()).slice(-9)}`;
     await register(openEventId, studentInput({ phone }));
     await expect(register(openEventId, studentInput({ phone }))).rejects.toBeInstanceOf(DuplicatePhoneError);
+  });
+
+  it("rejects a second active registration with the same phone across different registration types", async () => {
+    const phone = `9${String(Date.now()).slice(-9)}`;
+    await register(openEventId, studentInput({ phone }));
+    const facultyWithSamePhone = {
+      registrationType: "ACHARYA_FACULTY" as const,
+      name: "test faculty",
+      phone,
+      email: `faculty-${Date.now()}-${Math.random()}@acharya.ac.in`,
+      employeeId: `emp-phonedup-${Date.now()}`,
+      institution: "acharya institute of technology" as const
+    };
+    await expect(register(openEventId, facultyWithSamePhone)).rejects.toBeInstanceOf(DuplicatePhoneError);
+  });
+
+  it("rejects a second active registration with the same email", async () => {
+    const email = `dup-email-${Date.now()}@acharya.ac.in`;
+    await register(openEventId, studentInput({ email }));
+    await expect(register(openEventId, studentInput({ email }))).rejects.toBeInstanceOf(DuplicateEmailError);
   });
 
   it("resolves a concurrent duplicate-AUID race to exactly one success, correctly typed", async () => {
