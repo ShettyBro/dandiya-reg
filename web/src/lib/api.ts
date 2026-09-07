@@ -55,7 +55,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   const contentType = response.headers.get("content-type") ?? "";
-  const data = contentType.includes("application/json") ? await response.json() : await response.text();
+  let data: unknown;
+  try {
+    data = contentType.includes("application/json") ? await response.json() : await response.text();
+  } catch {
+    throw new ApiError(0, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE, null);
+  }
 
   if (data && typeof data === "object" && typeof (data as Record<string, unknown>).csrfToken === "string") {
     setCsrfToken((data as Record<string, unknown>).csrfToken as string);
@@ -72,6 +77,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       typeof envelope.message === "string" ? envelope.message : "Request failed",
       envelope.details
     );
+  }
+
+  if (!contentType.includes("application/json")) {
+    throw new ApiError(response.status, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE, null);
   }
 
   return data as T;

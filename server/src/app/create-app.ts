@@ -46,9 +46,26 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
     })
   );
   app.use(helmet());
+  const allowedOrigins = env.CORS_ORIGINS.split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+  const allowedOriginMatchers = allowedOrigins.map((origin) =>
+    origin.includes("*")
+      ? new RegExp(`^${origin.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`)
+      : origin
+  );
   app.use(
     cors({
-      origin: env.CORS_ORIGINS.split(",").map((origin) => origin.trim()),
+      origin: (origin, callback) => {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        const allowed = allowedOriginMatchers.some((matcher) =>
+          typeof matcher === "string" ? matcher === origin : matcher.test(origin)
+        );
+        callback(null, allowed);
+      },
       credentials: true
     })
   );
