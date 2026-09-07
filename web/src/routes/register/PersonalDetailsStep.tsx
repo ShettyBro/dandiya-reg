@@ -16,6 +16,10 @@ function normalizePhoneForCheck(raw: string): string {
   return digits;
 }
 
+function normalizePhoneInput(raw: string): string {
+  return normalizePhoneForCheck(raw).slice(0, 10);
+}
+
 function phoneError(value: string): string | null {
   if (!value) return null;
   return INDIAN_PHONE_REGEX.test(normalizePhoneForCheck(value))
@@ -128,8 +132,9 @@ export function PersonalDetailsStep({
         <FormField
           label="Phone number"
           type="tel"
+          prefix="+91"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
           onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
           error={touched.phone ? (phoneValidationError ?? undefined) : undefined}
           required

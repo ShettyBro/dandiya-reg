@@ -3,7 +3,7 @@ import { Camera } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
+import { cropToSquare, IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 
 interface PresignResponse {
   uploadUrl: string;
@@ -21,9 +21,10 @@ export function PhotoUploadStep({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleFileChange(selected: File | null) {
+  async function handleFileChange(selected: File | null) {
     setError(null);
     if (!selected) {
       setFile(null);
@@ -35,8 +36,20 @@ export function PhotoUploadStep({
       setError(validationError);
       return;
     }
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
+
+    setProcessing(true);
+    try {
+      const squared = await cropToSquare(selected);
+      const squaredError = validateImageFile(squared, IDENTITY_IMAGE_MAX_BYTES);
+      if (squaredError) {
+        setError(squaredError);
+        return;
+      }
+      setFile(squared);
+      setPreviewUrl(URL.createObjectURL(squared));
+    } finally {
+      setProcessing(false);
+    }
   }
 
   async function handleUpload() {
@@ -77,7 +90,10 @@ export function PhotoUploadStep({
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
       <h2 className="font-display text-xl font-semibold text-white">Passport-style photo</h2>
-      <p className="mt-1 text-sm text-white/60">Square, well-lit, JPG/PNG, max 1MB. This appears on your pass.</p>
+      <p className="mt-1 text-sm text-white/60">
+        Well-lit JPG/PNG. Must end up under 1MB with a 1:1 square ratio — we crop and resize it for you
+        automatically, so any photo works.
+      </p>
 
       <div className="mt-6 flex flex-col items-center gap-4">
         <button
@@ -95,9 +111,10 @@ export function PhotoUploadStep({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-5 py-2 text-sm font-semibold text-festival-gold"
+          disabled={processing}
+          className="rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-5 py-2 text-sm font-semibold text-festival-gold disabled:opacity-50"
         >
-          {file ? "Choose a different photo" : "Choose file"}
+          {processing ? "Processing..." : file ? "Choose a different photo" : "Choose file"}
         </button>
         {file && <p className="text-xs text-white/50">{file.name}</p>}
 
@@ -111,7 +128,7 @@ export function PhotoUploadStep({
 
         {error && <p className="text-sm text-red-300">{error}</p>}
 
-        <Button type="button" onClick={handleUpload} disabled={!file || uploading} className="w-full">
+        <Button type="button" onClick={handleUpload} disabled={!file || uploading || processing} className="w-full">
           {uploading ? "Uploading..." : "Upload and continue"}
         </Button>
       </div>
