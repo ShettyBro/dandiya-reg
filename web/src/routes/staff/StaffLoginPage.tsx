@@ -46,7 +46,7 @@ export function StaffLoginPage({
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center bg-midnight-950 px-5">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-5">
       <BambooGallery />
       <GlassPanel className="relative z-10 w-full max-w-sm p-6 sm:p-8">
         <h1 className="font-display text-xl font-semibold text-white">{title}</h1>

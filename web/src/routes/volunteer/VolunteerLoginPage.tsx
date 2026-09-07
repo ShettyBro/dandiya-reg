@@ -32,7 +32,7 @@ export function VolunteerLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center bg-midnight-950 px-5">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-5">
       <BambooGallery />
       <GlassPanel className="relative z-10 w-full max-w-sm p-6 sm:p-8">
         <div className="mb-2 flex items-center gap-2.5">

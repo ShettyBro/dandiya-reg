@@ -45,13 +45,23 @@ export default {
         "scroll-down": {
           "0%": { transform: "translateY(-50%)" },
           "100%": { transform: "translateY(0)" }
+        },
+        "flip-leaf-top": {
+          "0%": { transform: "rotateX(0deg)" },
+          "100%": { transform: "rotateX(-90deg)" }
+        },
+        "flip-leaf-bottom": {
+          "0%": { transform: "rotateX(90deg)" },
+          "100%": { transform: "rotateX(0deg)" }
         }
       },
       animation: {
         "scroll-up-slow": "scroll-up 8s ease-in-out infinite alternate",
         "scroll-up-slower": "scroll-up 10s ease-in-out infinite alternate",
         "scroll-down-slow": "scroll-down 9s ease-in-out infinite alternate",
-        "scroll-down-slower": "scroll-down 11s ease-in-out infinite alternate"
+        "scroll-down-slower": "scroll-down 11s ease-in-out infinite alternate",
+        "flip-leaf-top": "flip-leaf-top 0.3s cubic-bezier(0.4,0,1,1) forwards",
+        "flip-leaf-bottom": "flip-leaf-bottom 0.3s cubic-bezier(0,0,0.2,1) 0.3s forwards"
       }
     }
   },

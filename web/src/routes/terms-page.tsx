@@ -29,7 +29,7 @@ const SECTIONS = [
 
 export function TermsPage() {
   return (
-    <div className="relative flex min-h-screen flex-col bg-midnight-950">
+    <div className="relative flex min-h-screen flex-col">
       <BambooGallery />
       <SiteNav />
       <main className="relative z-10 flex-1 py-16">
