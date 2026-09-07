@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Container } from "../../components/ui/Container.js";
 import { GALLERY_IMAGE_FILENAMES, galleryImageUrl } from "../../lib/gallery-manifest.js";
 
-const SLOT_COUNT = 5;
+const SLOT_COUNT = 6;
 const BASE_INTERVAL_MS = 4000;
 const FADE_MS = 380;
 const BLACKOUT_HOLD_MS = 100;

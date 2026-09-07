@@ -41,7 +41,7 @@ export function RegisterPage() {
           {step > 0 && <ProgressIndicator current={step} showIdentity={registrationType === "NON_ACHARYAN_STUDENT"} />}
 
           {closedForNewRegistrations && (
-            <GlassPanel className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
               <p className="font-display text-lg font-semibold text-white">Registration is currently closed</p>
               <p className="text-sm text-white/60">Follow the college channels for any updates.</p>
             </GlassPanel>

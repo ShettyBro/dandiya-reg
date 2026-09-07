@@ -103,7 +103,7 @@ export function IdentityUploadStep({
   }
 
   return (
-    <GlassPanel className="p-6 sm:p-8">
+    <GlassPanel variant="solid" className="p-6 sm:p-8">
       <div className="mb-3 flex items-center gap-2 text-festival-gold">
         <IdentificationCard size={22} />
         <h2 className="font-display text-xl font-semibold text-white">Identity verification</h2>

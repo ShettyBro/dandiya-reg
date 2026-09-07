@@ -126,7 +126,7 @@ export function PersonalDetailsStep({
   }
 
   return (
-    <GlassPanel className="p-6 sm:p-8">
+    <GlassPanel variant="solid" className="p-6 sm:p-8">
       <button type="button" onClick={onBack} className="mb-3 text-xs text-white/40 underline">
         &larr; Change category
       </button>

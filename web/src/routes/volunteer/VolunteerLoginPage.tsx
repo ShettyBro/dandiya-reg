@@ -36,7 +36,7 @@ export function VolunteerLoginPage() {
       <BambooGallery />
       <GlassPanel className="relative z-10 w-full max-w-sm p-6 sm:p-8">
         <div className="mb-2 flex items-center gap-2.5">
-          <img src="/icons/icon-512.png" alt="Dandiya Night 2026" className="h-9 w-9" />
+          <img src="/acharya-mark.png" alt="Dandiya Night 2026" className="h-9 w-auto" />
           <span className="font-display text-lg font-semibold text-white">
             Dandiya Night <span className="text-festival-gold">2026</span>
           </span>

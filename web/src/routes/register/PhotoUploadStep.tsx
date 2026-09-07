@@ -75,7 +75,7 @@ export function PhotoUploadStep({
   }
 
   return (
-    <GlassPanel className="p-6 sm:p-8">
+    <GlassPanel variant="solid" className="p-6 sm:p-8">
       <h2 className="font-display text-xl font-semibold text-white">Passport-style photo</h2>
       <p className="mt-1 text-sm text-white/60">Square, well-lit, JPG/PNG, max 1MB. This appears on your pass.</p>
 

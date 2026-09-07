@@ -4,7 +4,7 @@ import { LinkButton } from "../../components/ui/Button.js";
 
 export function SuccessStep({ publicCode }: { publicCode: string }) {
   return (
-    <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">
+    <GlassPanel variant="solid" className="flex flex-col items-center gap-4 p-8 text-center">
       <CheckCircle size={48} weight="fill" className="text-festival-gold" />
       <h2 className="font-display text-xl font-semibold text-white">Payment proof received</h2>
       <p className="max-w-sm text-sm text-white/70">

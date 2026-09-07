@@ -73,7 +73,7 @@ export function VolunteerHomePage() {
   return (
     <Container className="max-w-md py-10">
       <div className="mb-6 flex items-center gap-2.5">
-        <img src="/icons/icon-512.png" alt="Dandiya Night 2026" className="h-8 w-8" />
+        <img src="/acharya-mark.png" alt="Dandiya Night 2026" className="h-8 w-auto" />
         <span className="font-display text-base font-semibold text-white">
           Dandiya Night <span className="text-festival-gold">2026</span>
         </span>

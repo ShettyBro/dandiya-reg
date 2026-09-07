@@ -109,7 +109,7 @@ export function PaymentStep({
   }
 
   return (
-    <GlassPanel className="p-6 sm:p-8">
+    <GlassPanel variant="solid" className="p-6 sm:p-8">
       <h2 className="font-display text-xl font-semibold text-white">Payment</h2>
       <p className="mt-1 text-sm text-white/60">
         Amount due: {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}

@@ -20,18 +20,17 @@ export function BambooGallery({ className }: { className?: string }) {
       className={cn("fixed inset-0 -z-10 h-dvh w-full overflow-hidden pointer-events-none", className)}
       aria-hidden="true"
     >
-      <div className="flex h-[116%] w-[116%] -translate-x-[7%] -translate-y-[7%] -rotate-6 gap-2.5 sm:gap-3">
+      <div className="flex h-[132%] w-[132%] -translate-x-[16%] -translate-y-[16%] -rotate-6 gap-2 sm:gap-3">
         {columns.map((column, columnIndex) => {
           if (column.length === 0) {
             return null;
           }
-          const loopImages = [...column, ...column, ...column, ...column, ...column, ...column];
+          const loopImages = Array.from({ length: 10 }, () => column).flat();
           return (
             <div
               key={columnIndex}
               className={cn(
-                "flex w-1/4 shrink-0 flex-col gap-2.5 sm:w-1/5 sm:gap-3 lg:w-[12.5%]",
-                columnIndex >= 3 && "hidden sm:flex",
+                "flex w-[12.5%] shrink-0 flex-col gap-2 sm:gap-3",
                 COLUMN_ANIMATIONS[columnIndex % COLUMN_ANIMATIONS.length]
               )}
             >
