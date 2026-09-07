@@ -58,13 +58,30 @@ function passCard(name: string, publicCode: string, qrImageDataUrl?: string): st
   </div>`;
 }
 
+function loginButton(url: string, label: string): string {
+  return `<div style="text-align:center;margin:20px 0;">
+    <a href="${url}" style="display:inline-block;background:${GOLD};color:${BG};font-weight:700;font-size:14px;padding:12px 32px;border-radius:999px;text-decoration:none;">${label}</a>
+  </div>`;
+}
+
+function credentialsBlock(email: string, password: string): string {
+  return `<div style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;margin:18px 0;">
+    <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:${GOLD};">Your login</p>
+    <p style="margin:0 0 6px;font-size:13px;color:${MUTED};">Login ID (email)</p>
+    <p style="margin:0 0 12px;font-family:monospace;font-size:14px;color:${TEXT};word-break:break-all;">${email}</p>
+    <p style="margin:0 0 6px;font-size:13px;color:${MUTED};">Temporary password</p>
+    <p style="margin:0;font-family:monospace;font-size:16px;letter-spacing:1px;color:${TEXT};">${password}</p>
+  </div>`;
+}
+
 function entryInfoBlock(): string {
   return `<div style="margin-top:16px;font-size:13px;color:${MUTED};line-height:1.7;">
     <p style="margin:0;"><strong style="color:${TEXT};">Venue:</strong> Acharya Stadium</p>
     <p style="margin:0;"><strong style="color:${TEXT};">Date:</strong> 15 October 2026</p>
     <p style="margin:0;"><strong style="color:${TEXT};">Entry:</strong> 3:00 PM &ndash; 5:00 PM (gate closes at 5:00 PM, no normal entry after)</p>
     <p style="margin:0;"><strong style="color:${TEXT};">Event:</strong> 4:00 PM &ndash; 9:00 PM</p>
-    <p style="margin:8px 0 0;color:${GOLD};">No-refund policy applies to all registrations.</p>
+    <p style="margin:8px 0 0;color:${GOLD};">Entry is one-time only — once you exit, you cannot re-enter.</p>
+    <p style="margin:4px 0 0;color:${GOLD};">No-refund policy applies to all registrations.</p>
   </div>`;
 }
 
@@ -80,7 +97,7 @@ function rulesBlock(): string {
     "No water bottles, liquids, food, or edible items inside the venue.",
     "No cloakroom facility is provided &mdash; do not carry valuables.",
     "No entry under the influence of alcohol or intoxicating substances.",
-    "Re-entry after exit is not permitted except by authorized Team Leader override."
+    "Entry is one-time only &mdash; once you exit the venue, you cannot re-enter."
   ];
   const item = (text: string) =>
     `<li style="margin:0 0 6px;">${text}</li>`;
@@ -105,6 +122,8 @@ export function renderEmailTemplate(
   const name = escapeHtml(typeof payload.name === "string" ? payload.name : "Participant");
   const publicCode = escapeHtml(typeof payload.publicCode === "string" ? payload.publicCode : "");
   const portalUrl = escapeHtml(typeof payload.portalUrl === "string" ? payload.portalUrl : "");
+  const loginEmail = escapeHtml(typeof payload.email === "string" ? payload.email : "");
+  const temporaryPassword = escapeHtml(typeof payload.temporaryPassword === "string" ? payload.temporaryPassword : "");
 
   switch (type) {
     case "REGISTRATION_RECEIVED":
@@ -149,7 +168,12 @@ export function renderEmailTemplate(
         subject: "Dandiya Night 2026 — volunteer account created",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, an account has been created for you on the volunteer team. Visit <a href="${portalUrl}" style="color:${GOLD};">${portalUrl}</a> to set your password and get started.</p>`
+          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, an account has been created for you on the volunteer team.</p>
+           ${credentialsBlock(loginEmail, temporaryPassword)}
+           ${loginButton(portalUrl, "Login to volunteer portal")}
+           <p style="text-align:center;font-size:12px;color:${MUTED};margin:0 0 4px;">You'll be asked to set your own password on first login.</p>
+           ${passCard(name, publicCode, assets.qrImageDataUrl)}
+           <p style="text-align:center;font-size:12px;color:${MUTED};">This is also your own entry QR pass for the event.</p>`
         )
       };
     case "PASSWORD_RESET":
@@ -157,7 +181,10 @@ export function renderEmailTemplate(
         subject: "Dandiya Night 2026 — your password was reset",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, an administrator has reset your volunteer account password. Visit <a href="${portalUrl}" style="color:${GOLD};">${portalUrl}</a> and sign in with the new temporary password you were given to continue.</p>`
+          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, an administrator has reset your volunteer account password.</p>
+           ${credentialsBlock(loginEmail, temporaryPassword)}
+           ${loginButton(portalUrl, "Login to volunteer portal")}
+           <p style="text-align:center;font-size:12px;color:${MUTED};">You'll be asked to set your own password on next login.</p>`
         )
       };
     default:

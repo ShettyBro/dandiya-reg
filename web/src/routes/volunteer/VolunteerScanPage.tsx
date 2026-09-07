@@ -32,6 +32,7 @@ type ResultState =
 export function VolunteerScanPage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const navigate = useNavigate();
+  const [starting, setStarting] = useState(false);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -51,6 +52,12 @@ export function VolunteerScanPage() {
 
   async function startCamera() {
     setCameraError(null);
+    // Render the (visible, sized) scanner container before html5-qrcode measures it —
+    // it reads the target element's dimensions synchronously when start() is called, so the
+    // container must already be un-hidden by then, not flipped visible only after start() resolves.
+    setStarting(true);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
     const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
     scannerRef.current = scanner;
 
@@ -66,6 +73,7 @@ export function VolunteerScanPage() {
       const capabilities = scanner.getRunningTrackCapabilities?.();
       setTorchSupported(Boolean((capabilities as { torch?: boolean })?.torch));
     } catch (error) {
+      setStarting(false);
       const name = error instanceof Error ? error.name : "";
       if (name === "NotAllowedError" || name === "PermissionDeniedError") {
         setCameraError("Camera permission was denied. Allow camera access in your browser settings and retry.");
@@ -187,7 +195,7 @@ export function VolunteerScanPage() {
     <Container className="max-w-md py-10">
       <h1 className="mb-6 font-display text-2xl font-semibold text-white">Scan</h1>
 
-      {!cameraStarted && !result && (
+      {!starting && !cameraStarted && !result && (
         <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">
           <QrCode size={40} className="text-festival-gold" />
           <p className="text-sm text-white/70">
@@ -204,9 +212,12 @@ export function VolunteerScanPage() {
         </GlassPanel>
       )}
 
-      <div className={cameraStarted && !result ? "block" : "hidden"}>
+      <div className={(starting || cameraStarted) && !result ? "block" : "hidden"}>
+        {starting && !cameraStarted && (
+          <p className="mb-3 text-center text-sm text-white/50">Starting camera...</p>
+        )}
         <GlassPanel className="overflow-hidden p-2">
-          <div id={SCANNER_ELEMENT_ID} className="overflow-hidden rounded-2xl" />
+          <div id={SCANNER_ELEMENT_ID} className="min-h-[280px] overflow-hidden rounded-2xl" />
         </GlassPanel>
         {torchSupported && (
           <button

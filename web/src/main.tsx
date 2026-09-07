@@ -4,6 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
 import "./index.css";
 
+if (!location.pathname.startsWith("/vol/")) {
+  document.querySelector('link[rel="manifest"]')?.remove();
+}
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {

@@ -18,18 +18,32 @@ async function buildAssets(prisma: PrismaClient, env: Env, job: EmailJob): Promi
     dancersUrl: `${env.FRONTEND_ORIGIN}/dandiya-dancers.png`
   };
 
-  if (job.type !== "PAYMENT_APPROVED" || !job.registrationId) {
+  let credentialId: string | null = null;
+
+  if (job.type === "PAYMENT_APPROVED" && job.registrationId) {
+    const credential = await prisma.passCredential.findUnique({
+      where: { registrationId: job.registrationId }
+    });
+    if (credential && credential.active && !credential.revokedAt) {
+      credentialId = credential.id;
+    }
+  } else if (job.type === "VOLUNTEER_INVITE") {
+    const payload = job.payloadJson as Record<string, unknown>;
+    if (typeof payload.staffCredentialId === "string") {
+      const credential = await prisma.passCredential.findUnique({
+        where: { id: payload.staffCredentialId }
+      });
+      if (credential && credential.active && !credential.revokedAt) {
+        credentialId = credential.id;
+      }
+    }
+  }
+
+  if (!credentialId) {
     return base;
   }
 
-  const credential = await prisma.passCredential.findUnique({
-    where: { registrationId: job.registrationId }
-  });
-  if (!credential || !credential.active || credential.revokedAt) {
-    return base;
-  }
-
-  const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credential.id);
+  const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
   const qrImageDataUrl = await QRCode.toDataURL(qrPayload, { errorCorrectionLevel: "M", margin: 1, width: 400 });
 
   return { ...base, qrImageDataUrl };

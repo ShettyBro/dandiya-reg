@@ -14,15 +14,21 @@ function portalUrl(env: Env): string {
   return `${env.FRONTEND_ORIGIN}/vol/login`;
 }
 
+interface StaffCredentialResult {
+  id: string;
+  publicCode: string;
+}
+
 async function createStaffCredential(
   tx: Prisma.TransactionClient,
   env: Env,
   label: string
-): Promise<string> {
+): Promise<StaffCredentialResult> {
   for (let attempt = 0; attempt < STAFF_CODE_MAX_ATTEMPTS; attempt += 1) {
     try {
       const credentialId = newCredentialId();
       const token = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
+      const publicCode = generateStaffPublicCode();
       const credential = await tx.passCredential.create({
         data: {
           id: credentialId,
@@ -30,10 +36,10 @@ async function createStaffCredential(
           opaqueTokenHash: hashCredentialToken(token),
           active: true,
           label,
-          publicCode: generateStaffPublicCode()
+          publicCode
         }
       });
-      return credential.id;
+      return { id: credential.id, publicCode: credential.publicCode ?? publicCode };
     } catch (error) {
       const isUniqueClash =
         error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -75,7 +81,7 @@ export async function createVolunteer(
       data: { email: input.email, passwordHash, role: input.role, status: "ACTIVE" }
     });
 
-    const staffCredentialId = await createStaffCredential(tx, env, input.name);
+    const staffCredential = await createStaffCredential(tx, env, input.name);
 
     await tx.volunteerProfile.create({
       data: {
@@ -87,7 +93,7 @@ export async function createVolunteer(
         shiftStart: input.shiftStart ?? null,
         shiftEnd: input.shiftEnd ?? null,
         mustChangePassword: true,
-        staffCredentialId
+        staffCredentialId: staffCredential.id
       }
     });
 
@@ -95,7 +101,14 @@ export async function createVolunteer(
       data: {
         type: "VOLUNTEER_INVITE",
         recipient: input.email,
-        payloadJson: { name: input.name, portalUrl: portalUrl(env) },
+        payloadJson: {
+          name: input.name,
+          email: input.email,
+          temporaryPassword,
+          portalUrl: portalUrl(env),
+          staffCredentialId: staffCredential.id,
+          publicCode: staffCredential.publicCode
+        },
         uniquenessKey: `volunteer-invite-${createdUser.id}`
       }
     });
@@ -130,7 +143,12 @@ export async function resetVolunteerPassword(
       data: {
         type: "PASSWORD_RESET",
         recipient: existing.email,
-        payloadJson: { name: existing.volunteerProfile?.name ?? "there", portalUrl: portalUrl(env) },
+        payloadJson: {
+          name: existing.volunteerProfile?.name ?? "there",
+          email: existing.email,
+          temporaryPassword,
+          portalUrl: portalUrl(env)
+        },
         uniquenessKey: `volunteer-password-reset-${userId}-${Date.now()}`
       }
     });

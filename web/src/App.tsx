@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
+import { AuthProvider } from "./lib/hooks/useAuth.js";
 import { LandingPage } from "./routes/landing-page.js";
 import { RegisterPage } from "./routes/register-page.js";
 import { StatusPage } from "./routes/status-page.js";
@@ -76,6 +77,7 @@ function VolunteerFallback() {
 export function App() {
   return (
     <ErrorBoundary>
+      <AuthProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -147,6 +149,7 @@ export function App() {
           <Route path="/finance/identity" element={<FinanceIdentityPage />} />
         </Route>
       </Routes>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

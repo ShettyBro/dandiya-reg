@@ -1,9 +1,36 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Check, Copy } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { CustomSelect } from "../../components/ui/CustomSelect.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label="Copy"
+      className="inline-flex items-center gap-1 rounded-pill border border-white/15 px-2 py-0.5 text-xs text-white/60 hover:border-festival-gold/50 hover:text-festival-gold"
+    >
+      {copied ? <Check size={12} weight="bold" /> : <Copy size={12} />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
 
 interface VolunteerProfile {
   name: string;
@@ -144,19 +171,30 @@ export function AdminVolunteersPage() {
   return (
     <div className="flex flex-col gap-5">
       {credential && (
-        <GlassPanel className="flex flex-wrap items-center justify-between gap-3 border-emerald-400/40 p-4">
-          <p className="text-sm text-white/85">
-            Temporary password for <span className="font-semibold text-emerald-300">{credential.email}</span>:{" "}
-            <span className="font-mono text-emerald-300">{credential.temporaryPassword}</span> — share this with
-            them now, it will not be shown again.
-          </p>
-          <button
-            type="button"
-            onClick={() => setCredential(null)}
-            className="text-sm text-white/50 hover:text-white"
-          >
-            Dismiss
-          </button>
+        <GlassPanel variant="solid" className="flex flex-col gap-3 border-emerald-400/40 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-white/85">
+              New credentials — share these now, they won't be shown again. An invite email with these details and
+              their QR pass has also been sent to <span className="font-semibold text-emerald-300">{credential.email}</span>.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCredential(null)}
+              className="shrink-0 text-sm text-white/50 hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-white/50">Email:</span>
+            <span className="font-mono text-emerald-300">{credential.email}</span>
+            <CopyButton value={credential.email} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-white/50">Password:</span>
+            <span className="font-mono text-emerald-300">{credential.temporaryPassword}</span>
+            <CopyButton value={credential.temporaryPassword} />
+          </div>
         </GlassPanel>
       )}
 

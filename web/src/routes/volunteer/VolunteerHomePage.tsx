@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
-import { SignOut, MapPin, Clock, Camera, Warning } from "@phosphor-icons/react";
+import { SignOut, MapPin, Clock, Camera, Warning, Lifebuoy } from "@phosphor-icons/react";
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
@@ -162,6 +162,14 @@ export function VolunteerHomePage() {
       <p className="mt-6 text-center text-sm text-white/50">
         Head to the Scan tab to start checking in participants.
       </p>
+
+      <a
+        href="tel:+919480063530"
+        className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white/80"
+      >
+        <Lifebuoy size={18} className="text-festival-gold" />
+        Need help? Contact Sudeep — 9480063530
+      </a>
     </Container>
   );
 }
