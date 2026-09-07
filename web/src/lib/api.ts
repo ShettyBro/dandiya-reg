@@ -5,6 +5,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000
 export const SERVER_UNREACHABLE_CODE = "SERVER_UNREACHABLE";
 export const SERVER_UNREACHABLE_MESSAGE = "Server not reachable/down. Contact Sudeep 9480063530 immediately.";
 
+const REQUEST_TIMEOUT_MS = 40000;
+
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -38,16 +40,22 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
       credentials: "include",
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal
     });
   } catch {
     throw new ApiError(0, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE, null);
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   if (response.status === 204) {

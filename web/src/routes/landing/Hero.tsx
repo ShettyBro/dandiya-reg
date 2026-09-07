@@ -6,8 +6,13 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { formatEventDate, useEventConfig } from "../../lib/hooks/useEventConfig.js";
 import { Countdown } from "../../components/Countdown.js";
 
+const FALLBACK_EVENT_DATE_ISO = "2026-10-15T09:30:00.000Z";
+const FALLBACK_VENUE = "Acharya Stadium";
+
 export function Hero() {
   const { config } = useEventConfig();
+  const eventDateIso = config?.eventDate ?? FALLBACK_EVENT_DATE_ISO;
+  const venue = config?.venue ?? FALLBACK_VENUE;
 
   return (
     <section className="relative flex items-center py-20 pt-24 sm:min-h-[100dvh] sm:py-0 sm:pt-16">
@@ -20,7 +25,7 @@ export function Hero() {
           <GlassPanel className="mx-auto max-w-2xl border-transparent bg-midnight-950/20 px-5 py-10 text-center shadow-[0_8px_60px_-12px_rgba(0,0,0,0.6)] sm:px-12 sm:py-14">
             <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-pill border border-festival-gold/30 bg-festival-gold/10 px-4 py-1.5 text-xs text-festival-gold">
               <Sparkle size={14} weight="fill" />
-              {config ? formatEventDate(config.eventDate) : "October 2026"}
+              {formatEventDate(eventDateIso)}
             </div>
 
             <h1 className="text-balance font-display text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl">
@@ -28,15 +33,12 @@ export function Hero() {
             </h1>
 
             <p className="mx-auto mt-5 max-w-md text-balance text-sm text-white/80 sm:text-base">
-              Live raas, dhol beats, and a night of color at {config?.venue ?? "campus grounds"}. Dress
-              sharp, dance sharper.
+              Live raas, dhol beats, and a night of color at {venue}. Dress sharp, dance sharper.
             </p>
 
-            {config && (
-              <div className="mt-8">
-                <Countdown targetIso={config.eventDate} />
-              </div>
-            )}
+            <div className="mt-8">
+              <Countdown targetIso={eventDateIso} />
+            </div>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <LinkButton to="/register" className="w-full sm:w-auto">

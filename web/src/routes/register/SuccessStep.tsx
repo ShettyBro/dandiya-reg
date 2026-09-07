@@ -9,8 +9,11 @@ export function SuccessStep({ publicCode }: { publicCode: string }) {
       <h2 className="font-display text-xl font-semibold text-white">Payment proof received</h2>
       <p className="max-w-sm text-sm text-white/70">
         Your registration code is <span className="font-semibold text-festival-gold">{publicCode}</span>.
-        Verification is pending. You'll get an email once it's approved, and your digital pass will be
-        available on the pass page.
+        Verification is pending.
+      </p>
+      <p className="max-w-sm text-sm text-white/70">
+        You'll receive your <span className="font-semibold text-white">Digital Pass on your registered email</span>{" "}
+        once your payment is approved — it's also available on the pass page anytime after that. Stay tuned!
       </p>
       <LinkButton to={`/registration/status?code=${publicCode}`} className="mt-2">
         Check status

@@ -14,6 +14,8 @@ export interface EventConfig {
   paymentInstructions: string;
 }
 
+const RETRY_INTERVAL_MS = 20000;
+
 export function useEventConfig() {
   const [config, setConfig] = useState<EventConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,26 +23,32 @@ export function useEventConfig() {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer: number | undefined;
 
-    apiRequest<EventConfig>("/event/config")
-      .then((data) => {
-        if (!cancelled) {
+    function load() {
+      apiRequest<EventConfig>("/event/config")
+        .then((data) => {
+          if (cancelled) return;
           setConfig(data);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
+          setError(null);
+        })
+        .catch(() => {
+          if (cancelled) return;
           setError("Could not load event details right now.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+          retryTimer = window.setTimeout(load, RETRY_INTERVAL_MS);
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        });
+    }
+
+    load();
 
     return () => {
       cancelled = true;
+      window.clearTimeout(retryTimer);
     };
   }, []);
 
