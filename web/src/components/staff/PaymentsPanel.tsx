@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CaretDown, LinkSimple } from "@phosphor-icons/react";
+import { CaretDown } from "@phosphor-icons/react";
 import { GlassPanel } from "../ui/GlassPanel.js";
 import { Button } from "../ui/Button.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
@@ -105,6 +105,9 @@ export function PaymentsPanel() {
 
   function toggleExpand(paymentId: string) {
     setExpandedId((prev) => (prev === paymentId ? null : paymentId));
+    if (!proofUrls[paymentId]) {
+      loadProofUrl(paymentId);
+    }
   }
 
   async function handleApprove(paymentId: string) {
@@ -243,29 +246,18 @@ export function PaymentsPanel() {
                     </div>
 
                     <div className="mt-5">
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-white/70">Payment screenshot</span>
-                        <button
-                          type="button"
-                          onClick={() => loadProofUrl(payment.id)}
-                          disabled={proofLoading === payment.id}
-                          className="flex items-center gap-1 rounded-pill border border-indigo-400/40 bg-indigo-400/10 px-3 py-1 text-xs font-semibold text-indigo-300"
-                        >
-                          <LinkSimple size={12} />
-                          {proofLoading === payment.id ? "Loading..." : "Get secure link"}
-                        </button>
-                      </div>
+                      <p className="mb-2 text-xs font-semibold text-white/70">Payment screenshot</p>
                       {proofUrls[payment.id] ? (
-                        <div className="max-h-96 overflow-hidden rounded-xl border border-white/10 bg-black">
-                          <img
-                            src={proofUrls[payment.id]}
-                            alt="Payment proof"
-                            className="max-h-96 w-full object-contain"
-                          />
+                        <div className="max-h-[75vh] overflow-y-auto rounded-xl border border-white/10 bg-black">
+                          <img src={proofUrls[payment.id]} alt="Payment proof" className="w-full object-contain" />
+                        </div>
+                      ) : proofLoading === payment.id ? (
+                        <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-xs text-white/50">
+                          Loading screenshot...
                         </div>
                       ) : (
                         <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-xs text-white/50">
-                          Click "Get secure link" to load the screenshot (link expires in 15 minutes)
+                          Could not load the screenshot.
                         </div>
                       )}
                     </div>

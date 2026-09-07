@@ -10,7 +10,20 @@ import {
   deleteRegistrationAndAssets,
   RegistrationNotFoundError
 } from "../registration/registration-cleanup.service.js";
+import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
+import { presignGetUrl } from "../../lib/r2/presign.js";
 import type { Env } from "../../app/config/env.js";
+
+async function presignIfPresent(env: Env, objectKey: string | null): Promise<string | null> {
+  if (!objectKey) return null;
+  try {
+    const client = getR2Client(env);
+    return await presignGetUrl(client, env.R2_BUCKET_NAME, objectKey, env.R2_PRESIGN_READ_TTL);
+  } catch (error) {
+    if (error instanceof R2NotConfiguredError) return null;
+    throw error;
+  }
+}
 
 const filterSchema = z.object({
   search: z.string().trim().max(200).optional(),
@@ -84,6 +97,67 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
       ]);
 
       res.status(200).json({ items, total, page, pageSize });
+    }
+  );
+
+  router.get(
+    "/admin/registrations/:id",
+    requireAuth(env),
+    requireRole("ADMIN"),
+    requireActiveUser(prisma),
+    async (req, res) => {
+      const id = stringParam(req.params.id);
+      const registration = id
+        ? await prisma.registration.findUnique({
+            where: { id },
+            include: { payment: true, attendance: true }
+          })
+        : null;
+
+      if (!registration) {
+        sendError(req, res, 404, "NOT_FOUND", "Registration not found");
+        return;
+      }
+
+      const [photoUrl, paymentProofUrl, aadhaarImageUrl, collegeIdImageUrl] = await Promise.all([
+        presignIfPresent(env, registration.photoObjectKey),
+        presignIfPresent(env, registration.payment?.proofObjectKey ?? null),
+        presignIfPresent(env, registration.aadhaarImageObjectKey),
+        presignIfPresent(env, registration.collegeIdImageObjectKey)
+      ]);
+
+      res.status(200).json({
+        id: registration.id,
+        registrationType: registration.registrationType,
+        publicCode: registration.publicCode,
+        eightDigitCode: registration.eightDigitCode,
+        name: registration.name,
+        email: registration.email,
+        phone: registration.phone,
+        institution: registration.institution,
+        auid: registration.auid,
+        year: registration.year,
+        employeeId: registration.employeeId,
+        collegeName: registration.collegeName,
+        status: registration.status,
+        identityStatus: registration.identityStatus,
+        identityRejectionReason: registration.identityRejectionReason,
+        createdAt: registration.createdAt,
+        photoUrl,
+        aadhaarImageUrl,
+        collegeIdImageUrl,
+        payment: registration.payment
+          ? {
+              status: registration.payment.status,
+              amountInPaise: registration.payment.amountInPaise,
+              transactionId: registration.payment.transactionId,
+              rejectionReason: registration.payment.rejectionReason,
+              submittedAt: registration.payment.submittedAt,
+              proofUrl: paymentProofUrl
+            }
+          : null,
+        attendance: registration.attendance ? { state: registration.attendance.state } : null
+      });
     }
   );
 
