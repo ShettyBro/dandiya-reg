@@ -45,14 +45,6 @@ const TYPE_LABELS: Record<RegistrationType, string> = {
   NON_ACHARYAN_STUDENT: "Non-Acharyan Student"
 };
 
-const DUPLICATE_MESSAGES: Record<string, string> = {
-  DUPLICATE_AUID: "This AUID is already registered.",
-  DUPLICATE_EMPLOYEE_ID: "This Employee ID is already registered.",
-  DUPLICATE_AADHAAR: "This Aadhaar number is already registered.",
-  DUPLICATE_PHONE: "This phone number is already registered.",
-  DUPLICATE_EMAIL: "This email address is already registered."
-};
-
 export function PersonalDetailsStep({
   registrationType,
   idempotencyKey,
@@ -110,8 +102,6 @@ export function PersonalDetailsStep({
       if (error instanceof ApiError) {
         if (error.code === "REGISTRATION_CLOSED") {
           setFormError("Registration is currently closed.");
-        } else if (DUPLICATE_MESSAGES[error.code] !== undefined) {
-          setFormError(DUPLICATE_MESSAGES[error.code] ?? null);
         } else if (error.code === "VALIDATION_ERROR") {
           setFormError("Please check the highlighted fields and try again.");
         } else {

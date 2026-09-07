@@ -67,23 +67,53 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
         return;
       }
       if (error instanceof DuplicateAuidError) {
-        sendError(req, res, 409, "DUPLICATE_AUID", "This AUID is already registered");
+        sendError(
+          req,
+          res,
+          409,
+          "DUPLICATE_AUID",
+          "This AUID is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+        );
         return;
       }
       if (error instanceof DuplicateEmployeeIdError) {
-        sendError(req, res, 409, "DUPLICATE_EMPLOYEE_ID", "This Employee ID is already registered");
+        sendError(
+          req,
+          res,
+          409,
+          "DUPLICATE_EMPLOYEE_ID",
+          "This Employee ID is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+        );
         return;
       }
       if (error instanceof DuplicateAadhaarError) {
-        sendError(req, res, 409, "DUPLICATE_AADHAAR", "This Aadhaar number is already registered");
+        sendError(
+          req,
+          res,
+          409,
+          "DUPLICATE_AADHAAR",
+          "This Aadhaar number is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+        );
         return;
       }
       if (error instanceof DuplicatePhoneError) {
-        sendError(req, res, 409, "DUPLICATE_PHONE", "This phone number is already registered");
+        sendError(
+          req,
+          res,
+          409,
+          "DUPLICATE_PHONE",
+          "This phone number is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+        );
         return;
       }
       if (error instanceof DuplicateEmailError) {
-        sendError(req, res, 409, "DUPLICATE_EMAIL", "This email address is already registered");
+        sendError(
+          req,
+          res,
+          409,
+          "DUPLICATE_EMAIL",
+          "This email address is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+        );
         return;
       }
       throw error;

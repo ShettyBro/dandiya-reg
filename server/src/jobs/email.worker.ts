@@ -4,6 +4,7 @@ import { getPrismaClient } from "../db/client.js";
 import { createBrevoSender } from "../lib/brevo/client.js";
 import { claimDueEmailJobs } from "../modules/email/email-outbox.service.js";
 import { processEmailJob } from "../modules/email/email-processor.js";
+import { cleanupIncompleteRegistrations } from "../modules/registration/registration-cleanup.service.js";
 
 const env = loadEnv();
 const prisma = getPrismaClient();
@@ -23,6 +24,12 @@ async function runOnce(): Promise<void> {
     const outcome = await processEmailJob(prisma, env, job, sender);
     console.log(`email job ${job.id} (${job.type}) -> ${outcome}`);
   }
+
+  const cleared = await cleanupIncompleteRegistrations(prisma, env);
+  if (cleared > 0) {
+    console.log(`cleared ${cleared} incomplete registration(s)`);
+  }
+
   await writeHeartbeat();
 }
 
