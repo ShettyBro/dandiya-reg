@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn.js";
 
@@ -18,6 +19,16 @@ interface CustomSelectProps {
   id?: string;
 }
 
+interface DropdownPosition {
+  top: number;
+  left: number;
+  width: number;
+  openUpward: boolean;
+}
+
+const DROPDOWN_MAX_HEIGHT = 256;
+const VIEWPORT_MARGIN = 8;
+
 export function CustomSelect({
   label,
   value,
@@ -31,29 +42,59 @@ export function CustomSelect({
   const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(() => Math.max(options.findIndex((o) => o.value === value), 0));
+  const [position, setPosition] = useState<DropdownPosition | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const selected = options.find((o) => o.value === value);
 
+  function computePosition(): DropdownPosition | null {
+    const trigger = triggerRef.current;
+    if (!trigger) return null;
+    const rect = trigger.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_MARGIN;
+    const spaceAbove = rect.top - VIEWPORT_MARGIN;
+    const openUpward = spaceBelow < Math.min(DROPDOWN_MAX_HEIGHT, spaceAbove) && spaceAbove > spaceBelow;
+    return {
+      top: openUpward ? rect.top : rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      openUpward
+    };
+  }
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+    function handleOutsidePointer(event: MouseEvent) {
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (listRef.current?.contains(target)) return;
+      setOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleOutsidePointer);
+    return () => document.removeEventListener("mousedown", handleOutsidePointer);
   }, []);
 
   useEffect(() => {
-    if (open) {
-      const index = Math.max(options.findIndex((o) => o.value === value), 0);
-      setActiveIndex(index);
-      requestAnimationFrame(() => {
-        const activeEl = listRef.current?.children[index] as HTMLElement | undefined;
-        activeEl?.scrollIntoView({ block: "nearest" });
-      });
+    if (!open) return;
+
+    setPosition(computePosition());
+    const index = Math.max(options.findIndex((o) => o.value === value), 0);
+    setActiveIndex(index);
+    requestAnimationFrame(() => {
+      const activeEl = listRef.current?.children[index] as HTMLElement | undefined;
+      activeEl?.scrollIntoView({ block: "nearest" });
+    });
+
+    function reposition() {
+      setPosition(computePosition());
     }
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function commit(index: number) {
@@ -101,6 +142,7 @@ export function CustomSelect({
       </label>
       <div className="relative">
         <button
+          ref={triggerRef}
           type="button"
           id={fieldId}
           role="combobox"
@@ -124,38 +166,49 @@ export function CustomSelect({
           <CaretDown size={16} className={cn("shrink-0 text-white/50 transition-transform", open && "rotate-180")} />
         </button>
 
-        {open && (
-          <ul
-            ref={listRef}
-            id={`${fieldId}-listbox`}
-            role="listbox"
-            aria-labelledby={`${fieldId}-label`}
-            tabIndex={-1}
-            className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-white/15 bg-midnight-800 p-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]"
-          >
-            {options.map((option, index) => {
-              const isSelected = option.value === value;
-              const isActive = index === activeIndex;
-              return (
-                <li
-                  key={option.value}
-                  role="option"
-                  aria-selected={isSelected}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => commit(index)}
-                  className={cn(
-                    "flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm",
-                    isActive ? "bg-white/10 text-white" : "text-white/75",
-                    isSelected && "text-festival-gold"
-                  )}
-                >
-                  <span>{option.label}</span>
-                  {isSelected && <Check size={14} weight="bold" className="shrink-0" />}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {open &&
+          position &&
+          createPortal(
+            <ul
+              ref={listRef}
+              id={`${fieldId}-listbox`}
+              role="listbox"
+              aria-labelledby={`${fieldId}-label`}
+              tabIndex={-1}
+              style={{
+                position: "fixed",
+                left: position.left,
+                width: position.width,
+                top: position.openUpward ? undefined : position.top + 8,
+                bottom: position.openUpward ? window.innerHeight - position.top + 8 : undefined,
+                maxHeight: DROPDOWN_MAX_HEIGHT
+              }}
+              className="z-50 overflow-y-auto rounded-xl border border-white/15 bg-midnight-800 p-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]"
+            >
+              {options.map((option, index) => {
+                const isSelected = option.value === value;
+                const isActive = index === activeIndex;
+                return (
+                  <li
+                    key={option.value}
+                    role="option"
+                    aria-selected={isSelected}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => commit(index)}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm",
+                      isActive ? "bg-white/10 text-white" : "text-white/75",
+                      isSelected && "text-festival-gold"
+                    )}
+                  >
+                    <span>{option.label}</span>
+                    {isSelected && <Check size={14} weight="bold" className="shrink-0" />}
+                  </li>
+                );
+              })}
+            </ul>,
+            document.body
+          )}
       </div>
       {error && <p className="text-xs text-red-300">{error}</p>}
     </div>
