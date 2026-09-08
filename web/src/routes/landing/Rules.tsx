@@ -49,12 +49,12 @@ export function Rules() {
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.5 }}
           >
-            <GlassPanel className="h-full p-6">
+            <GlassPanel variant="solid" className="h-full bg-midnight-800/80 p-6">
               <div className="mb-4 flex items-center gap-2 text-emerald-300">
                 <CheckCircle size={22} weight="fill" />
                 <h3 className="font-display text-lg font-semibold text-white">Do's</h3>
               </div>
-              <ul className="flex flex-col gap-3 text-sm text-white/75">
+              <ul className="flex flex-col gap-3 text-sm text-white/85">
                 {DOS.map((item) => (
                   <li key={item} className="flex gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" />
@@ -71,12 +71,12 @@ export function Rules() {
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.5, delay: 0.05 }}
           >
-            <GlassPanel className="h-full p-6">
+            <GlassPanel variant="solid" className="h-full bg-midnight-800/80 p-6">
               <div className="mb-4 flex items-center gap-2 text-red-300">
                 <XCircle size={22} weight="fill" />
                 <h3 className="font-display text-lg font-semibold text-white">Don'ts</h3>
               </div>
-              <ul className="flex flex-col gap-3 text-sm text-white/75">
+              <ul className="flex flex-col gap-3 text-sm text-white/85">
                 {DONTS.map((item) => (
                   <li key={item} className="flex gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-300" />

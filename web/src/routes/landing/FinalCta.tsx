@@ -17,14 +17,19 @@ export function FinalCta() {
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.5 }}
         >
-          <GlassPanel className="flex flex-col items-center gap-6 px-6 py-14 text-center shadow-glow sm:px-16">
+          <GlassPanel
+            variant="solid"
+            className="flex flex-col items-center gap-6 bg-midnight-800/80 px-6 py-14 text-center shadow-glow sm:px-16"
+          >
             <h2 className="font-display text-3xl font-semibold tracking-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.85),0_4px_18px_rgba(0,0,0,0.55)] sm:text-4xl">
               {closed ? "Registration is now closed" : "Your spot is waiting"}
             </h2>
             <p className="max-w-md text-sm text-white/70">
               {closed
                 ? "Capacity has been reached or registration has closed. Follow the college channels for any last updates."
-                : `${config?.remainingCapacity ?? ""} spots left. Register now before the floor fills up.`}
+                : config
+                  ? `${config.remainingCapacity} spots left. Register now before the floor fills up.`
+                  : "Register now before the floor fills up."}
             </p>
             <LinkButton to="/register" className={closed ? "pointer-events-none opacity-40" : ""}>
               Register Now
