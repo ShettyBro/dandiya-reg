@@ -21,13 +21,14 @@ function createIdempotencyKey(): string {
 }
 
 export function RegisterPage() {
-  const { config } = useEventConfig();
+  const { config, loading: configLoading } = useEventConfig();
   const [idempotencyKey] = useState(createIdempotencyKey);
   const [step, setStep] = useState(0);
   const [registrationType, setRegistrationType] = useState<RegistrationType | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [publicCode, setPublicCode] = useState<string | null>(null);
-  const closedForNewRegistrations = step === 0 && config !== null && !config.registrationOpen;
+  const checkingAvailability = step === 0 && configLoading;
+  const closedForNewRegistrations = step === 0 && !configLoading && config !== null && !config.registrationOpen;
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -40,6 +41,12 @@ export function RegisterPage() {
 
           {step > 0 && <ProgressIndicator current={step} showIdentity={registrationType === "NON_ACHARYAN_STUDENT"} />}
 
+          {checkingAvailability && (
+            <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+              <p className="text-sm text-white/60">Checking registration availability...</p>
+            </GlassPanel>
+          )}
+
           {closedForNewRegistrations && (
             <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
               <p className="font-display text-lg font-semibold text-white">Registration is currently closed</p>
@@ -47,7 +54,7 @@ export function RegisterPage() {
             </GlassPanel>
           )}
 
-          {!closedForNewRegistrations && step === 0 && (
+          {!checkingAvailability && !closedForNewRegistrations && step === 0 && (
             <AreYouAcharyanStep
               onSelect={(type) => {
                 setRegistrationType(type);
