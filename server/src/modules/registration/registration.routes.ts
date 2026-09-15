@@ -19,6 +19,7 @@ import {
   RegistrationClosedError
 } from "./registration.service.js";
 import { registrationSchema } from "./registration.schemas.js";
+import { normalizeIndianPhone, INDIAN_PHONE_REGEX } from "../../lib/security/phone.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { validateUploadedImage, ImageValidationError } from "../../lib/r2/validate-image.js";
 import type { Env } from "../../app/config/env.js";
@@ -125,6 +126,44 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
 
     if (!registration) {
       sendError(req, res, 404, "NOT_FOUND", "No registration found for that code");
+      return;
+    }
+
+    const payment = await prisma.payment.findUnique({ where: { registrationId: registration.id } });
+
+    res.status(200).json({
+      publicCode: registration.publicCode,
+      name: registration.name,
+      status: registration.status,
+      paymentStatus: payment?.status ?? null,
+      rejectionReason: payment?.rejectionReason ?? registration.identityRejectionReason ?? null
+    });
+  });
+
+  const phoneBodySchema = z.object({
+    phone: z.string().trim().min(1).max(20)
+  });
+
+  router.post("/registrations/status/by-phone", publicLookupRateLimiter, async (req, res) => {
+    const parsed = phoneBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(req, res, 400, "VALIDATION_ERROR", "Invalid phone payload", parsed.error.flatten());
+      return;
+    }
+
+    const normalized = normalizeIndianPhone(parsed.data.phone);
+    if (!INDIAN_PHONE_REGEX.test(normalized)) {
+      sendError(req, res, 400, "INVALID_PHONE", "Enter a valid 10-digit Indian mobile number");
+      return;
+    }
+
+    const registration = await prisma.registration.findFirst({
+      where: { phone: normalized },
+      orderBy: { createdAt: "desc" }
+    });
+
+    if (!registration) {
+      sendError(req, res, 404, "NOT_FOUND", "No registration found for that phone number");
       return;
     }
 
