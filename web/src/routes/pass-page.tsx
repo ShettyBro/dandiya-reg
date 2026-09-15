@@ -43,7 +43,7 @@ export function PassPage() {
       });
 
       if (!lookup.eligible) {
-        setError("Your payment hasn't been approved yet, so your pass isn't ready.");
+        setError("Your payment hasn't been approved yet, so your Dandiya Celebration Kit QR isn't ready.");
         return;
       }
 
@@ -71,15 +71,15 @@ export function PassPage() {
       <main className="relative z-10 flex-1 py-16">
         <Container className="max-w-md">
           <h1 className="mb-2 font-display text-2xl font-semibold text-white sm:text-3xl">
-            Retrieve your pass
+            Dandiya Celebration Kit QR
           </h1>
-          <p className="mb-8 text-sm text-white/60">Enter your registration code to view your digital pass.</p>
+          <p className="mb-8 text-sm text-white/60">Enter your registration code to view your Celebration Kit QR.</p>
 
           <GlassPanel className="p-6 sm:p-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <FormField label="Registration code" value={code} onChange={(e) => setCode(e.target.value)} required />
               <Button type="submit" disabled={loading}>
-                {loading ? "Loading..." : "Get my pass"}
+                {loading ? "Loading..." : "View my QR"}
               </Button>
             </form>
 
@@ -96,8 +96,9 @@ export function PassPage() {
                 )}
                 <p className="font-display text-lg font-semibold text-white">{pass.name}</p>
                 <p className="text-xs uppercase tracking-[0.1em] text-white/50">{pass.publicCode}</p>
-                <img src={pass.qrImageDataUrl} alt="Entry QR code" className="h-56 w-56 rounded-xl bg-white p-3" />
-                <p className="text-xs text-white/50">Show this QR at the entry gate.</p>
+                <img src={pass.qrImageDataUrl} alt="Dandiya Celebration Kit QR" className="h-56 w-56 rounded-xl bg-white p-3" />
+                <p className="text-xs text-white/50">Present this QR at the venue to collect your Dandiya Celebration Kit.</p>
+                <p className="text-xs text-white/40">The same QR code will be verified by the event team during venue entry.</p>
               </div>
             )}
           </GlassPanel>

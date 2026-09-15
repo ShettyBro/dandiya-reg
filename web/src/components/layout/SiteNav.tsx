@@ -60,7 +60,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
             )
           )}
           <LinkButton to="/register" className="px-5 py-2 text-sm">
-            Register Now
+            Join the Celebration
           </LinkButton>
         </nav>
 
@@ -106,7 +106,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 )
               )}
               <LinkButton to="/register" className="w-full">
-                Register Now
+                Join the Celebration
               </LinkButton>
             </Container>
           </motion.nav>

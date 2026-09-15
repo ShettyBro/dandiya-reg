@@ -85,6 +85,11 @@ export function StatusPage() {
                 <p className="mt-1 font-display text-lg font-semibold text-white">
                   {STATUS_LABELS[result.status] ?? result.status}
                 </p>
+                {result.status === "PAYMENT_APPROVED" && (
+                  <p className="mt-3 rounded-xl border border-festival-gold/25 bg-festival-gold/8 px-4 py-3 text-sm text-festival-gold">
+                    Your Dandiya Celebration Kit will be provided at the event venue.
+                  </p>
+                )}
                 {REJECTED_STATUSES.has(result.status) && result.rejectionReason && (
                   <>
                     <p className="mt-2 text-sm text-red-300">Reason: {result.rejectionReason}</p>

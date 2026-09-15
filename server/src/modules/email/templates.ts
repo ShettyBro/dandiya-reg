@@ -51,7 +51,7 @@ function passCard(name: string, publicCode: string, qrImageDataUrl?: string): st
     : "";
 
   return `<div style="text-align:center;border-top:1px dashed rgba(232,184,75,0.4);border-bottom:1px dashed rgba(232,184,75,0.4);padding:20px 0;margin:20px 0;">
-    <p style="margin:0;color:${MUTED};font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Digital Entry Pass</p>
+    <p style="margin:0;color:${MUTED};font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Dandiya Celebration Kit QR</p>
     <p style="margin:6px 0 0;font-size:20px;font-weight:700;color:${TEXT};text-transform:capitalize;">${name}</p>
     ${qrBlock}
     <p style="margin:0;font-family:monospace;letter-spacing:3px;font-size:16px;color:${GOLD};">${publicCode}</p>
@@ -131,26 +131,32 @@ export function renderEmailTemplate(
         subject: "Dandiya Night 2026 — registration received",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we've received your registration (code <strong style="color:${GOLD};">${publicCode}</strong>) and payment proof. Verification is pending — you'll get another email once it's approved.</p>`
+          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we've received your registration (code <strong style="color:${GOLD};">${publicCode}</strong>) and payment proof. Verification is pending — you'll get another email once it's approved.</p>
+           <p style="text-align:center;font-size:13px;color:${MUTED};margin:8px 0 2px;">Dandiya Celebration Kit &mdash; &#8377;151</p>
+           <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 0;">Your Dandiya Celebration Kit will be provided at the event venue.</p>`
         )
       };
     case "PAYMENT_APPROVED":
       return {
-        subject: "Dandiya Night 2026 — your digital pass is ready",
+        subject: "Your Dandiya Celebration Kit \u2014 Dandiya Night 2026",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;margin:0;">Here's your digital pass for Dandiya Night 2026.</p>
+          `<p style="text-align:center;font-size:15px;margin:0 0 4px;"><strong style="text-transform:capitalize;">${name}</strong>, your participation for Dandiya Night 2026 has been successfully confirmed.</p>
+           <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 4px;">Dandiya Celebration Kit &mdash; &#8377;151</p>
+           <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 16px;">Your Dandiya Celebration Kit will be provided at the event venue.</p>
            ${passCard(name, publicCode, assets.qrImageDataUrl)}
+           <p style="text-align:center;font-size:12px;color:${MUTED};margin:8px 0 0;">Please present this QR code at the event venue to collect your Dandiya Celebration Kit.</p>
+           <p style="text-align:center;font-size:12px;color:${MUTED};margin:4px 0 16px;">The same QR code will be verified by the event team during venue entry.</p>
            ${entryInfoBlock()}
            ${rulesBlock()}`
         )
       };
     case "PAYMENT_REJECTED":
       return {
-        subject: "Dandiya Night 2026 — payment verification issue",
+        subject: "Dandiya Night 2026 \u2014 payment verification issue",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we were unable to verify your payment.</p>
+          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we were unable to verify your Dandiya Celebration Kit payment.</p>
            <p style="text-align:center;font-size:14px;color:${MUTED};">Please register again using the same details with a valid payment reference and screenshot. Your code <strong>${publicCode}</strong> stays on record.</p>`
         )
       };
@@ -173,7 +179,7 @@ export function renderEmailTemplate(
            ${loginButton(portalUrl, "Login to volunteer portal")}
            <p style="text-align:center;font-size:12px;color:${MUTED};margin:0 0 4px;">You'll be asked to set your own password on first login.</p>
            ${passCard(name, publicCode, assets.qrImageDataUrl)}
-           <p style="text-align:center;font-size:12px;color:${MUTED};">This is also your own entry QR pass for the event.</p>`
+           <p style="text-align:center;font-size:12px;color:${MUTED};">This is also your Dandiya Celebration Kit QR for the event.</p>`
         )
       };
     case "PASSWORD_RESET":

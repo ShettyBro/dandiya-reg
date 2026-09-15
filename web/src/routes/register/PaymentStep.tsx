@@ -110,14 +110,22 @@ export function PaymentStep({
 
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
-      <h2 className="font-display text-xl font-semibold text-white">Payment</h2>
+      <h2 className="font-display text-xl font-semibold text-white">Dandiya Celebration Kit</h2>
       <p className="mt-1 text-sm text-white/60">
-        Amount due: {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}
+        Dandiya Celebration Kit — {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}
+      </p>
+      <p className="mt-0.5 text-xs text-white/45">
+        Receive your Dandiya Celebration Kit at the event venue.
       </p>
 
       {!proceeded ? (
         <div className="mt-6 flex flex-col gap-4">
           <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+            <p className="mb-1 font-semibold text-white">Dandiya Celebration Kit</p>
+            <p className="mb-3 text-xs text-white/55">
+              The Dandiya Celebration Kit will be provided at the event venue after successful payment
+              verification and confirmation.
+            </p>
             <p className="mb-3 font-semibold text-white">When the ERP payment form asks for:</p>
             <dl className="flex flex-col gap-2 text-xs">
               <div>
@@ -175,9 +183,9 @@ export function PaymentStep({
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button type="button" variant="secondary" className="w-full sm:flex-1" disabled={!bothAcknowledged} onClick={() => setShowQr(true)}>
-              <QrCode size={16} /> View QR
+              <QrCode size={16} /> View Payment QR
             </Button>
-            <Button
+              <Button
               type="button"
               className="w-full sm:flex-1"
               disabled={!bothAcknowledged || !config?.erpPaymentUrl}
@@ -187,7 +195,7 @@ export function PaymentStep({
                 setProceeded(true);
               }}
             >
-              Open Payment Gateway <ArrowSquareOut size={16} />
+              Continue to Payment <ArrowSquareOut size={16} />
             </Button>
           </div>
           {showQr && bothAcknowledged && (

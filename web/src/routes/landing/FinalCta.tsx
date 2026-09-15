@@ -32,7 +32,7 @@ export function FinalCta() {
                   : "Register now before the floor fills up."}
             </p>
             <LinkButton to="/register" className={closed ? "pointer-events-none opacity-40" : ""}>
-              Register Now
+              Join the Celebration
             </LinkButton>
           </GlassPanel>
         </motion.div>

@@ -42,7 +42,7 @@ export function Hero() {
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <LinkButton to="/register" className="w-full sm:w-auto">
-                Register Now
+                Join the Celebration
               </LinkButton>
               <LinkButton to="/registration/status" variant="secondary" className="w-full sm:w-auto">
                 Check Status

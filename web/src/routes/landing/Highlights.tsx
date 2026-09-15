@@ -51,9 +51,12 @@ export function Highlights() {
             <GlassPanel variant="solid" className="flex h-full flex-col justify-between gap-6 bg-midnight-800/80 p-6">
               <Ticket size={28} weight="duotone" className="text-indigo-400" />
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-white/50">Entry fee</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-white/50">Dandiya Celebration Kit</p>
                 <p className="mt-1 font-display text-2xl font-semibold text-white">
                   {formatPriceInPaise(priceInPaise)}
+                </p>
+                <p className="mt-2 text-xs text-white/50 leading-relaxed">
+                  Receive your Dandiya Celebration Kit at the event venue.
                 </p>
               </div>
             </GlassPanel>

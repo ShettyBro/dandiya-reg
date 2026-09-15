@@ -110,12 +110,12 @@ export function VolunteerHomePage() {
 
       {pass && (
         <GlassPanel className="mb-4 flex flex-col items-center gap-3 p-6 text-center">
-          <p className="text-xs uppercase tracking-[0.12em] text-white/50">Your staff pass</p>
-          <img src={pass.qrImageDataUrl} alt="Staff QR pass" className="h-44 w-44 rounded-xl bg-white p-2" />
+          <p className="text-xs uppercase tracking-[0.12em] text-white/50">Your staff QR</p>
+          <img src={pass.qrImageDataUrl} alt="Staff QR" className="h-44 w-44 rounded-xl bg-white p-2" />
           {pass.publicCode && (
             <p className="font-mono text-sm tracking-[0.15em] text-white/80">{pass.publicCode}</p>
           )}
-          <p className="text-xs text-white/40">Show this at the gate for entry.</p>
+          <p className="text-xs text-white/40">Present this at the venue gate for entry.</p>
         </GlassPanel>
       )}
       {!pass && passError && (

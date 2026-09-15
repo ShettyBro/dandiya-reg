@@ -12,8 +12,12 @@ export function SuccessStep({ publicCode }: { publicCode: string }) {
         Verification is pending.
       </p>
       <p className="max-w-sm text-sm text-white/70">
-        You'll receive your <span className="font-semibold text-white">Digital Pass on your registered email</span>{" "}
+        You'll receive your{" "}
+        <span className="font-semibold text-white">Dandiya Celebration Kit QR on your registered email</span>{" "}
         once your payment is approved — it's also available on the pass page anytime after that. Stay tuned!
+      </p>
+      <p className="max-w-sm rounded-xl border border-festival-gold/25 bg-festival-gold/8 px-4 py-3 text-sm text-festival-gold">
+        Your Dandiya Celebration Kit will be provided at the event venue.
       </p>
       <LinkButton to={`/registration/status?code=${publicCode}`} className="mt-2">
         Check status
