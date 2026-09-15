@@ -22,14 +22,12 @@ export function FinalCta() {
             className="flex flex-col items-center gap-6 bg-midnight-800/80 px-6 py-14 text-center shadow-glow sm:px-16"
           >
             <h2 className="font-display text-3xl font-semibold tracking-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.85),0_4px_18px_rgba(0,0,0,0.55)] sm:text-4xl">
-              {closed ? "Registration is now closed" : "Your spot is waiting"}
+              {closed ? "Registration is now closed" : "Join us for the night"}
             </h2>
             <p className="max-w-md text-sm text-white/70">
               {closed
-                ? "Capacity has been reached or registration has closed. Follow the college channels for any last updates."
-                : config
-                  ? `${config.remainingCapacity} spots left. Register now before the floor fills up.`
-                  : "Register now before the floor fills up."}
+                ? "Registration has closed. Follow the college channels for any last updates."
+                : "Register before it's too late — Dandiya Night 2026 is just around the corner."}
             </p>
             <LinkButton to="/register" className={closed ? "pointer-events-none opacity-40" : ""}>
               Join the Celebration
