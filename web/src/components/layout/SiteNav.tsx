@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { List, X } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,10 +13,23 @@ const NAV_LINKS = [
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 10);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const navBg = scrolled
+    ? "bg-midnight-950/90 backdrop-blur-md border-b border-white/10 shadow-[0_1px_20px_rgba(0,0,0,0.4)]"
+    : "bg-transparent";
 
   if (minimal) {
     return (
-      <header className="sticky top-0 z-40 bg-transparent">
+      <header className={`sticky top-0 z-40 transition-all duration-300 ${navBg}`}>
         <Container className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <img src="/acharya-mark.png" alt="Acharya" className="h-9 w-auto sm:h-10" />
@@ -30,7 +43,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-transparent">
+    <header className={`sticky top-0 z-40 transition-all duration-300 ${navBg}`}>
       <Container className="flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <img src="/acharya-mark.png" alt="Acharya" className="h-9 w-auto sm:h-10" />

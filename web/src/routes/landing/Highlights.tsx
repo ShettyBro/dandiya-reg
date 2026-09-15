@@ -33,16 +33,21 @@ export function Highlights() {
 
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3 md:grid-rows-2">
           <motion.div {...REVEAL} className="md:col-span-2 md:row-span-2">
-            <GlassPanel variant="solid" className="flex h-full flex-col justify-between gap-8 bg-midnight-800/80 p-8">
-              <CalendarBlank size={32} weight="duotone" className="text-festival-gold" />
-              <div>
+            <GlassPanel variant="solid" className="flex h-full flex-col gap-6 bg-midnight-800/80 p-8">
+              <CalendarBlank size={36} weight="duotone" className="text-festival-gold" />
+              <div className="flex flex-col gap-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-white/50">When and where</p>
-                <p className="mt-2 font-display text-2xl font-semibold text-white sm:text-3xl">
+                <p className="font-display text-4xl font-semibold leading-tight text-white sm:text-5xl">
                   {formatEventDate(eventDateIso)}
                 </p>
-                <p className="mt-2 flex items-center gap-2 text-sm text-white/70">
-                  <MapPin size={16} /> {venue}
+                <p className="flex items-center gap-2 text-base text-festival-gold/90 font-medium">
+                  <MapPin size={18} weight="fill" /> {venue}
                 </p>
+                <div className="mt-2 flex flex-col gap-1.5 border-t border-white/10 pt-4 text-sm text-white/60">
+                  <p>Entry: <span className="text-white/85">3:00 PM – 5:00 PM</span> (gate closes 5:00 PM)</p>
+                  <p>Event: <span className="text-white/85">4:00 PM – 9:00 PM</span></p>
+                  <p className="mt-1 text-xs text-white/40">Entry is one-time only — once you exit, you cannot re-enter.</p>
+                </div>
               </div>
             </GlassPanel>
           </motion.div>
