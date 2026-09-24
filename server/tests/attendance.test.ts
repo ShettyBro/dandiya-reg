@@ -377,10 +377,13 @@ describe("Team Leader override", () => {
 
   it("overrides the Event Gate independently of the College Gate's state", async () => {
     const participant = await createParticipantWithCredential("override-event-gate");
+    // A plain VOLUNTEER's gate is always server-resolved from their own assignment — any
+    // client-supplied gate is ignored for that role — so use the Team Leader (who may act at
+    // either gate explicitly) to enter the Event Gate here.
     await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Cookie", teamLeaderCookies)
+      .set("X-CSRF-Token", teamLeaderCsrf)
       .send({ token: participant.token, gate: "EVENT_GATE" });
 
     const response = await request(app)

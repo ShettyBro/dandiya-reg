@@ -9,7 +9,7 @@ const assets: EmailAssets = {
 describe("renderEmailTemplate", () => {
   it("renders PAYMENT_APPROVED with the participant name and code", () => {
     const result = renderEmailTemplate("PAYMENT_APPROVED", { name: "Asha", publicCode: "DN26-ABC123" }, assets);
-    expect(result.subject).toContain("pass is ready");
+    expect(result.subject).toContain("Dandiya Celebration Kit");
     expect(result.html).toContain("Asha");
     expect(result.html).toContain("DN26-ABC123");
   });
@@ -29,7 +29,7 @@ describe("renderEmailTemplate", () => {
       { name: "Ravi", publicCode: "DN26-XYZ999", reason: "Screenshot unreadable" },
       assets
     );
-    expect(result.html).toContain("unable to verify your payment");
+    expect(result.html).toContain("unable to verify your Dandiya Celebration Kit payment");
     expect(result.html).not.toContain("Screenshot unreadable");
   });
 

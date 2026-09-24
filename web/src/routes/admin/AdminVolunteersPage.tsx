@@ -295,7 +295,10 @@ export function AdminVolunteersPage() {
                   {volunteer.volunteerProfile?.name ?? volunteer.email}
                 </p>
                 <p className="text-xs text-white/50">
-                  {volunteer.email} · {volunteer.role === "TEAM_LEADER" ? "Team Leader" : "Volunteer"}
+                  {volunteer.email} · {volunteer.role === "TEAM_LEADER" ? "Team Leader" : "Volunteer"} ·{" "}
+                  {volunteer.volunteerProfile?.assignedGate
+                    ? GATE_LABELS[volunteer.volunteerProfile.assignedGate]
+                    : "No gate assigned"}
                   {volunteer.volunteerProfile?.gate && ` · Gate ${volunteer.volunteerProfile.gate}`}
                   {volunteer.volunteerProfile?.zone && ` · Zone ${volunteer.volunteerProfile.zone}`}
                 </p>
