@@ -3,7 +3,6 @@ import { CaretDown } from "@phosphor-icons/react";
 import { GlassPanel } from "../ui/GlassPanel.js";
 import { Button } from "../ui/Button.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 type PaymentStatus = "PENDING" | "PROOF_SUBMITTED" | "APPROVED" | "REJECTED";
@@ -77,7 +76,7 @@ export function PaymentsPanel() {
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? STAFF_SERVER_UNREACHABLE_MESSAGE
+            ? error.message
             : "Could not load payments."
         )
       )
@@ -96,7 +95,7 @@ export function PaymentsPanel() {
     } catch (proofError) {
       setError(
         proofError instanceof ApiError && proofError.code === SERVER_UNREACHABLE_CODE
-          ? STAFF_SERVER_UNREACHABLE_MESSAGE
+          ? proofError.message
           : "Could not load the payment screenshot."
       );
     } finally {

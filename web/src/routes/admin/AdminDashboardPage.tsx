@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { StatCard } from "../../components/staff/StatCard.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 interface DashboardMetrics {
@@ -46,7 +45,7 @@ export function AdminDashboardPage() {
       .catch((error) => {
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? STAFF_SERVER_UNREACHABLE_MESSAGE
+            ? error.message
             : "Could not load dashboard metrics."
         );
       })
@@ -71,7 +70,7 @@ export function AdminDashboardPage() {
     } catch (err) {
       setToggleError(
         err instanceof ApiError && err.code === SERVER_UNREACHABLE_CODE
-          ? STAFF_SERVER_UNREACHABLE_MESSAGE
+          ? err.message
           : "Could not update registration status."
       );
     } finally {

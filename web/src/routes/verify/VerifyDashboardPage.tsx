@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { StatCard } from "../../components/staff/StatCard.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 
 interface IdentityDashboardMetrics {
   pending: number;
@@ -25,7 +24,7 @@ export function VerifyDashboardPage() {
         if (!cancelled) {
           setError(
             error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-              ? STAFF_SERVER_UNREACHABLE_MESSAGE
+              ? error.message
               : "Could not load dashboard metrics."
           );
         }

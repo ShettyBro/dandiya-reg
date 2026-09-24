@@ -3,7 +3,6 @@ import { CaretDown } from "@phosphor-icons/react";
 import { GlassPanel } from "../ui/GlassPanel.js";
 import { Button } from "../ui/Button.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 
 type RegistrationStatus =
   | "PAYMENT_PENDING"
@@ -76,7 +75,7 @@ export function IdentityReviewPanel() {
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? STAFF_SERVER_UNREACHABLE_MESSAGE
+            ? error.message
             : "Could not load registrations."
         )
       )
@@ -97,7 +96,7 @@ export function IdentityReviewPanel() {
       } catch (detailError) {
         setError(
           detailError instanceof ApiError && detailError.code === SERVER_UNREACHABLE_CODE
-            ? STAFF_SERVER_UNREACHABLE_MESSAGE
+            ? detailError.message
             : "Could not load identity details."
         );
       } finally {

@@ -5,7 +5,6 @@ import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { CustomSelect } from "../../components/ui/CustomSelect.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -89,7 +88,7 @@ export function AdminVolunteersPage() {
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? STAFF_SERVER_UNREACHABLE_MESSAGE
+            ? error.message
             : "Could not load volunteers."
         )
       )
@@ -132,7 +131,7 @@ export function AdminVolunteersPage() {
       fetchVolunteers();
     } catch (createError) {
       if (createError instanceof ApiError && createError.code === SERVER_UNREACHABLE_CODE) {
-        setFormError(STAFF_SERVER_UNREACHABLE_MESSAGE);
+        setFormError(createError.message);
       } else if (createError instanceof ApiError && createError.code === "EMAIL_ALREADY_EXISTS") {
         setFormError("A user with this email already exists.");
       } else {
@@ -154,7 +153,7 @@ export function AdminVolunteersPage() {
     } catch (toggleError) {
       setError(
         toggleError instanceof ApiError && toggleError.code === SERVER_UNREACHABLE_CODE
-          ? STAFF_SERVER_UNREACHABLE_MESSAGE
+          ? toggleError.message
           : "Could not update volunteer status."
       );
     } finally {
@@ -174,7 +173,7 @@ export function AdminVolunteersPage() {
     } catch (gateError) {
       setError(
         gateError instanceof ApiError && gateError.code === SERVER_UNREACHABLE_CODE
-          ? STAFF_SERVER_UNREACHABLE_MESSAGE
+          ? gateError.message
           : "Could not update gate assignment."
       );
     } finally {
@@ -193,7 +192,7 @@ export function AdminVolunteersPage() {
     } catch (resetError) {
       setError(
         resetError instanceof ApiError && resetError.code === SERVER_UNREACHABLE_CODE
-          ? STAFF_SERVER_UNREACHABLE_MESSAGE
+          ? resetError.message
           : "Could not reset password."
       );
     } finally {

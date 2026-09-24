@@ -3,7 +3,6 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 
 interface EventSettings {
   name: string;
@@ -73,7 +72,7 @@ export function AdminSettingsPage() {
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? STAFF_SERVER_UNREACHABLE_MESSAGE
+            ? error.message
             : "Could not load settings."
         )
       )
@@ -109,7 +108,7 @@ export function AdminSettingsPage() {
     } catch (saveError) {
       setError(
         saveError instanceof ApiError && saveError.code === SERVER_UNREACHABLE_CODE
-          ? STAFF_SERVER_UNREACHABLE_MESSAGE
+          ? saveError.message
           : "Could not save settings."
       );
     } finally {
