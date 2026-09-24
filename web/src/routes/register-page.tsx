@@ -108,8 +108,8 @@ export function RegisterPage() {
             />
           )}
 
-          {step === 4 && registrationId && (
-            <PaymentStep registrationId={registrationId} onComplete={() => setStep(5)} />
+          {step === 4 && registrationId && registrationType && (
+            <PaymentStep registrationId={registrationId} registrationType={registrationType} onComplete={() => setStep(5)} />
           )}
 
           {step === 5 && publicCode && <SuccessStep publicCode={publicCode} />}

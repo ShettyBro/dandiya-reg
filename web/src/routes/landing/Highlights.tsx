@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { CalendarBlank, MapPin, TShirt, Ticket } from "@phosphor-icons/react";
+import { CalendarBlank, Gift, MapPin, TShirt } from "@phosphor-icons/react";
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { formatEventDate, formatPriceInPaise, useEventConfig } from "../../lib/hooks/useEventConfig.js";
@@ -54,7 +54,7 @@ export function Highlights() {
 
           <motion.div {...REVEAL}>
             <GlassPanel variant="solid" className="flex h-full flex-col justify-between gap-6 bg-midnight-800/80 p-6">
-              <Ticket size={28} weight="duotone" className="text-indigo-400" />
+              <Gift size={28} weight="duotone" className="text-indigo-400" />
               <div>
                 <p className="text-xs uppercase tracking-[0.14em] text-white/50">Dandiya Celebration Kit</p>
                 <p className="mt-1 font-display text-2xl font-semibold text-white">

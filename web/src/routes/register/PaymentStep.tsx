@@ -6,17 +6,77 @@ import { FormField } from "../../components/ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { PAYMENT_PROOF_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 import { formatPriceInPaise, useEventConfig } from "../../lib/hooks/useEventConfig.js";
+import type { RegistrationType } from "./registrationTypes.js";
 
 interface PresignResponse {
   uploadUrl: string;
   objectKey: string;
 }
 
+// What to enter in the ERP's free-text "any other info" field — kept specific per category so
+// finance can actually match the payment back to the right registration during verification.
+const REFERENCE_INFO_LABEL: Record<RegistrationType, string> = {
+  ACHARYA_STUDENT: "AUID",
+  ACHARYA_FACULTY: "EMP / Employee ID",
+  NON_ACHARYAN_STUDENT: "College name",
+  ACHARYA_ALUMNI: "College name with branch, etc."
+};
+
+const REFERENCE_INFO_HINT: Record<RegistrationType, string> = {
+  ACHARYA_STUDENT: "Enter your AUID.",
+  ACHARYA_FACULTY: "Enter your EMP/Employee ID.",
+  NON_ACHARYAN_STUDENT: "Enter your college name.",
+  ACHARYA_ALUMNI: "Enter your college name with branch name, etc. — anything that helps us match your payment."
+};
+
+function PaymentInstructions({
+  registrationType,
+  priceInPaise
+}: {
+  registrationType: RegistrationType;
+  priceInPaise: number | undefined;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+      <p className="mb-1 font-semibold text-white">Dandiya Celebration Kit</p>
+      <p className="mb-3 text-xs text-white/55">
+        The Dandiya Celebration Kit will be provided at the event venue after successful payment
+        verification and confirmation.
+      </p>
+      <p className="mb-3 font-semibold text-white">When the ERP payment form asks for:</p>
+      <dl className="flex flex-col gap-2 text-xs">
+        <div>
+          <dt className="font-semibold text-festival-gold">Name *</dt>
+          <dd>Use the same name you entered during registration.</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-festival-gold">Email *</dt>
+          <dd>Use the same email you entered during registration.</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-festival-gold">Mobile *</dt>
+          <dd>Use the same phone number you entered during registration.</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-festival-gold">{REFERENCE_INFO_LABEL[registrationType]} *</dt>
+          <dd>{REFERENCE_INFO_HINT[registrationType]}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-festival-gold">Amount *</dt>
+          <dd>{priceInPaise !== undefined ? formatPriceInPaise(priceInPaise) : "₹151"}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export function PaymentStep({
   registrationId,
+  registrationType,
   onComplete
 }: {
   registrationId: string;
+  registrationType: RegistrationType;
   onComplete: () => void;
 }) {
   const { config } = useEventConfig();
@@ -95,36 +155,7 @@ export function PaymentStep({
 
       {!proceeded ? (
         <div className="mt-6 flex flex-col gap-4">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
-            <p className="mb-1 font-semibold text-white">Dandiya Celebration Kit</p>
-            <p className="mb-3 text-xs text-white/55">
-              The Dandiya Celebration Kit will be provided at the event venue after successful payment
-              verification and confirmation.
-            </p>
-            <p className="mb-3 font-semibold text-white">When the ERP payment form asks for:</p>
-            <dl className="flex flex-col gap-2 text-xs">
-              <div>
-                <dt className="font-semibold text-festival-gold">Name *</dt>
-                <dd>Use the same name you entered during registration.</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-festival-gold">Email *</dt>
-                <dd>Use the same email you entered during registration.</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-festival-gold">Mobile *</dt>
-                <dd>Use the same phone number you entered during registration.</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-festival-gold">AUID / Any other info *</dt>
-                <dd>Enter your college name.</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-festival-gold">Amount *</dt>
-                <dd>{config ? formatPriceInPaise(config.priceInPaise) : "₹151"}</dd>
-              </div>
-            </dl>
-          </div>
+          <PaymentInstructions registrationType={registrationType} priceInPaise={config?.priceInPaise} />
 
           <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-xs text-amber-200">
             No-refund policy: all payments made for this event are final and non-refundable under any
@@ -138,7 +169,7 @@ export function PaymentStep({
               onChange={(e) => setAckInstructions(e.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5 accent-festival-gold"
             />
-            I understand the above payment instructions.
+            I have read and understood the above payment instructions.
           </label>
           <label className="flex items-start gap-3 text-xs text-white/70">
             <input
@@ -147,7 +178,7 @@ export function PaymentStep({
               onChange={(e) => setAckNoRefund(e.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5 accent-festival-gold"
             />
-            I have read and understood the above instructions and agree to the no-refund policy.
+            I agree to the no-refund policy.
           </label>
 
           {config && !config.erpPaymentUrl && (
@@ -175,6 +206,9 @@ export function PaymentStep({
             Opening the payment page does not confirm payment — enter your transaction reference below once
             you've completed the payment.
           </p>
+
+          <PaymentInstructions registrationType={registrationType} priceInPaise={config?.priceInPaise} />
+
           <FormField
             label="Transaction / reference ID"
             value={transactionId}

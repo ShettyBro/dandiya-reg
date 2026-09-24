@@ -14,7 +14,7 @@ const VARIANT_CLASSES: Record<Variant, string> = {
 };
 
 const BASE_CLASSES =
-  "inline-flex items-center justify-center gap-2 rounded-pill px-6 py-3 text-sm transition-colors whitespace-nowrap";
+  "inline-flex items-center justify-center gap-2 rounded-pill px-6 py-3 text-sm transition-all whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale disabled:shadow-none";
 
 const HOVER_TRANSITION = { type: "spring", stiffness: 400, damping: 20 } as const;
 
@@ -33,13 +33,15 @@ export function Button({
   variant = "primary",
   className,
   children,
+  disabled,
   ...rest
 }: CommonProps & NativeButtonProps) {
   return (
     <motion.button
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={disabled ? undefined : { scale: 1.04 }}
+      whileTap={disabled ? undefined : { scale: 0.96 }}
       transition={HOVER_TRANSITION}
+      disabled={disabled}
       className={cn(BASE_CLASSES, VARIANT_CLASSES[variant], className)}
       {...rest}
     >
