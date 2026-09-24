@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { StatCard } from "../../components/staff/StatCard.js";
-import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
+import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 interface DashboardMetrics {

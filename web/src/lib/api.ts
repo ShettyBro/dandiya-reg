@@ -4,11 +4,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000
 
 export const SERVER_UNREACHABLE_CODE = "SERVER_UNREACHABLE";
 // Public-safe by default — never mentions a personal number. Staff-only surfaces (volunteer/
-// admin/finance/verify panels) explicitly opt into STAFF_SERVER_UNREACHABLE_MESSAGE instead when
-// they render this error, so a direct tech-support contact never leaks to public pages, including
-// any generic `setError(error.message)` fallback that doesn't special-case this error code.
+// admin/finance/verify panels) explicitly opt into STAFF_SERVER_UNREACHABLE_MESSAGE (from
+// ./staffMessages.js, deliberately a separate module — see that file for why) instead when they
+// render this error, so a direct tech-support contact never leaks to public pages, including any
+// generic `setError(error.message)` fallback that doesn't special-case this error code.
 export const SERVER_UNREACHABLE_MESSAGE = "Server not reachable/down. Please try again in a few minutes.";
-export const STAFF_SERVER_UNREACHABLE_MESSAGE = "Server not reachable/down. Contact Sudeep 9480063530 immediately.";
 
 const REQUEST_TIMEOUT_MS = 40000;
 

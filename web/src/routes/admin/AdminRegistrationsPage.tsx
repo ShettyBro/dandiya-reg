@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { CaretDown, Trash } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { FormField } from "../../components/ui/FormField.js";
-import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
+import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 type Filter =

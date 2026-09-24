@@ -5,7 +5,8 @@ import { CameraRotate, Flashlight, QrCode, Warning } from "@phosphor-icons/react
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
-import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
+import { STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/staffMessages.js";
 import type { AuthUser } from "../../lib/hooks/useAuth.js";
 
 const SCANNER_ELEMENT_ID = "volunteer-qr-reader";
