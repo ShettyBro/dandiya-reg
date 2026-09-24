@@ -23,7 +23,9 @@ import type { Env } from "../../app/config/env.js";
 const gateSchema = z.enum(["COLLEGE_GATE", "EVENT_GATE"]);
 
 function formatIstTime(date: Date): string {
-  return date.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" });
+  return date
+    .toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })
+    .replace(/am|pm/i, (match) => match.toUpperCase());
 }
 
 function outsideEntryWindowMessage(error: OutsideEntryWindowError): string {
