@@ -6,7 +6,14 @@ import type { Env } from "../../app/config/env.js";
 export class CredentialNotFoundError extends Error {}
 export class AlreadyEnteredError extends Error {}
 export class NotYetEnteredError extends Error {}
-export class OutsideEntryWindowError extends Error {}
+export class OutsideEntryWindowError extends Error {
+  constructor(
+    public readonly entryOpensAt: Date,
+    public readonly entryClosesAt: Date | null
+  ) {
+    super("Outside entry window");
+  }
+}
 export class GateNotAssignedError extends Error {}
 
 type SingleGateState = "NOT_ENTERED" | "ENTERED" | "OVERRIDE_ENTRY";
@@ -145,7 +152,7 @@ export async function allowEntry(
   const entryStarted = now >= event.eventDate.getTime();
   const gateStillOpen = !event.gateClosesAt || now <= event.gateClosesAt.getTime();
   if (!entryStarted || !gateStillOpen) {
-    throw new OutsideEntryWindowError();
+    throw new OutsideEntryWindowError(event.eventDate, event.gateClosesAt);
   }
 
   const now2 = new Date();

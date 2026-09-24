@@ -169,6 +169,8 @@ export function VolunteerScanPage() {
         setResult({ kind: "blocked", message: "Someone already scanned this a moment ago." });
       } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
         setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
+      } else if (error instanceof ApiError && error.code === "OUTSIDE_ENTRY_WINDOW") {
+        setResult({ kind: "blocked", message: error.message });
       } else {
         setResult({ kind: "blocked", message: "Could not allow entry. Try again." });
       }

@@ -159,20 +159,14 @@ export function VolunteerHomePage() {
         </div>
       </GlassPanel>
 
-      <GlassPanel className="flex flex-col gap-4 p-6">
-        <div className="flex items-center gap-3 text-sm text-white/80">
-          <MapPin size={18} className="text-festival-gold" />
-          {user.profile?.gate || user.profile?.zone
-            ? [user.profile?.gate, user.profile?.zone].filter(Boolean).join(" · ")
-            : "No gate/zone assigned yet"}
-        </div>
-        {(shiftStart || shiftEnd) && (
+      {(shiftStart || shiftEnd) && (
+        <GlassPanel className="flex flex-col gap-4 p-6">
           <div className="flex items-center gap-3 text-sm text-white/80">
             <Clock size={18} className="text-festival-gold" />
             {shiftStart} - {shiftEnd}
           </div>
-        )}
-      </GlassPanel>
+        </GlassPanel>
+      )}
 
       <p className="mt-6 text-center text-sm text-white/50">
         Head to the Scan tab to start checking in participants.

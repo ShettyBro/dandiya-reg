@@ -31,3 +31,14 @@ createRoot(rootElement).render(
     </BrowserRouter>
   </StrictMode>
 );
+
+// The app mounted without the ErrorBoundary's auto-reload-on-chunk-failure kicking in — clear its
+// once-per-failure guard after a short stable period so a genuinely new failure later in this same
+// tab session can still trigger one automatic recovery reload instead of being silently suppressed.
+window.setTimeout(() => {
+  try {
+    sessionStorage.removeItem("dandiya-chunk-reload-attempted");
+  } catch {
+    // sessionStorage unavailable — nothing to clear.
+  }
+}, 5000);

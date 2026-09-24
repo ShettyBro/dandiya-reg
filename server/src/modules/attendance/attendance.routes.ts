@@ -22,6 +22,23 @@ import type { Env } from "../../app/config/env.js";
 
 const gateSchema = z.enum(["COLLEGE_GATE", "EVENT_GATE"]);
 
+function formatIstTime(date: Date): string {
+  return date.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" });
+}
+
+function outsideEntryWindowMessage(error: OutsideEntryWindowError): string {
+  const now = Date.now();
+  if (now < error.entryOpensAt.getTime()) {
+    const opensAt = formatIstTime(error.entryOpensAt);
+    const closesText = error.entryClosesAt ? ` and closes at ${formatIstTime(error.entryClosesAt)}` : "";
+    return `Entry hasn't opened yet. Normal entry opens at ${opensAt}${closesText} — please scan again during that window.`;
+  }
+  if (error.entryClosesAt && now > error.entryClosesAt.getTime()) {
+    return `The entry window has closed (it ended at ${formatIstTime(error.entryClosesAt)}). Normal entry is no longer allowed.`;
+  }
+  return "Normal entry is only allowed during the event's entry window.";
+}
+
 const tokenSchema = z.object({
   token: z.string().min(1),
   gate: gateSchema.optional()
@@ -117,7 +134,7 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
           return;
         }
         if (error instanceof OutsideEntryWindowError) {
-          sendError(req, res, 409, "OUTSIDE_ENTRY_WINDOW", "Normal entry is only allowed during the event's entry window");
+          sendError(req, res, 409, "OUTSIDE_ENTRY_WINDOW", outsideEntryWindowMessage(error));
           return;
         }
         if (error instanceof GateNotAssignedError) {
