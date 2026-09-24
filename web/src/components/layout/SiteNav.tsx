@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { List, X } from "@phosphor-icons/react";
+import { InstagramLogo, List, X } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
 import { Container } from "../ui/Container.js";
 import { LinkButton } from "../ui/Button.js";
@@ -10,6 +10,8 @@ const NAV_LINKS = [
   { label: "Rules", href: "#rules" },
   { label: "Check Status", to: "/registration/status" }
 ];
+
+const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -77,6 +79,16 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
           </LinkButton>
         </nav>
 
+        <a
+          href={INSTAGRAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Follow @acharya_sahitya on Instagram"
+          className="hidden h-10 w-10 items-center justify-center rounded-pill border border-white/10 bg-white/5 text-white/75 transition-colors hover:border-festival-gold/50 hover:text-festival-gold md:flex"
+        >
+          <InstagramLogo size={20} weight="fill" />
+        </a>
+
         <button
           type="button"
           className="flex h-10 w-10 items-center justify-center rounded-pill border border-white/10 bg-white/5 text-white md:hidden"
@@ -118,6 +130,16 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                   </a>
                 )
               )}
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 text-sm text-white/80"
+              >
+                <InstagramLogo size={18} weight="fill" />
+                @acharya_sahitya
+              </a>
               <LinkButton to="/register" className="w-full">
                 Join the Celebration
               </LinkButton>

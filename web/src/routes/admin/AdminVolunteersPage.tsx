@@ -4,7 +4,7 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { CustomSelect } from "../../components/ui/CustomSelect.js";
-import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -88,7 +88,7 @@ export function AdminVolunteersPage() {
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? error.message
+            ? STAFF_SERVER_UNREACHABLE_MESSAGE
             : "Could not load volunteers."
         )
       )
@@ -131,7 +131,7 @@ export function AdminVolunteersPage() {
       fetchVolunteers();
     } catch (createError) {
       if (createError instanceof ApiError && createError.code === SERVER_UNREACHABLE_CODE) {
-        setFormError(createError.message);
+        setFormError(STAFF_SERVER_UNREACHABLE_MESSAGE);
       } else if (createError instanceof ApiError && createError.code === "EMAIL_ALREADY_EXISTS") {
         setFormError("A user with this email already exists.");
       } else {
@@ -153,7 +153,7 @@ export function AdminVolunteersPage() {
     } catch (toggleError) {
       setError(
         toggleError instanceof ApiError && toggleError.code === SERVER_UNREACHABLE_CODE
-          ? toggleError.message
+          ? STAFF_SERVER_UNREACHABLE_MESSAGE
           : "Could not update volunteer status."
       );
     } finally {
@@ -173,7 +173,7 @@ export function AdminVolunteersPage() {
     } catch (gateError) {
       setError(
         gateError instanceof ApiError && gateError.code === SERVER_UNREACHABLE_CODE
-          ? gateError.message
+          ? STAFF_SERVER_UNREACHABLE_MESSAGE
           : "Could not update gate assignment."
       );
     } finally {
@@ -192,7 +192,7 @@ export function AdminVolunteersPage() {
     } catch (resetError) {
       setError(
         resetError instanceof ApiError && resetError.code === SERVER_UNREACHABLE_CODE
-          ? resetError.message
+          ? STAFF_SERVER_UNREACHABLE_MESSAGE
           : "Could not reset password."
       );
     } finally {

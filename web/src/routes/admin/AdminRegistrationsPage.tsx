@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CaretDown, Trash } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { FormField } from "../../components/ui/FormField.js";
-import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
+import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, STAFF_SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
 type Filter =
@@ -101,7 +101,7 @@ export function AdminRegistrationsPage() {
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
-            ? error.message
+            ? STAFF_SERVER_UNREACHABLE_MESSAGE
             : "Could not load registrations."
         )
       )
@@ -129,7 +129,7 @@ export function AdminRegistrationsPage() {
       } catch (detailError) {
         setError(
           detailError instanceof ApiError && detailError.code === SERVER_UNREACHABLE_CODE
-            ? detailError.message
+            ? STAFF_SERVER_UNREACHABLE_MESSAGE
             : "Could not load registration details."
         );
       } finally {

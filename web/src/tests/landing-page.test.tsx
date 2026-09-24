@@ -12,7 +12,7 @@ describe("LandingPage", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Dandiya Night 2026");
-    expect(screen.getAllByRole("link", { name: /register now/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /join the celebration/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /check status/i }).length).toBeGreaterThan(0);
   });
 

@@ -1,6 +1,8 @@
-import { CheckCircle } from "@phosphor-icons/react";
+import { CheckCircle, InstagramLogo } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { LinkButton } from "../../components/ui/Button.js";
+
+const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SuccessStep({ publicCode }: { publicCode: string }) {
   return (
@@ -22,6 +24,15 @@ export function SuccessStep({ publicCode }: { publicCode: string }) {
       <LinkButton to={`/registration/status?code=${publicCode}`} className="mt-2">
         Check status
       </LinkButton>
+      <a
+        href={INSTAGRAM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 flex items-center gap-2 text-sm text-white/60 hover:text-festival-gold"
+      >
+        <InstagramLogo size={20} weight="fill" />
+        Follow us @acharya_sahitya
+      </a>
     </GlassPanel>
   );
 }
