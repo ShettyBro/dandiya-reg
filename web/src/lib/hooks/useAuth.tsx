@@ -15,7 +15,7 @@ export interface VolunteerProfile {
 
 export interface AuthUser {
   userId: string;
-  role: "ADMIN" | "FINANCE" | "VOLUNTEER" | "TEAM_LEADER";
+  role: "ADMIN" | "FINANCE" | "VOLUNTEER" | "TEAM_LEADER" | "ID_VERIFIER";
   email: string;
   mustChangePassword: boolean;
   profile: VolunteerProfile | null;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteNav } from "../components/layout/SiteNav.js";
 import { SiteFooter } from "../components/layout/SiteFooter.js";
 import { BambooGallery } from "../components/gallery/BambooGallery.js";
@@ -12,6 +12,7 @@ import { PhotoUploadStep } from "./register/PhotoUploadStep.js";
 import { IdentityUploadStep } from "./register/IdentityUploadStep.js";
 import { PaymentStep } from "./register/PaymentStep.js";
 import { SuccessStep } from "./register/SuccessStep.js";
+import { clearRegistrationProgress, loadRegistrationProgress, saveRegistrationProgress } from "./register/registrationProgress.js";
 import type { RegistrationType } from "./register/registrationTypes.js";
 
 function createIdempotencyKey(): string {
@@ -22,15 +23,29 @@ function createIdempotencyKey(): string {
 
 export function RegisterPage() {
   const { config, loading: configLoading } = useEventConfig();
-  const [idempotencyKey] = useState(createIdempotencyKey);
-  const [step, setStep] = useState(0);
-  const [registrationType, setRegistrationType] = useState<RegistrationType | null>(null);
-  const [registrationId, setRegistrationId] = useState<string | null>(null);
-  const [publicCode, setPublicCode] = useState<string | null>(null);
-  const [identityDocumentType, setIdentityDocumentType] = useState<"AADHAAR" | "COLLEGE_ID" | undefined>(undefined);
+  const restored = useState(loadRegistrationProgress)[0];
+  const [idempotencyKey] = useState(() => restored?.idempotencyKey ?? createIdempotencyKey());
+  const [step, setStep] = useState(restored?.step ?? 0);
+  const [registrationType, setRegistrationType] = useState<RegistrationType | null>(restored?.registrationType ?? null);
+  const [registrationId, setRegistrationId] = useState<string | null>(restored?.registrationId ?? null);
+  const [publicCode, setPublicCode] = useState<string | null>(restored?.publicCode ?? null);
   const checkingAvailability = step === 0 && configLoading;
   const closedForNewRegistrations = step === 0 && !configLoading && config !== null && !config.registrationOpen;
   const needsIdentityStep = registrationType === "NON_ACHARYAN_STUDENT" || registrationType === "ACHARYA_ALUMNI";
+
+  useEffect(() => {
+    if (step === 0) {
+      // Nothing worth resuming yet — avoid persisting a fresh idempotency key for someone who
+      // never got past the category picker.
+      return;
+    }
+    if (step >= 5) {
+      // Registration finished — clear so the next visit (same device, another registration) starts clean.
+      clearRegistrationProgress();
+      return;
+    }
+    saveRegistrationProgress({ idempotencyKey, step, registrationType, registrationId, publicCode });
+  }, [idempotencyKey, step, registrationType, registrationId, publicCode]);
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -70,10 +85,9 @@ export function RegisterPage() {
               registrationType={registrationType}
               idempotencyKey={idempotencyKey}
               onBack={() => setStep(0)}
-              onComplete={(response, docType) => {
+              onComplete={(response) => {
                 setRegistrationId(response.registrationId);
                 setPublicCode(response.publicCode);
-                setIdentityDocumentType(docType);
                 setStep(2);
               }}
             />
@@ -90,7 +104,6 @@ export function RegisterPage() {
             <IdentityUploadStep
               registrationId={registrationId}
               registrationType={registrationType}
-              identityDocumentType={identityDocumentType}
               onComplete={() => setStep(4)}
             />
           )}

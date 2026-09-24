@@ -15,7 +15,7 @@ export function StaffLoginPage({
 }: {
   title: string;
   subtitle: string;
-  allowedRoles: Array<"ADMIN" | "FINANCE">;
+  allowedRoles: Array<"ADMIN" | "FINANCE" | "ID_VERIFIER">;
   redirectTo: string;
 }) {
   const { login, logout } = useAuth();
@@ -32,7 +32,7 @@ export function StaffLoginPage({
     try {
       await login(email, password);
       const me = await apiRequest<{ role: string }>("/auth/me");
-      if (!allowedRoles.includes(me.role as "ADMIN" | "FINANCE")) {
+      if (!allowedRoles.includes(me.role as "ADMIN" | "FINANCE" | "ID_VERIFIER")) {
         await logout();
         setError("This account does not have access to this panel.");
         return;

@@ -13,6 +13,7 @@ const env = loadEnv(process.env);
 const app = createApp(env, prisma);
 
 const FINANCE_EMAIL = `test-na-finance-${Date.now()}@acharya.ac.in`;
+const VERIFIER_EMAIL = `test-na-verifier-${Date.now()}@acharya.ac.in`;
 const PASSWORD = "correct horse battery staple";
 const createdRegistrationIds: string[] = [];
 
@@ -27,6 +28,8 @@ function randomPhone(): string {
 
 let financeCookies: string[];
 let financeCsrf: string;
+let verifierCookies: string[];
+let verifierCsrf: string;
 
 async function createNonAcharyanRegistration(suffix: string) {
   const created = await request(app)
@@ -68,9 +71,16 @@ beforeAll(async () => {
   await prisma.user.create({
     data: { email: FINANCE_EMAIL, passwordHash, role: "FINANCE", status: "ACTIVE" }
   });
+  await prisma.user.create({
+    data: { email: VERIFIER_EMAIL, passwordHash, role: "ID_VERIFIER", status: "ACTIVE" }
+  });
   const login = await request(app).post("/api/v1/auth/login").send({ email: FINANCE_EMAIL, password: PASSWORD });
   financeCookies = login.headers["set-cookie"] as unknown as string[];
   financeCsrf = extractCookie(financeCookies, "csrf_token") ?? "";
+
+  const verifierLogin = await request(app).post("/api/v1/auth/login").send({ email: VERIFIER_EMAIL, password: PASSWORD });
+  verifierCookies = verifierLogin.headers["set-cookie"] as unknown as string[];
+  verifierCsrf = extractCookie(verifierCookies, "csrf_token") ?? "";
 });
 
 afterAll(async () => {
@@ -81,9 +91,9 @@ afterAll(async () => {
   await prisma.uploadIntent.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.payment.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.registration.deleteMany({ where: { id: { in: createdRegistrationIds } } });
-  await prisma.refreshToken.deleteMany({ where: { user: { email: FINANCE_EMAIL } } });
-  await prisma.auditLog.deleteMany({ where: { actorUser: { email: FINANCE_EMAIL } } });
-  await prisma.user.deleteMany({ where: { email: FINANCE_EMAIL } });
+  await prisma.refreshToken.deleteMany({ where: { user: { email: { in: [FINANCE_EMAIL, VERIFIER_EMAIL] } } } });
+  await prisma.auditLog.deleteMany({ where: { actorUser: { email: { in: [FINANCE_EMAIL, VERIFIER_EMAIL] } } } });
+  await prisma.user.deleteMany({ where: { email: { in: [FINANCE_EMAIL, VERIFIER_EMAIL] } } });
   await prisma.$disconnect();
 });
 
@@ -111,10 +121,16 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
     expect(blockedApprove.status).toBe(409);
     expect(blockedApprove.body.code).toBe("IDENTITY_NOT_APPROVED");
 
-    const approveIdentity = await request(app)
+    const financeBlockedFromIdentity = await request(app)
       .post(`/api/v1/admin/identity/non-acharyan/${registration.registrationId}/approve`)
       .set("Cookie", financeCookies)
       .set("X-CSRF-Token", financeCsrf);
+    expect(financeBlockedFromIdentity.status).toBe(403);
+
+    const approveIdentity = await request(app)
+      .post(`/api/v1/admin/identity/non-acharyan/${registration.registrationId}/approve`)
+      .set("Cookie", verifierCookies)
+      .set("X-CSRF-Token", verifierCsrf);
     expect(approveIdentity.status).toBe(200);
 
     const afterIdentityApproved = await prisma.registration.findUniqueOrThrow({
@@ -153,8 +169,8 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
 
     const rejectIdentity = await request(app)
       .post(`/api/v1/admin/identity/non-acharyan/${registration.registrationId}/reject`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrf)
+      .set("Cookie", verifierCookies)
+      .set("X-CSRF-Token", verifierCsrf)
       .send({ reason: "Aadhaar image unreadable" });
     expect(rejectIdentity.status).toBe(200);
 

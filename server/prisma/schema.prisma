@@ -13,6 +13,7 @@ enum UserRole {
   FINANCE
   VOLUNTEER
   TEAM_LEADER
+  ID_VERIFIER
 }
 
 enum UserStatus {
@@ -30,6 +31,7 @@ enum RegistrationType {
 enum IdentityDocumentType {
   AADHAAR
   COLLEGE_ID
+  ACHARYAN_PROOF
 }
 
 enum Gate {
@@ -64,6 +66,7 @@ enum UploadPurpose {
   PAYMENT_PROOF
   AADHAAR_IMAGE
   COLLEGE_ID_IMAGE
+  ACHARYAN_PROOF
 }
 
 enum CredentialType {
@@ -189,6 +192,7 @@ model Registration {
   aadhaarNumber           String?
   aadhaarImageObjectKey   String?
   collegeIdImageObjectKey String?
+  acharyanProofObjectKey  String?
   identityDocumentType    IdentityDocumentType?
   identityStatus          IdentityStatus?
   identityRejectionReason String?

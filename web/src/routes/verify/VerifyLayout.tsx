@@ -1,14 +1,14 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { ChartBar, CreditCard } from "@phosphor-icons/react";
+import { ChartBar, IdentificationCard } from "@phosphor-icons/react";
 import { StaffShell, type StaffNavItem } from "../../components/staff/StaffShell.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
 const NAV_ITEMS: StaffNavItem[] = [
-  { to: "/finance/dashboard", label: "Dashboard", icon: ChartBar },
-  { to: "/finance/payments", label: "Payments", icon: CreditCard }
+  { to: "/verify/dashboard", label: "Dashboard", icon: ChartBar },
+  { to: "/verify/identity", label: "Identity", icon: IdentificationCard }
 ];
 
-export function FinanceLayout() {
+export function VerifyLayout() {
   const { user, loading, logout } = useAuth();
 
   if (loading) {
@@ -19,15 +19,15 @@ export function FinanceLayout() {
     );
   }
 
-  if (!user || user.role !== "FINANCE") {
-    return <Navigate to="/fin-login" replace />;
+  if (!user || user.role !== "ID_VERIFIER") {
+    return <Navigate to="/verify-login" replace />;
   }
 
   return (
     <StaffShell
       navItems={NAV_ITEMS}
       brandLabel="Dandiya Night 2026"
-      roleLabel="Finance Panel"
+      roleLabel="ID Verification Panel"
       userLabel={user.email}
       onLogout={logout}
     >

@@ -72,42 +72,23 @@ export const nonAcharyanStudentSchema = z.object({
   collegeName: z.string().trim().min(2).max(200).transform(lowercaseText)
 });
 
-const aadhaarNumberSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(20)
-  .regex(/^\d+$/, "Aadhaar number must contain digits only");
-
-// Acharya Alumni must prove identity with exactly one of Aadhaar or College ID — never both, never
-// neither. The Aadhaar-number requirement (only when Aadhaar is the chosen document) is enforced by
-// the superRefine below, since discriminatedUnion members must stay plain ZodObjects.
+// Acharya Alumni: no Acharya email-domain requirement (alumni may no longer have one) and no
+// Aadhaar/College-ID choice — identity is proven with a single generic "Acharyan proof" document
+// uploaded separately (IdentityUploadStep), not a field collected here.
 export const acharyaAlumniSchema = z.object({
   registrationType: z.literal("ACHARYA_ALUMNI"),
   name: nameSchema,
-  email: acharyaEmailSchema,
+  email: z.string().trim().toLowerCase().email(),
   auid: z.string().trim().min(2).max(40).transform(lowercaseText),
-  phone: phoneSchema,
-  identityDocumentType: z.enum(["AADHAAR", "COLLEGE_ID"]),
-  aadhaarNumber: aadhaarNumberSchema.optional()
+  phone: phoneSchema
 });
 
-export const registrationSchema = z
-  .discriminatedUnion("registrationType", [
-    acharyaStudentSchema,
-    acharyaFacultySchema,
-    acharyaAlumniSchema,
-    nonAcharyanStudentSchema
-  ])
-  .superRefine((data, ctx) => {
-    if (data.registrationType === "ACHARYA_ALUMNI" && data.identityDocumentType === "AADHAAR" && !data.aadhaarNumber) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Aadhaar number is required when Aadhaar is chosen as the identity document",
-        path: ["aadhaarNumber"]
-      });
-    }
-  });
+export const registrationSchema = z.discriminatedUnion("registrationType", [
+  acharyaStudentSchema,
+  acharyaFacultySchema,
+  acharyaAlumniSchema,
+  nonAcharyanStudentSchema
+]);
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 export type AcharyaStudentInput = z.infer<typeof acharyaStudentSchema>;

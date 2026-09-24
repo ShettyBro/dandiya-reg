@@ -61,6 +61,8 @@ interface RegistrationDetail extends RegistrationItem {
   photoUrl: string | null;
   aadhaarImageUrl: string | null;
   collegeIdImageUrl: string | null;
+  acharyanProofUrl: string | null;
+  acharyanProofIsPdf: boolean;
   payment:
     | (RegistrationItem["payment"] & {
         rejectionReason: string | null;
@@ -319,28 +321,41 @@ export function AdminRegistrationsPage() {
 
                         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                           {[
-                            { label: "Photo", url: detail.photoUrl },
-                            { label: "Payment screenshot", url: detail.payment?.proofUrl ?? null },
-                            { label: "Aadhaar image", url: detail.aadhaarImageUrl },
-                            { label: "College ID image", url: detail.collegeIdImageUrl }
+                            { label: "Photo", url: detail.photoUrl, isPdf: false },
+                            { label: "Payment screenshot", url: detail.payment?.proofUrl ?? null, isPdf: false },
+                            { label: "Aadhaar image", url: detail.aadhaarImageUrl, isPdf: false },
+                            { label: "College ID image", url: detail.collegeIdImageUrl, isPdf: false },
+                            { label: "Acharyan proof document", url: detail.acharyanProofUrl, isPdf: detail.acharyanProofIsPdf }
                           ]
                             .filter((asset) => asset.url)
                             .map((asset) => (
                               <div key={asset.label}>
                                 <p className="mb-1.5 text-xs font-semibold text-white/70">{asset.label}</p>
-                                <div className="max-h-80 overflow-hidden rounded-xl border border-white/10 bg-black">
-                                  <img
-                                    src={asset.url ?? undefined}
-                                    alt={asset.label}
-                                    className="max-h-80 w-full object-contain"
-                                  />
-                                </div>
+                                {asset.isPdf ? (
+                                  <a
+                                    href={asset.url ?? undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex h-32 items-center justify-center rounded-xl border border-festival-gold/30 bg-white/5 text-sm font-medium text-festival-gold hover:bg-white/10"
+                                  >
+                                    Open PDF
+                                  </a>
+                                ) : (
+                                  <div className="max-h-80 overflow-hidden rounded-xl border border-white/10 bg-black">
+                                    <img
+                                      src={asset.url ?? undefined}
+                                      alt={asset.label}
+                                      className="max-h-80 w-full object-contain"
+                                    />
+                                  </div>
+                                )}
                               </div>
                             ))}
                           {!detail.photoUrl &&
                             !detail.payment?.proofUrl &&
                             !detail.aadhaarImageUrl &&
-                            !detail.collegeIdImageUrl && (
+                            !detail.collegeIdImageUrl &&
+                            !detail.acharyanProofUrl && (
                               <p className="text-xs text-white/40">No files uploaded yet for this registration.</p>
                             )}
                         </div>

@@ -66,8 +66,17 @@ const FinanceDashboardPage = lazy(() =>
 const FinancePaymentsPage = lazy(() =>
   import("./routes/finance/FinancePaymentsPage.js").then((m) => ({ default: m.FinancePaymentsPage }))
 );
-const FinanceIdentityPage = lazy(() =>
-  import("./routes/finance/FinanceIdentityPage.js").then((m) => ({ default: m.FinanceIdentityPage }))
+const VerifyLoginPage = lazy(() =>
+  import("./routes/verify/VerifyLoginPage.js").then((m) => ({ default: m.VerifyLoginPage }))
+);
+const VerifyLayout = lazy(() =>
+  import("./routes/verify/VerifyLayout.js").then((m) => ({ default: m.VerifyLayout }))
+);
+const VerifyDashboardPage = lazy(() =>
+  import("./routes/verify/VerifyDashboardPage.js").then((m) => ({ default: m.VerifyDashboardPage }))
+);
+const VerifyIdentityPage = lazy(() =>
+  import("./routes/verify/VerifyIdentityPage.js").then((m) => ({ default: m.VerifyIdentityPage }))
 );
 
 function VolunteerFallback() {
@@ -146,7 +155,25 @@ export function App() {
         >
           <Route path="/finance/dashboard" element={<FinanceDashboardPage />} />
           <Route path="/finance/payments" element={<FinancePaymentsPage />} />
-          <Route path="/finance/identity" element={<FinanceIdentityPage />} />
+        </Route>
+
+        <Route
+          path="/verify-login"
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <VerifyLoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <VerifyLayout />
+            </Suspense>
+          }
+        >
+          <Route path="/verify/dashboard" element={<VerifyDashboardPage />} />
+          <Route path="/verify/identity" element={<VerifyIdentityPage />} />
         </Route>
       </Routes>
       </AuthProvider>

@@ -1,5 +1,5 @@
 import { IdentityReviewPanel } from "../../components/staff/IdentityReviewPanel.js";
 
-export function FinanceIdentityPage() {
+export function VerifyIdentityPage() {
   return <IdentityReviewPanel />;
 }

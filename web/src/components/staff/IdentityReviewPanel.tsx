@@ -25,7 +25,7 @@ interface ListItem {
   phone: string;
   collegeName: string | null;
   auid: string | null;
-  identityDocumentType: "AADHAAR" | "COLLEGE_ID" | null;
+  identityDocumentType: "AADHAAR" | "COLLEGE_ID" | "ACHARYAN_PROOF" | null;
   publicCode: string;
   status: RegistrationStatus;
   identityStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
@@ -38,8 +38,16 @@ interface DetailItem extends ListItem {
   photoUrl: string | null;
   aadhaarImageUrl: string | null;
   collegeIdImageUrl: string | null;
+  acharyanProofUrl: string | null;
+  acharyanProofIsPdf: boolean;
   payment: { transactionId: string | null; status: string; submittedAt: string | null } | null;
 }
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  AADHAAR: "Aadhaar Card",
+  COLLEGE_ID: "College ID Card",
+  ACHARYAN_PROOF: "Acharyan proof document"
+};
 
 const FILTERS: Array<{ label: string; value: RegistrationStatus | "ALL" }> = [
   { label: "Pending identity", value: "IDENTITY_PENDING" },
@@ -205,7 +213,7 @@ export function IdentityReviewPanel() {
                           <div>
                             <p className="text-xs text-white/50">Identity document</p>
                             <p className="mt-1 text-white/85">
-                              {detail.identityDocumentType === "AADHAAR" ? "Aadhaar Card" : "College ID Card"}
+                              {detail.identityDocumentType ? DOCUMENT_TYPE_LABELS[detail.identityDocumentType] : "—"}
                             </p>
                           </div>
                           {detail.identityDocumentType === "AADHAAR" && (
@@ -226,14 +234,25 @@ export function IdentityReviewPanel() {
 
                         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                           {[
-                            { label: "Photo", url: detail.photoUrl },
+                            { label: "Photo", url: detail.photoUrl, isPdf: false },
                             ...(detail.identityDocumentType === "AADHAAR"
-                              ? [{ label: "Aadhaar image", url: detail.aadhaarImageUrl }]
-                              : [{ label: "College ID image", url: detail.collegeIdImageUrl }])
+                              ? [{ label: "Aadhaar image", url: detail.aadhaarImageUrl, isPdf: false }]
+                              : detail.identityDocumentType === "ACHARYAN_PROOF"
+                                ? [{ label: "Acharyan proof document", url: detail.acharyanProofUrl, isPdf: detail.acharyanProofIsPdf }]
+                                : [{ label: "College ID image", url: detail.collegeIdImageUrl, isPdf: false }])
                           ].map((slot) => (
                             <div key={slot.label}>
                               <p className="mb-1.5 text-xs text-white/50">{slot.label}</p>
-                              {slot.url ? (
+                              {slot.url && slot.isPdf ? (
+                                <a
+                                  href={slot.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex h-32 items-center justify-center rounded-xl border border-festival-gold/30 bg-white/5 text-sm font-medium text-festival-gold hover:bg-white/10"
+                                >
+                                  Open PDF
+                                </a>
+                              ) : slot.url ? (
                                 <img
                                   src={slot.url}
                                   alt={slot.label}

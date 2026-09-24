@@ -48,16 +48,8 @@ export async function submitPaymentProof(
   if (registrationForPhotoCheck.registrationType === "NON_ACHARYAN_STUDENT" && !registrationForPhotoCheck.collegeIdImageObjectKey) {
     throw new PhotoRequiredError();
   }
-  if (registrationForPhotoCheck.registrationType === "ACHARYA_ALUMNI") {
-    const hasChosenDocument =
-      registrationForPhotoCheck.identityDocumentType === "AADHAAR"
-        ? Boolean(registrationForPhotoCheck.aadhaarImageObjectKey)
-        : registrationForPhotoCheck.identityDocumentType === "COLLEGE_ID"
-          ? Boolean(registrationForPhotoCheck.collegeIdImageObjectKey)
-          : false;
-    if (!hasChosenDocument) {
-      throw new PhotoRequiredError();
-    }
+  if (registrationForPhotoCheck.registrationType === "ACHARYA_ALUMNI" && !registrationForPhotoCheck.acharyanProofObjectKey) {
+    throw new PhotoRequiredError();
   }
 
   try {

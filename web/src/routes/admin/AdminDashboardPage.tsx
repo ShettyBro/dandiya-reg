@@ -19,8 +19,16 @@ interface DashboardMetrics {
   maintenanceMode: boolean | null;
 }
 
+interface IdentityDashboardMetrics {
+  pending: number;
+  approved: number;
+  rejected: number;
+  total: number;
+}
+
 export function AdminDashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [identityMetrics, setIdentityMetrics] = useState<IdentityDashboardMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
@@ -29,8 +37,11 @@ export function AdminDashboardPage() {
   function fetchMetrics() {
     setLoading(true);
     setError(null);
-    apiRequest<DashboardMetrics>("/admin/dashboard")
-      .then((data) => setMetrics(data))
+    Promise.all([apiRequest<DashboardMetrics>("/admin/dashboard"), apiRequest<IdentityDashboardMetrics>("/admin/identity/dashboard")])
+      .then(([data, identity]) => {
+        setMetrics(data);
+        setIdentityMetrics(identity);
+      })
       .catch((error) => {
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
@@ -123,6 +134,20 @@ export function AdminDashboardPage() {
         />
         <StatCard label="Team Leader overrides" value={String(metrics.overrideCount)} accent="red" />
       </div>
+
+      {identityMetrics && (
+        <div>
+          <p className="mb-3 text-xs uppercase tracking-[0.12em] text-white/50">
+            ID verification (Non-Acharyan + Alumni)
+          </p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard label="Pending verification" value={String(identityMetrics.pending)} accent="indigo" />
+            <StatCard label="Approved" value={String(identityMetrics.approved)} accent="emerald" />
+            <StatCard label="Rejected" value={String(identityMetrics.rejected)} accent="red" />
+            <StatCard label="Total" value={String(identityMetrics.total)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

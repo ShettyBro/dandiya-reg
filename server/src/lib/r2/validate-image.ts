@@ -9,6 +9,7 @@ const MAX_ASPECT_RATIO_DEVIATION = 0.15;
 
 export interface ValidateUploadedImageOptions {
   requireSquareAspectRatio?: boolean;
+  allowedMimeTypes?: string[];
 }
 
 export async function validateUploadedImage(
@@ -18,6 +19,8 @@ export async function validateUploadedImage(
   maxSizeBytes: number,
   options: ValidateUploadedImageOptions = {}
 ): Promise<void> {
+  const allowedMimeTypes = options.allowedMimeTypes ?? ALLOWED_IMAGE_MIME_TYPES;
+
   let head;
   try {
     head = await headObject(client, bucket, key);
@@ -34,8 +37,14 @@ export async function validateUploadedImage(
     );
   }
 
-  if (!head.contentType || !ALLOWED_IMAGE_MIME_TYPES.includes(head.contentType)) {
+  if (!head.contentType || !allowedMimeTypes.includes(head.contentType)) {
     throw new ImageValidationError(`Unsupported content type: ${head.contentType ?? "unknown"}`);
+  }
+
+  // PDFs aren't decodable as images — size and content type are already validated above, and
+  // that's all a PDF proof document needs.
+  if (head.contentType === "application/pdf") {
+    return;
   }
 
   const bytes = await getObjectBytes(client, bucket, key);

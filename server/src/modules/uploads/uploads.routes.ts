@@ -6,7 +6,7 @@ import { uploadPresignRateLimiter } from "../../lib/security/rate-limit.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { presignPutUrl } from "../../lib/r2/presign.js";
 import {
-  ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_PROOF_MIME_TYPES,
   extensionForMime,
   maxSizeForPurpose,
   objectKeyForPurpose
@@ -15,8 +15,10 @@ import type { Env } from "../../app/config/env.js";
 
 const presignSchema = z.object({
   registrationId: z.string().uuid(),
-  purpose: z.enum(["PARTICIPANT_PHOTO", "PAYMENT_PROOF", "AADHAAR_IMAGE", "COLLEGE_ID_IMAGE"]),
-  contentType: z.enum(ALLOWED_IMAGE_MIME_TYPES as [string, ...string[]])
+  purpose: z.enum(["PARTICIPANT_PHOTO", "PAYMENT_PROOF", "AADHAAR_IMAGE", "COLLEGE_ID_IMAGE", "ACHARYAN_PROOF"]),
+  // application/pdf is only ever actually accepted for ACHARYAN_PROOF — enforced authoritatively
+  // at bind time (registration.routes.ts), not here; presigning is just a storage reservation.
+  contentType: z.enum(ALLOWED_PROOF_MIME_TYPES as [string, ...string[]])
 });
 
 export function createUploadsRouter(prisma: PrismaClient, env: Env): Router {

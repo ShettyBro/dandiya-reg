@@ -35,9 +35,32 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
   const router = Router();
 
   router.get(
+    "/admin/identity/dashboard",
+    requireAuth(env),
+    requireRole("ADMIN", "ID_VERIFIER"),
+    requireActiveUser(prisma),
+    async (_req, res) => {
+      const [pending, approved, rejected, total] = await Promise.all([
+        prisma.registration.count({
+          where: { registrationType: { in: IDENTITY_REQUIRED_TYPES }, identityStatus: "PENDING" }
+        }),
+        prisma.registration.count({
+          where: { registrationType: { in: IDENTITY_REQUIRED_TYPES }, identityStatus: "APPROVED" }
+        }),
+        prisma.registration.count({
+          where: { registrationType: { in: IDENTITY_REQUIRED_TYPES }, identityStatus: "REJECTED" }
+        }),
+        prisma.registration.count({ where: { registrationType: { in: IDENTITY_REQUIRED_TYPES } } })
+      ]);
+
+      res.status(200).json({ pending, approved, rejected, total });
+    }
+  );
+
+  router.get(
     "/admin/identity/non-acharyan",
     requireAuth(env),
-    requireRole("ADMIN", "FINANCE"),
+    requireRole("ADMIN", "ID_VERIFIER"),
     requireActiveUser(prisma),
     async (req, res) => {
       const parsed = listQuerySchema.safeParse(req.query);
@@ -82,7 +105,7 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
   router.get(
     "/admin/identity/non-acharyan/:id",
     requireAuth(env),
-    requireRole("ADMIN", "FINANCE"),
+    requireRole("ADMIN", "ID_VERIFIER"),
     requireActiveUser(prisma),
     async (req, res) => {
       const id = stringParam(req.params.id);
@@ -98,10 +121,11 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
         return;
       }
 
-      const [photoUrl, aadhaarImageUrl, collegeIdImageUrl] = await Promise.all([
+      const [photoUrl, aadhaarImageUrl, collegeIdImageUrl, acharyanProofUrl] = await Promise.all([
         presignIfPresent(env, registration.photoObjectKey),
         presignIfPresent(env, registration.aadhaarImageObjectKey),
-        presignIfPresent(env, registration.collegeIdImageObjectKey)
+        presignIfPresent(env, registration.collegeIdImageObjectKey),
+        presignIfPresent(env, registration.acharyanProofObjectKey)
       ]);
 
       res.status(200).json({
@@ -121,6 +145,8 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
         photoUrl,
         aadhaarImageUrl,
         collegeIdImageUrl,
+        acharyanProofUrl,
+        acharyanProofIsPdf: (registration.acharyanProofObjectKey ?? "").toLowerCase().endsWith(".pdf"),
         payment: registration.payment
           ? {
               transactionId: registration.payment.transactionId,
@@ -135,7 +161,7 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
   router.post(
     "/admin/identity/non-acharyan/:id/approve",
     requireAuth(env),
-    requireRole("ADMIN", "FINANCE"),
+    requireRole("ADMIN", "ID_VERIFIER"),
     requireActiveUser(prisma),
     async (req, res) => {
       const id = stringParam(req.params.id);
@@ -160,7 +186,7 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
   router.post(
     "/admin/identity/non-acharyan/:id/reject",
     requireAuth(env),
-    requireRole("ADMIN", "FINANCE"),
+    requireRole("ADMIN", "ID_VERIFIER"),
     requireActiveUser(prisma),
     async (req, res) => {
       const parsed = rejectSchema.safeParse(req.body);

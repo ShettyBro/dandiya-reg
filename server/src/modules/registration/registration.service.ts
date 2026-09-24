@@ -82,11 +82,6 @@ export async function createRegistration(
           if (dup) throw new DuplicateEmployeeIdError();
         }
 
-        if (data.registrationType === "ACHARYA_ALUMNI" && data.aadhaarNumber) {
-          const dup = await findActiveDuplicate(tx, { aadhaarNumber: data.aadhaarNumber });
-          if (dup) throw new DuplicateAadhaarError();
-        }
-
         const resubmissionOf =
           data.registrationType === "ACHARYA_STUDENT" || data.registrationType === "ACHARYA_ALUMNI"
             ? await findMostRecentRejected(tx, { auid: data.auid })
@@ -116,8 +111,7 @@ export async function createRegistration(
                 : data.registrationType === "ACHARYA_ALUMNI"
                   ? {
                       auid: data.auid,
-                      identityDocumentType: data.identityDocumentType,
-                      aadhaarNumber: data.identityDocumentType === "AADHAAR" ? (data.aadhaarNumber ?? null) : null,
+                      identityDocumentType: "ACHARYAN_PROOF" as const,
                       identityStatus: "PENDING" as const
                     }
                   : {

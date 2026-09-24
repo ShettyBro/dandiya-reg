@@ -22,6 +22,7 @@ import { registrationSchema } from "./registration.schemas.js";
 import { normalizeIndianPhone, INDIAN_PHONE_REGEX } from "../../lib/security/phone.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { validateUploadedImage, ImageValidationError } from "../../lib/r2/validate-image.js";
+import { ALLOWED_IMAGE_MIME_TYPES, ALLOWED_PROOF_MIME_TYPES } from "../../lib/r2/object-keys.js";
 import type { Env } from "../../app/config/env.js";
 
 const photoBindSchema = z.object({
@@ -29,9 +30,25 @@ const photoBindSchema = z.object({
 });
 
 const IMAGE_BIND_PURPOSES = {
-  photo: { purpose: "PARTICIPANT_PHOTO", field: "photoObjectKey", requireSquare: true },
-  "aadhaar-image": { purpose: "AADHAAR_IMAGE", field: "aadhaarImageObjectKey", requireSquare: false },
-  "college-id-image": { purpose: "COLLEGE_ID_IMAGE", field: "collegeIdImageObjectKey", requireSquare: false }
+  photo: { purpose: "PARTICIPANT_PHOTO", field: "photoObjectKey", requireSquare: true, allowedMimeTypes: ALLOWED_IMAGE_MIME_TYPES },
+  "aadhaar-image": {
+    purpose: "AADHAAR_IMAGE",
+    field: "aadhaarImageObjectKey",
+    requireSquare: false,
+    allowedMimeTypes: ALLOWED_IMAGE_MIME_TYPES
+  },
+  "college-id-image": {
+    purpose: "COLLEGE_ID_IMAGE",
+    field: "collegeIdImageObjectKey",
+    requireSquare: false,
+    allowedMimeTypes: ALLOWED_IMAGE_MIME_TYPES
+  },
+  "acharyan-proof": {
+    purpose: "ACHARYAN_PROOF",
+    field: "acharyanProofObjectKey",
+    requireSquare: false,
+    allowedMimeTypes: ALLOWED_PROOF_MIME_TYPES
+  }
 } as const;
 
 export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router {
@@ -210,7 +227,8 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
       try {
         const client = getR2Client(env);
         await validateUploadedImage(client, env.R2_BUCKET_NAME, intent.objectKey, intent.maxSizeBytes, {
-          requireSquareAspectRatio: config.requireSquare
+          requireSquareAspectRatio: config.requireSquare,
+          allowedMimeTypes: [...config.allowedMimeTypes]
         });
       } catch (error) {
         if (error instanceof R2NotConfiguredError) {

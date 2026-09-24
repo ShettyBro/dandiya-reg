@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import {
   createRegistration,
-  DuplicateAadhaarError,
   DuplicateAuidError,
   DuplicateEmailError,
   DuplicateEmployeeIdError,
@@ -132,22 +131,18 @@ describe("lifecycle-aware uniqueness", () => {
     await expect(register(openEventId, faculty())).rejects.toBeInstanceOf(DuplicateEmployeeIdError);
   });
 
-  it("rejects a second active Acharya Alumni registration with the same Aadhaar number", async () => {
-    const aadhaarNumber = `${Date.now()}`.padStart(12, "1");
+  it("rejects a second active Acharya Alumni registration with the same AUID", async () => {
+    const auid = `alumni-auid-dup-${Date.now()}`;
     const alumni = (overrides: Record<string, unknown> = {}) => ({
       registrationType: "ACHARYA_ALUMNI" as const,
       name: "test alumni",
       phone: randomPhone(),
-      email: `alumni-${Date.now()}-${Math.random()}@acharya.ac.in`,
-      auid: `alumni-auid-${Date.now()}-${Math.random()}`,
-      identityDocumentType: "AADHAAR" as const,
-      aadhaarNumber,
+      email: `alumni-${Date.now()}-${Math.random()}@gmail.com`,
+      auid,
       ...overrides
     });
     await register(openEventId, alumni());
-    await expect(register(openEventId, alumni({ auid: `alumni-auid-${Date.now()}-${Math.random()}` }))).rejects.toBeInstanceOf(
-      DuplicateAadhaarError
-    );
+    await expect(register(openEventId, alumni({ phone: randomPhone() }))).rejects.toBeInstanceOf(DuplicateAuidError);
   });
 
   it("rejects a second active registration with the same phone within the same type", async () => {

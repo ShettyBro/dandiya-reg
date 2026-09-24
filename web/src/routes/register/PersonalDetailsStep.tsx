@@ -50,8 +50,6 @@ const TYPE_LABELS: Record<RegistrationType, string> = {
   NON_ACHARYAN_STUDENT: "Non-Acharyan Student"
 };
 
-type IdentityDocumentType = "AADHAAR" | "COLLEGE_ID";
-
 export function PersonalDetailsStep({
   registrationType,
   idempotencyKey,
@@ -61,7 +59,7 @@ export function PersonalDetailsStep({
   registrationType: RegistrationType;
   idempotencyKey: string;
   onBack: () => void;
-  onComplete: (response: CreateRegistrationResponse, identityDocumentType?: IdentityDocumentType) => void;
+  onComplete: (response: CreateRegistrationResponse) => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -71,32 +69,21 @@ export function PersonalDetailsStep({
   const [institution, setInstitution] = useState("");
   const [year, setYear] = useState("");
   const [collegeName, setCollegeName] = useState("");
-  const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [identityDocumentType, setIdentityDocumentType] = useState<IdentityDocumentType | "">("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<{ phone?: boolean; email?: boolean }>({});
 
-  const requireAcharyaDomain = registrationType !== "NON_ACHARYAN_STUDENT";
+  // Only Acharya Student/Faculty require an @acharya.ac.in address — Alumni may no longer have
+  // one, so their email (like Non-Acharyan's) accepts any valid address.
+  const requireAcharyaDomain = registrationType === "ACHARYA_STUDENT" || registrationType === "ACHARYA_FACULTY";
   const phoneValidationError = phoneError(phone);
   const emailValidationError = emailError(email, requireAcharyaDomain);
-  const alumniIdentityMissing =
-    registrationType === "ACHARYA_ALUMNI" &&
-    (!identityDocumentType || (identityDocumentType === "AADHAAR" && !aadhaarNumber.trim()));
-  const hasBlockingFieldErrors = Boolean(phoneValidationError || emailValidationError || alumniIdentityMissing);
+  const hasBlockingFieldErrors = Boolean(phoneValidationError || emailValidationError);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
     setTouched({ phone: true, email: true });
-    if (alumniIdentityMissing) {
-      setFormError(
-        !identityDocumentType
-          ? "Choose one identity document (Aadhaar or College ID)."
-          : "Enter your Aadhaar number."
-      );
-      return;
-    }
     if (hasBlockingFieldErrors) {
       return;
     }
@@ -109,12 +96,7 @@ export function PersonalDetailsStep({
         : registrationType === "ACHARYA_FACULTY"
           ? { ...base, employeeId, institution }
           : registrationType === "ACHARYA_ALUMNI"
-            ? {
-                ...base,
-                auid,
-                identityDocumentType,
-                ...(identityDocumentType === "AADHAAR" ? { aadhaarNumber } : {})
-              }
+            ? { ...base, auid }
             : { ...base, collegeName };
 
     try {
@@ -123,7 +105,7 @@ export function PersonalDetailsStep({
         headers: { "Idempotency-Key": idempotencyKey },
         body
       });
-      onComplete(response, registrationType === "ACHARYA_ALUMNI" ? (identityDocumentType || undefined) : undefined);
+      onComplete(response);
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "REGISTRATION_CLOSED") {
@@ -171,10 +153,11 @@ export function PersonalDetailsStep({
           placeholder="9876543210"
         />
 
-        {registrationType === "NON_ACHARYAN_STUDENT" ? (
+        {requireAcharyaDomain ? (
           <FormField
-            label="College email"
+            label="Acharya email"
             type="email"
+            placeholder="you@acharya.ac.in"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
@@ -184,9 +167,8 @@ export function PersonalDetailsStep({
           />
         ) : (
           <FormField
-            label="Acharya email"
+            label={registrationType === "NON_ACHARYAN_STUDENT" ? "College email" : "Email"}
             type="email"
-            placeholder="you@acharya.ac.in"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
@@ -233,43 +215,7 @@ export function PersonalDetailsStep({
         )}
 
         {registrationType === "ACHARYA_ALUMNI" && (
-          <>
-            <FormField label="AUID" value={auid} onChange={(e) => setAuid(e.target.value)} required />
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white/85">Identity document</label>
-              <p className="mb-2 text-xs text-white/50">Upload any one identity document.</p>
-              <div className="flex gap-2">
-                {(
-                  [
-                    { value: "AADHAAR", label: "Aadhaar Card" },
-                    { value: "COLLEGE_ID", label: "College ID Card" }
-                  ] as const
-                ).map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setIdentityDocumentType(option.value)}
-                    className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                      identityDocumentType === option.value
-                        ? "border-festival-gold bg-festival-gold/10 text-festival-gold"
-                        : "border-white/15 text-white/60 hover:text-white"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {identityDocumentType === "AADHAAR" && (
-              <FormField
-                label="Aadhaar number"
-                value={aadhaarNumber}
-                onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ""))}
-                inputMode="numeric"
-                required
-              />
-            )}
-          </>
+          <FormField label="AUID" value={auid} onChange={(e) => setAuid(e.target.value)} required />
         )}
 
         {registrationType === "NON_ACHARYAN_STUDENT" && (

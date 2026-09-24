@@ -73,68 +73,34 @@ describe("POST /api/v1/registrations", () => {
     createdRegistrationIds.push(response.body.registrationId);
   });
 
-  it("accepts an Acharya Alumni registration choosing College ID as identity proof (no Aadhaar needed)", async () => {
+  it("accepts an Acharya Alumni registration with any email domain (no acharya.ac.in requirement)", async () => {
     const response = await request(app)
       .post("/api/v1/registrations")
-      .set("Idempotency-Key", `http-alumni-collegeid-${Date.now()}`)
+      .set("Idempotency-Key", `http-alumni-anyemail-${Date.now()}`)
       .send({
         registrationType: "ACHARYA_ALUMNI",
         name: "Alumni Test",
         phone: randomPhone(),
-        email: `http-alumni-collegeid-${Date.now()}@acharya.ac.in`,
-        auid: `http-alumni-auid-${Date.now()}`,
-        identityDocumentType: "COLLEGE_ID"
+        email: `http-alumni-anyemail-${Date.now()}@gmail.com`,
+        auid: `http-alumni-auid-${Date.now()}`
       });
 
     expect(response.status).toBe(201);
     createdRegistrationIds.push(response.body.registrationId);
+
+    const stored = await prisma.registration.findUniqueOrThrow({ where: { id: response.body.registrationId } });
+    expect(stored.identityDocumentType).toBe("ACHARYAN_PROOF");
   });
 
-  it("accepts an Acharya Alumni registration choosing Aadhaar as identity proof", async () => {
+  it("rejects an Acharya Alumni registration with no AUID", async () => {
     const response = await request(app)
       .post("/api/v1/registrations")
-      .set("Idempotency-Key", `http-alumni-aadhaar-${Date.now()}`)
+      .set("Idempotency-Key", `http-alumni-no-auid-${Date.now()}`)
       .send({
         registrationType: "ACHARYA_ALUMNI",
         name: "Alumni Test",
         phone: randomPhone(),
-        email: `http-alumni-aadhaar-${Date.now()}@acharya.ac.in`,
-        auid: `http-alumni-auid2-${Date.now()}`,
-        identityDocumentType: "AADHAAR",
-        aadhaarNumber: `${Date.now()}`
-      });
-
-    expect(response.status).toBe(201);
-    createdRegistrationIds.push(response.body.registrationId);
-  });
-
-  it("rejects an Acharya Alumni registration that chose Aadhaar but supplied no Aadhaar number", async () => {
-    const response = await request(app)
-      .post("/api/v1/registrations")
-      .set("Idempotency-Key", `http-alumni-no-doc-${Date.now()}`)
-      .send({
-        registrationType: "ACHARYA_ALUMNI",
-        name: "Alumni Test",
-        phone: randomPhone(),
-        email: `http-alumni-no-doc-${Date.now()}@acharya.ac.in`,
-        auid: `http-alumni-auid3-${Date.now()}`,
-        identityDocumentType: "AADHAAR"
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.code).toBe("VALIDATION_ERROR");
-  });
-
-  it("rejects an Acharya Alumni registration with no identityDocumentType at all", async () => {
-    const response = await request(app)
-      .post("/api/v1/registrations")
-      .set("Idempotency-Key", `http-alumni-missing-doctype-${Date.now()}`)
-      .send({
-        registrationType: "ACHARYA_ALUMNI",
-        name: "Alumni Test",
-        phone: randomPhone(),
-        email: `http-alumni-missing-doctype-${Date.now()}@acharya.ac.in`,
-        auid: `http-alumni-auid4-${Date.now()}`
+        email: `http-alumni-no-auid-${Date.now()}@gmail.com`
       });
 
     expect(response.status).toBe(400);

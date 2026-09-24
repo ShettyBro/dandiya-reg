@@ -131,11 +131,12 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
         return;
       }
 
-      const [photoUrl, paymentProofUrl, aadhaarImageUrl, collegeIdImageUrl] = await Promise.all([
+      const [photoUrl, paymentProofUrl, aadhaarImageUrl, collegeIdImageUrl, acharyanProofUrl] = await Promise.all([
         presignIfPresent(env, registration.photoObjectKey),
         presignIfPresent(env, registration.payment?.proofObjectKey ?? null),
         presignIfPresent(env, registration.aadhaarImageObjectKey),
-        presignIfPresent(env, registration.collegeIdImageObjectKey)
+        presignIfPresent(env, registration.collegeIdImageObjectKey),
+        presignIfPresent(env, registration.acharyanProofObjectKey)
       ]);
 
       res.status(200).json({
@@ -159,6 +160,8 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
         photoUrl,
         aadhaarImageUrl,
         collegeIdImageUrl,
+        acharyanProofUrl,
+        acharyanProofIsPdf: (registration.acharyanProofObjectKey ?? "").toLowerCase().endsWith(".pdf"),
         payment: registration.payment
           ? {
               status: registration.payment.status,

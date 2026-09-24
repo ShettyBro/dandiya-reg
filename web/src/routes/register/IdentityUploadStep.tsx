@@ -3,7 +3,7 @@ import { IdentificationCard } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
-import { IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
+import { IDENTITY_IMAGE_MAX_BYTES, putFileToPresignedUrl, validateImageFile, validateProofFile } from "../../lib/upload.js";
 import type { RegistrationType } from "./registrationTypes.js";
 
 interface PresignResponse {
@@ -15,11 +15,13 @@ function UploadSlot({
   label,
   file,
   error,
+  accept,
   onSelect
 }: {
   label: string;
   file: File | null;
   error: string | null;
+  accept: string;
   onSelect: (file: File | null) => void;
 }) {
   return (
@@ -27,7 +29,7 @@ function UploadSlot({
       <label className="mb-2 block text-sm font-medium text-white/85">{label}</label>
       <input
         type="file"
-        accept="image/jpeg,image/png"
+        accept={accept}
         onChange={(e) => onSelect(e.target.files?.[0] ?? null)}
         className="block w-full text-sm text-white/70 file:mr-4 file:rounded-pill file:border-0 file:bg-festival-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-midnight-950"
       />
@@ -40,48 +42,35 @@ function UploadSlot({
 export function IdentityUploadStep({
   registrationId,
   registrationType,
-  identityDocumentType,
   onComplete
 }: {
   registrationId: string;
   registrationType: RegistrationType;
-  identityDocumentType?: "AADHAAR" | "COLLEGE_ID";
   onComplete: () => void;
 }) {
-  // Non-Acharyan Student only ever proves identity with a College ID Card — Aadhaar was removed for
-  // this category entirely. Acharya Alumni proves identity with exactly the one document they chose.
-  const requiredDocument: "AADHAAR" | "COLLEGE_ID" =
-    registrationType === "NON_ACHARYAN_STUDENT" ? "COLLEGE_ID" : identityDocumentType ?? "COLLEGE_ID";
+  const isAlumni = registrationType === "ACHARYA_ALUMNI";
 
-  const [aadhaarImage, setAadhaarImage] = useState<File | null>(null);
-  const [collegeIdImage, setCollegeIdImage] = useState<File | null>(null);
-  const [aadhaarError, setAadhaarError] = useState<string | null>(null);
-  const [collegeIdError, setCollegeIdError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function selectAadhaar(file: File | null) {
-    setAadhaarError(null);
-    if (!file) return setAadhaarImage(null);
-    const error = validateImageFile(file, IDENTITY_IMAGE_MAX_BYTES);
-    if (error) return setAadhaarError(error);
-    setAadhaarImage(file);
+  function selectFile(selected: File | null) {
+    setFileError(null);
+    if (!selected) return setFile(null);
+    const error = isAlumni
+      ? validateProofFile(selected, IDENTITY_IMAGE_MAX_BYTES)
+      : validateImageFile(selected, IDENTITY_IMAGE_MAX_BYTES);
+    if (error) return setFileError(error);
+    setFile(selected);
   }
 
-  function selectCollegeId(file: File | null) {
-    setCollegeIdError(null);
-    if (!file) return setCollegeIdImage(null);
-    const error = validateImageFile(file, IDENTITY_IMAGE_MAX_BYTES);
-    if (error) return setCollegeIdError(error);
-    setCollegeIdImage(file);
-  }
-
-  async function uploadOne(file: File, purpose: "AADHAAR_IMAGE" | "COLLEGE_ID_IMAGE", bindPath: string) {
+  async function uploadOne(selected: File, purpose: "COLLEGE_ID_IMAGE" | "ACHARYAN_PROOF", bindPath: string) {
     const presign = await apiRequest<PresignResponse>("/uploads/presign", {
       method: "POST",
-      body: { registrationId, purpose, contentType: file.type }
+      body: { registrationId, purpose, contentType: selected.type }
     });
-    await putFileToPresignedUrl(presign.uploadUrl, file);
+    await putFileToPresignedUrl(presign.uploadUrl, selected);
     await apiRequest(`/registrations/${registrationId}/${bindPath}`, {
       method: "PATCH",
       body: { objectKey: presign.objectKey }
@@ -89,29 +78,28 @@ export function IdentityUploadStep({
   }
 
   async function handleSubmit() {
-    if (requiredDocument === "AADHAAR" && !aadhaarImage) {
-      setFormError("Aadhaar card image is required.");
-      return;
-    }
-    if (requiredDocument === "COLLEGE_ID" && !collegeIdImage) {
-      setFormError("College ID card image is required.");
+    if (!file) {
+      setFormError(isAlumni ? "Upload proof that you are an Acharyan." : "College ID card image is required.");
       return;
     }
     setSubmitting(true);
     setFormError(null);
     try {
-      if (requiredDocument === "AADHAAR" && aadhaarImage) {
-        await uploadOne(aadhaarImage, "AADHAAR_IMAGE", "aadhaar-image");
-      }
-      if (requiredDocument === "COLLEGE_ID" && collegeIdImage) {
-        await uploadOne(collegeIdImage, "COLLEGE_ID_IMAGE", "college-id-image");
+      if (isAlumni) {
+        await uploadOne(file, "ACHARYAN_PROOF", "acharyan-proof");
+      } else {
+        await uploadOne(file, "COLLEGE_ID_IMAGE", "college-id-image");
       }
       onComplete();
     } catch (error) {
       if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
         setFormError(error.message);
       } else if (error instanceof ApiError && error.code === "IMAGE_VALIDATION_FAILED") {
-        setFormError("The image could not be validated. Try a clear JPG/PNG under 1MB.");
+        setFormError(
+          isAlumni
+            ? "The file could not be validated. Try a clear JPG/PNG/PDF under 1MB."
+            : "The image could not be validated. Try a clear JPG/PNG under 1MB."
+        );
       } else {
         setFormError("Upload failed. Please try again.");
       }
@@ -127,18 +115,19 @@ export function IdentityUploadStep({
         <h2 className="font-display text-xl font-semibold text-white">Identity verification</h2>
       </div>
       <p className="mt-1 text-sm text-white/60">
-        {registrationType === "ACHARYA_ALUMNI"
-          ? "Upload any one identity document. JPG/PNG, max 1MB."
+        {isAlumni
+          ? "Upload any proof that you are an Acharyan (old ID card, degree certificate, admit card, etc). JPG, PNG, or PDF, max 1MB."
           : "We need to verify your identity. JPG/PNG, max 1MB."}
       </p>
 
       <div className="mt-6 flex flex-col gap-5">
-        {requiredDocument === "AADHAAR" && (
-          <UploadSlot label="Aadhaar card image" file={aadhaarImage} error={aadhaarError} onSelect={selectAadhaar} />
-        )}
-        {requiredDocument === "COLLEGE_ID" && (
-          <UploadSlot label="College ID card image" file={collegeIdImage} error={collegeIdError} onSelect={selectCollegeId} />
-        )}
+        <UploadSlot
+          label={isAlumni ? "Proof of being an Acharyan" : "College ID card image"}
+          file={file}
+          error={fileError}
+          accept={isAlumni ? "image/jpeg,image/png,application/pdf" : "image/jpeg,image/png"}
+          onSelect={selectFile}
+        />
 
         <p className="text-xs text-white/40">
           You must still carry your physical ID to the event — this upload is for verification only and

@@ -17,16 +17,28 @@ export function collegeIdImageKey(registrationId: string, extension: string): st
   return `participants/${registrationId}/college-id/${randomUUID()}.${extension}`;
 }
 
+export function acharyanProofKey(registrationId: string, extension: string): string {
+  return `participants/${registrationId}/acharyan-proof/${randomUUID()}.${extension}`;
+}
+
 const MIME_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png"
 };
 
+// Acharya Alumni's "any proof you are an Acharyan" upload additionally accepts PDF — every other
+// upload purpose (photo, payment proof, Aadhaar/College ID images) stays image-only.
+const PROOF_MIME_EXTENSIONS: Record<string, string> = {
+  ...MIME_EXTENSIONS,
+  "application/pdf": "pdf"
+};
+
 export function extensionForMime(mime: string): string | undefined {
-  return MIME_EXTENSIONS[mime];
+  return PROOF_MIME_EXTENSIONS[mime];
 }
 
 export const ALLOWED_IMAGE_MIME_TYPES = Object.keys(MIME_EXTENSIONS);
+export const ALLOWED_PROOF_MIME_TYPES = Object.keys(PROOF_MIME_EXTENSIONS);
 
 export const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024;
 export const MAX_IDENTITY_IMAGE_SIZE_BYTES = 1 * 1024 * 1024;
@@ -49,5 +61,7 @@ export function objectKeyForPurpose(
       return aadhaarImageKey(registrationId, extension);
     case "COLLEGE_ID_IMAGE":
       return collegeIdImageKey(registrationId, extension);
+    case "ACHARYAN_PROOF":
+      return acharyanProofKey(registrationId, extension);
   }
 }
