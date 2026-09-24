@@ -23,7 +23,18 @@ enum UserStatus {
 enum RegistrationType {
   ACHARYA_STUDENT
   ACHARYA_FACULTY
+  ACHARYA_ALUMNI
   NON_ACHARYAN_STUDENT
+}
+
+enum IdentityDocumentType {
+  AADHAAR
+  COLLEGE_ID
+}
+
+enum Gate {
+  COLLEGE_GATE
+  EVENT_GATE
 }
 
 enum RegistrationStatus {
@@ -121,6 +132,8 @@ model User {
   identityVerifiedRegistrations Registration[]  @relation("IdentityVerifiedByUser")
   attendanceOverrides    AttendanceOverride[]
   scannedAttendances     Attendance[]           @relation("LastScannerUser")
+  collegeGateScannedAttendances Attendance[]    @relation("CollegeGateScannerUser")
+  eventGateScannedAttendances   Attendance[]    @relation("EventGateScannerUser")
   auditLogs              AuditLog[]
   refreshTokens          RefreshToken[]
 
@@ -140,6 +153,7 @@ model VolunteerProfile {
   staffCredentialId String? @unique
   staffCredential PassCredential? @relation(fields: [staffCredentialId], references: [id])
   mustChangePassword Boolean @default(true)
+  assignedGate  Gate?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -170,11 +184,12 @@ model Registration {
   // Acharya Faculty only
   employeeId String?
 
-  // Non-Acharyan Student only
+  // Non-Acharyan Student + Acharya Alumni (identity verification)
   collegeName             String?
   aadhaarNumber           String?
   aadhaarImageObjectKey   String?
   collegeIdImageObjectKey String?
+  identityDocumentType    IdentityDocumentType?
   identityStatus          IdentityStatus?
   identityRejectionReason String?
   identityVerifiedBy      User?           @relation("IdentityVerifiedByUser", fields: [identityVerifiedById], references: [id])
@@ -264,6 +279,7 @@ model Attendance {
   id                String          @id @default(uuid())
   registration      Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   registrationId    String          @unique
+  // Legacy single-gate fields — no longer written by new code, kept to preserve historical data.
   state             AttendanceState @default(NOT_ENTERED)
   entryCount        Int             @default(0)
   firstEntryAt      DateTime?
@@ -271,9 +287,28 @@ model Attendance {
   lastScannerUser   User?           @relation("LastScannerUser", fields: [lastScannerUserId], references: [id])
   lastScannerUserId String?
   lastGate          String?
+
+  // College Gate — independent one-time-entry state
+  collegeGateState             AttendanceState @default(NOT_ENTERED)
+  collegeGateEntryCount        Int             @default(0)
+  collegeGateFirstEntryAt      DateTime?
+  collegeGateLastEntryAt       DateTime?
+  collegeGateLastScannerUser   User?           @relation("CollegeGateScannerUser", fields: [collegeGateLastScannerUserId], references: [id])
+  collegeGateLastScannerUserId String?
+
+  // Event Entry Gate — independent one-time-entry state
+  eventGateState             AttendanceState @default(NOT_ENTERED)
+  eventGateEntryCount        Int             @default(0)
+  eventGateFirstEntryAt      DateTime?
+  eventGateLastEntryAt       DateTime?
+  eventGateLastScannerUser   User?           @relation("EventGateScannerUser", fields: [eventGateLastScannerUserId], references: [id])
+  eventGateLastScannerUserId String?
+
   updatedAt         DateTime        @updatedAt
 
   @@index([state])
+  @@index([collegeGateState])
+  @@index([eventGateState])
   @@map("attendance")
 }
 
@@ -283,11 +318,13 @@ model AttendanceOverride {
   registrationId String
   teamLeaderUser User         @relation(fields: [teamLeaderUserId], references: [id])
   teamLeaderUserId String
+  gate           Gate
   reasonText     String
   originalState  AttendanceState
   createdAt      DateTime     @default(now())
 
   @@index([registrationId])
+  @@index([gate])
   @@map("attendance_overrides")
 }
 

@@ -46,8 +46,11 @@ interface CreateRegistrationResponse {
 const TYPE_LABELS: Record<RegistrationType, string> = {
   ACHARYA_STUDENT: "Acharya Student",
   ACHARYA_FACULTY: "Acharya Faculty",
+  ACHARYA_ALUMNI: "Acharya Alumni",
   NON_ACHARYAN_STUDENT: "Non-Acharyan Student"
 };
+
+type IdentityDocumentType = "AADHAAR" | "COLLEGE_ID";
 
 export function PersonalDetailsStep({
   registrationType,
@@ -58,7 +61,7 @@ export function PersonalDetailsStep({
   registrationType: RegistrationType;
   idempotencyKey: string;
   onBack: () => void;
-  onComplete: (response: CreateRegistrationResponse) => void;
+  onComplete: (response: CreateRegistrationResponse, identityDocumentType?: IdentityDocumentType) => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -69,6 +72,7 @@ export function PersonalDetailsStep({
   const [year, setYear] = useState("");
   const [collegeName, setCollegeName] = useState("");
   const [aadhaarNumber, setAadhaarNumber] = useState("");
+  const [identityDocumentType, setIdentityDocumentType] = useState<IdentityDocumentType | "">("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<{ phone?: boolean; email?: boolean }>({});
@@ -76,12 +80,23 @@ export function PersonalDetailsStep({
   const requireAcharyaDomain = registrationType !== "NON_ACHARYAN_STUDENT";
   const phoneValidationError = phoneError(phone);
   const emailValidationError = emailError(email, requireAcharyaDomain);
-  const hasBlockingFieldErrors = Boolean(phoneValidationError || emailValidationError);
+  const alumniIdentityMissing =
+    registrationType === "ACHARYA_ALUMNI" &&
+    (!identityDocumentType || (identityDocumentType === "AADHAAR" && !aadhaarNumber.trim()));
+  const hasBlockingFieldErrors = Boolean(phoneValidationError || emailValidationError || alumniIdentityMissing);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
     setTouched({ phone: true, email: true });
+    if (alumniIdentityMissing) {
+      setFormError(
+        !identityDocumentType
+          ? "Choose one identity document (Aadhaar or College ID)."
+          : "Enter your Aadhaar number."
+      );
+      return;
+    }
     if (hasBlockingFieldErrors) {
       return;
     }
@@ -93,7 +108,14 @@ export function PersonalDetailsStep({
         ? { ...base, auid, institution, year: Number(year) }
         : registrationType === "ACHARYA_FACULTY"
           ? { ...base, employeeId, institution }
-          : { ...base, collegeName, aadhaarNumber };
+          : registrationType === "ACHARYA_ALUMNI"
+            ? {
+                ...base,
+                auid,
+                identityDocumentType,
+                ...(identityDocumentType === "AADHAAR" ? { aadhaarNumber } : {})
+              }
+            : { ...base, collegeName };
 
     try {
       const response = await apiRequest<CreateRegistrationResponse>("/registrations", {
@@ -101,7 +123,7 @@ export function PersonalDetailsStep({
         headers: { "Idempotency-Key": idempotencyKey },
         body
       });
-      onComplete(response);
+      onComplete(response, registrationType === "ACHARYA_ALUMNI" ? (identityDocumentType || undefined) : undefined);
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "REGISTRATION_CLOSED") {
@@ -126,6 +148,13 @@ export function PersonalDetailsStep({
       </button>
       <h2 className="font-display text-xl font-semibold text-white">{TYPE_LABELS[registrationType]}</h2>
       <p className="mt-1 text-sm text-white/60">Fill in your details below.</p>
+
+      {registrationType === "NON_ACHARYAN_STUDENT" && (
+        <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-xs text-amber-200">
+          Only students from other colleges are eligible for this registration. Public/general registrations
+          are not allowed.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
         <FormField label="Full name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
@@ -203,22 +232,53 @@ export function PersonalDetailsStep({
           </>
         )}
 
-        {registrationType === "NON_ACHARYAN_STUDENT" && (
+        {registrationType === "ACHARYA_ALUMNI" && (
           <>
-            <FormField
-              label="College name"
-              value={collegeName}
-              onChange={(e) => setCollegeName(e.target.value)}
-              required
-            />
-            <FormField
-              label="Aadhaar number"
-              value={aadhaarNumber}
-              onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ""))}
-              inputMode="numeric"
-              required
-            />
+            <FormField label="AUID" value={auid} onChange={(e) => setAuid(e.target.value)} required />
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white/85">Identity document</label>
+              <p className="mb-2 text-xs text-white/50">Upload any one identity document.</p>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { value: "AADHAAR", label: "Aadhaar Card" },
+                    { value: "COLLEGE_ID", label: "College ID Card" }
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setIdentityDocumentType(option.value)}
+                    className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      identityDocumentType === option.value
+                        ? "border-festival-gold bg-festival-gold/10 text-festival-gold"
+                        : "border-white/15 text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {identityDocumentType === "AADHAAR" && (
+              <FormField
+                label="Aadhaar number"
+                value={aadhaarNumber}
+                onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                required
+              />
+            )}
           </>
+        )}
+
+        {registrationType === "NON_ACHARYAN_STUDENT" && (
+          <FormField
+            label="College name"
+            value={collegeName}
+            onChange={(e) => setCollegeName(e.target.value)}
+            required
+          />
         )}
 
         {formError && <p className="text-sm text-red-300">{formError}</p>}

@@ -1,4 +1,4 @@
-import type { CredentialType, PrismaClient } from "@prisma/client";
+import type { CredentialType, Gate, PrismaClient, UserRole } from "@prisma/client";
 import { hashCredentialToken } from "../../lib/qr/credential.js";
 import { recordAuditLog } from "../audit/audit.service.js";
 import type { Env } from "../../app/config/env.js";
@@ -7,6 +7,33 @@ export class CredentialNotFoundError extends Error {}
 export class AlreadyEnteredError extends Error {}
 export class NotYetEnteredError extends Error {}
 export class OutsideEntryWindowError extends Error {}
+export class GateNotAssignedError extends Error {}
+
+type SingleGateState = "NOT_ENTERED" | "ENTERED" | "OVERRIDE_ENTRY";
+
+/**
+ * Resolves which gate a scan/allow/override request applies to. Server-authoritative: a normal
+ * VOLUNTEER can only ever act on their own admin-assigned gate — any client-supplied gate is
+ * ignored for that role. A TEAM_LEADER may explicitly act on either gate (override authority is
+ * required to exist at both gates regardless of the TL's own assignment), falling back to their
+ * own assignment when no gate is explicitly requested.
+ */
+export async function resolveEffectiveGate(
+  prisma: PrismaClient,
+  scannerUserId: string,
+  scannerRole: UserRole,
+  requestedGate: Gate | undefined
+): Promise<Gate> {
+  if (scannerRole === "TEAM_LEADER" && requestedGate) {
+    return requestedGate;
+  }
+
+  const profile = await prisma.volunteerProfile.findUnique({ where: { userId: scannerUserId } });
+  if (!profile?.assignedGate) {
+    throw new GateNotAssignedError();
+  }
+  return profile.assignedGate;
+}
 
 export interface ScanLookupResult {
   credentialType: CredentialType;
@@ -14,12 +41,17 @@ export interface ScanLookupResult {
   name: string | null;
   publicCode: string | null;
   photoObjectKey: string | null;
-  attendanceState: "NOT_ENTERED" | "ENTERED" | "OVERRIDE_ENTRY" | null;
+  gate: Gate | null;
+  attendanceState: SingleGateState | null;
   eligibleForAllow: boolean;
   eligibleForOverride: boolean;
 }
 
-export async function lookupCredential(prisma: PrismaClient, rawToken: string): Promise<ScanLookupResult> {
+export async function lookupCredential(
+  prisma: PrismaClient,
+  rawToken: string,
+  gate: Gate | null
+): Promise<ScanLookupResult> {
   const tokenHash = hashCredentialToken(rawToken);
   const credential = await prisma.passCredential.findUnique({
     where: { opaqueTokenHash: tokenHash },
@@ -37,6 +69,7 @@ export async function lookupCredential(prisma: PrismaClient, rawToken: string): 
       name: credential.label,
       publicCode: credential.publicCode,
       photoObjectKey: null,
+      gate,
       attendanceState: null,
       eligibleForAllow: true,
       eligibleForOverride: false
@@ -45,9 +78,11 @@ export async function lookupCredential(prisma: PrismaClient, rawToken: string): 
 
   const registration = credential.registration;
   const attendance = registration?.attendance;
-  if (!registration || !attendance) {
+  if (!registration || !attendance || !gate) {
     throw new CredentialNotFoundError();
   }
+
+  const state: SingleGateState = gate === "COLLEGE_GATE" ? attendance.collegeGateState : attendance.eventGateState;
 
   return {
     credentialType: "PARTICIPANT",
@@ -55,16 +90,17 @@ export async function lookupCredential(prisma: PrismaClient, rawToken: string): 
     name: registration.name,
     publicCode: registration.publicCode,
     photoObjectKey: registration.photoObjectKey,
-    attendanceState: attendance.state,
-    eligibleForAllow: attendance.state === "NOT_ENTERED",
-    eligibleForOverride: attendance.state === "ENTERED" || attendance.state === "OVERRIDE_ENTRY"
+    gate,
+    attendanceState: state,
+    eligibleForAllow: state === "NOT_ENTERED",
+    eligibleForOverride: state === "ENTERED" || state === "OVERRIDE_ENTRY"
   };
 }
 
 export interface AllowEntryParams {
   rawToken: string;
   scannerUserId: string;
-  gate?: string | undefined;
+  gate: Gate;
   requestId: string | null;
 }
 
@@ -93,7 +129,7 @@ export async function allowEntry(
       action: "STAFF_ENTRY_ALLOWED",
       entityType: "PassCredential",
       entityId: credential.id,
-      metadata: { gate: params.gate ?? null },
+      metadata: { gate: params.gate },
       requestId: params.requestId
     });
     return { type: "STAFF_GUEST_ADMIN", label: credential.label };
@@ -112,17 +148,29 @@ export async function allowEntry(
     throw new OutsideEntryWindowError();
   }
 
-  const result = await prisma.attendance.updateMany({
-    where: { registrationId: registration.id, state: "NOT_ENTERED" },
-    data: {
-      state: "ENTERED",
-      entryCount: { increment: 1 },
-      firstEntryAt: new Date(),
-      lastEntryAt: new Date(),
-      lastScannerUserId: params.scannerUserId,
-      lastGate: params.gate ?? null
-    }
-  });
+  const now2 = new Date();
+  const result =
+    params.gate === "COLLEGE_GATE"
+      ? await prisma.attendance.updateMany({
+          where: { registrationId: registration.id, collegeGateState: "NOT_ENTERED" },
+          data: {
+            collegeGateState: "ENTERED",
+            collegeGateEntryCount: { increment: 1 },
+            collegeGateFirstEntryAt: now2,
+            collegeGateLastEntryAt: now2,
+            collegeGateLastScannerUserId: params.scannerUserId
+          }
+        })
+      : await prisma.attendance.updateMany({
+          where: { registrationId: registration.id, eventGateState: "NOT_ENTERED" },
+          data: {
+            eventGateState: "ENTERED",
+            eventGateEntryCount: { increment: 1 },
+            eventGateFirstEntryAt: now2,
+            eventGateLastEntryAt: now2,
+            eventGateLastScannerUserId: params.scannerUserId
+          }
+        });
 
   if (result.count !== 1) {
     throw new AlreadyEnteredError();
@@ -135,7 +183,7 @@ export interface OverrideEntryParams {
   rawToken: string;
   teamLeaderUserId: string;
   reasonText: string;
-  gate?: string | undefined;
+  gate: Gate;
   requestId: string | null;
 }
 
@@ -159,23 +207,37 @@ export async function overrideEntry(
     throw new CredentialNotFoundError();
   }
 
-  if (attendance.state === "NOT_ENTERED") {
+  const currentState: SingleGateState =
+    params.gate === "COLLEGE_GATE" ? attendance.collegeGateState : attendance.eventGateState;
+
+  if (currentState === "NOT_ENTERED") {
     throw new NotYetEnteredError();
   }
 
-  const originalState = attendance.state;
+  const originalState = currentState;
+  const now = new Date();
 
   await prisma.$transaction(async (tx) => {
-    const result = await tx.attendance.updateMany({
-      where: { registrationId: registration.id, state: { in: ["ENTERED", "OVERRIDE_ENTRY"] } },
-      data: {
-        state: "OVERRIDE_ENTRY",
-        entryCount: { increment: 1 },
-        lastEntryAt: new Date(),
-        lastScannerUserId: params.teamLeaderUserId,
-        lastGate: params.gate ?? null
-      }
-    });
+    const result =
+      params.gate === "COLLEGE_GATE"
+        ? await tx.attendance.updateMany({
+            where: { registrationId: registration.id, collegeGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } },
+            data: {
+              collegeGateState: "OVERRIDE_ENTRY",
+              collegeGateEntryCount: { increment: 1 },
+              collegeGateLastEntryAt: now,
+              collegeGateLastScannerUserId: params.teamLeaderUserId
+            }
+          })
+        : await tx.attendance.updateMany({
+            where: { registrationId: registration.id, eventGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } },
+            data: {
+              eventGateState: "OVERRIDE_ENTRY",
+              eventGateEntryCount: { increment: 1 },
+              eventGateLastEntryAt: now,
+              eventGateLastScannerUserId: params.teamLeaderUserId
+            }
+          });
 
     if (result.count !== 1) {
       throw new NotYetEnteredError();
@@ -185,6 +247,7 @@ export async function overrideEntry(
       data: {
         registrationId: registration.id,
         teamLeaderUserId: params.teamLeaderUserId,
+        gate: params.gate,
         reasonText: params.reasonText,
         originalState
       }
@@ -195,7 +258,7 @@ export async function overrideEntry(
       action: "ATTENDANCE_OVERRIDE",
       entityType: "Registration",
       entityId: registration.id,
-      metadata: { reason: params.reasonText, originalState, gate: params.gate ?? null },
+      metadata: { reason: params.reasonText, originalState, gate: params.gate },
       requestId: params.requestId
     });
   });

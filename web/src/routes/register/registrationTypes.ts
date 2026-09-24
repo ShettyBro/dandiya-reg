@@ -1,4 +1,4 @@
-export type RegistrationType = "ACHARYA_STUDENT" | "ACHARYA_FACULTY" | "NON_ACHARYAN_STUDENT";
+export type RegistrationType = "ACHARYA_STUDENT" | "ACHARYA_FACULTY" | "ACHARYA_ALUMNI" | "NON_ACHARYAN_STUDENT";
 
 export const ACHARYA_INSTITUTIONS = [
   "Acharya Institute of Technology",

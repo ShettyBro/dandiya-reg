@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { PrismaClient, UserRole } from "@prisma/client";
+import type { Gate, PrismaClient, UserRole } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { hashPassword } from "../../lib/security/password.js";
 import { deriveSignedCredentialToken, hashCredentialToken, newCredentialId } from "../../lib/qr/credential.js";
@@ -60,6 +60,7 @@ export interface CreateVolunteerInput {
   zone?: string | undefined;
   shiftStart?: Date | undefined;
   shiftEnd?: Date | undefined;
+  assignedGate?: Gate | undefined;
 }
 
 export interface CreatedVolunteer {
@@ -92,6 +93,7 @@ export async function createVolunteer(
         zone: input.zone ?? null,
         shiftStart: input.shiftStart ?? null,
         shiftEnd: input.shiftEnd ?? null,
+        assignedGate: input.assignedGate ?? null,
         mustChangePassword: true,
         staffCredentialId: staffCredential.id
       }
@@ -166,6 +168,7 @@ export interface UpdateVolunteerInput {
   zone?: string | null | undefined;
   shiftStart?: Date | null | undefined;
   shiftEnd?: Date | null | undefined;
+  assignedGate?: Gate | null | undefined;
 }
 
 export async function updateVolunteer(
@@ -189,6 +192,7 @@ export async function updateVolunteer(
     if (input.zone !== undefined) profileUpdate.zone = input.zone;
     if (input.shiftStart !== undefined) profileUpdate.shiftStart = input.shiftStart;
     if (input.shiftEnd !== undefined) profileUpdate.shiftEnd = input.shiftEnd;
+    if (input.assignedGate !== undefined) profileUpdate.assignedGate = input.assignedGate;
 
     if (Object.keys(profileUpdate).length > 0) {
       await tx.volunteerProfile.update({ where: { userId }, data: profileUpdate });

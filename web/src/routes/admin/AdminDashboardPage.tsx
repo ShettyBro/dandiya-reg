@@ -11,7 +11,8 @@ interface DashboardMetrics {
   approved: number;
   rejected: number;
   totalCollectionInPaise: number;
-  entered: number;
+  collegeGateEntered: number;
+  eventGateEntered: number;
   remainingCapacity: number | null;
   overrideCount: number;
   registrationOpen: boolean | null;
@@ -114,7 +115,8 @@ export function AdminDashboardPage() {
         <StatCard label="Approved" value={String(metrics.approved)} accent="emerald" />
         <StatCard label="Rejected" value={String(metrics.rejected)} accent="red" />
         <StatCard label="Total collected" value={formatPriceInPaise(metrics.totalCollectionInPaise)} accent="emerald" />
-        <StatCard label="Entered" value={String(metrics.entered)} />
+        <StatCard label="College Gate entered" value={String(metrics.collegeGateEntered)} />
+        <StatCard label="Event Gate entered" value={String(metrics.eventGateEntered)} />
         <StatCard
           label="Vs. planning capacity (not a cap)"
           value={metrics.remainingCapacity === null ? "—" : String(metrics.remainingCapacity)}

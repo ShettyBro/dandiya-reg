@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiRequest, ApiError } from "../api.js";
 
+export type AssignedGate = "COLLEGE_GATE" | "EVENT_GATE";
+
 export interface VolunteerProfile {
   name: string;
   phone: string;
@@ -8,6 +10,7 @@ export interface VolunteerProfile {
   zone: string | null;
   shiftStart: string | null;
   shiftEnd: string | null;
+  assignedGate: AssignedGate | null;
 }
 
 export interface AuthUser {

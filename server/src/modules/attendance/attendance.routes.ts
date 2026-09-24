@@ -11,26 +11,31 @@ import {
   AlreadyEnteredError,
   allowEntry,
   CredentialNotFoundError,
+  GateNotAssignedError,
   lookupCredential,
   NotYetEnteredError,
   OutsideEntryWindowError,
-  overrideEntry
+  overrideEntry,
+  resolveEffectiveGate
 } from "./attendance.service.js";
 import type { Env } from "../../app/config/env.js";
 
+const gateSchema = z.enum(["COLLEGE_GATE", "EVENT_GATE"]);
+
 const tokenSchema = z.object({
-  token: z.string().min(1)
+  token: z.string().min(1),
+  gate: gateSchema.optional()
 });
 
 const allowSchema = z.object({
   token: z.string().min(1),
-  gate: z.string().trim().max(60).optional()
+  gate: gateSchema.optional()
 });
 
 const overrideSchema = z.object({
   token: z.string().min(1),
   reason: z.string().trim().min(5).max(300),
-  gate: z.string().trim().max(60).optional()
+  gate: gateSchema.optional()
 });
 
 export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
@@ -44,13 +49,14 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
     requireActiveUser(prisma),
     async (req, res) => {
       const parsed = tokenSchema.safeParse(req.body);
-      if (!parsed.success) {
-        sendError(req, res, 400, "VALIDATION_ERROR", "Invalid scan payload", parsed.error.flatten());
+      if (!parsed.success || !req.authUser) {
+        sendError(req, res, 400, "VALIDATION_ERROR", "Invalid scan payload", parsed.error?.flatten());
         return;
       }
 
       try {
-        const result = await lookupCredential(prisma, parsed.data.token);
+        const gate = await resolveEffectiveGate(prisma, req.authUser.id, req.authUser.role, parsed.data.gate);
+        const result = await lookupCredential(prisma, parsed.data.token, gate);
 
         let photoUrl: string | null = null;
         if (result.photoObjectKey) {
@@ -68,6 +74,10 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
       } catch (error) {
         if (error instanceof CredentialNotFoundError) {
           sendError(req, res, 404, "CREDENTIAL_NOT_FOUND", "No active credential matches this code");
+          return;
+        }
+        if (error instanceof GateNotAssignedError) {
+          sendError(req, res, 409, "GATE_NOT_ASSIGNED", "No gate has been assigned to your account yet. Contact the admin.");
           return;
         }
         throw error;
@@ -89,24 +99,29 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       try {
+        const gate = await resolveEffectiveGate(prisma, req.authUser.id, req.authUser.role, parsed.data.gate);
         const result = await allowEntry(prisma, env, {
           rawToken: parsed.data.token,
           scannerUserId: req.authUser.id,
-          gate: parsed.data.gate,
+          gate,
           requestId: req.id !== undefined ? String(req.id) : null
         });
-        res.status(200).json({ allowed: true, ...result });
+        res.status(200).json({ allowed: true, gate, ...result });
       } catch (error) {
         if (error instanceof CredentialNotFoundError) {
           sendError(req, res, 404, "CREDENTIAL_NOT_FOUND", "No active credential matches this code");
           return;
         }
         if (error instanceof AlreadyEnteredError) {
-          sendError(req, res, 409, "ALREADY_ENTERED", "This participant has already entered");
+          sendError(req, res, 409, "ALREADY_ENTERED", "This participant has already entered through this gate");
           return;
         }
         if (error instanceof OutsideEntryWindowError) {
           sendError(req, res, 409, "OUTSIDE_ENTRY_WINDOW", "Normal entry is only allowed during the event's entry window");
+          return;
+        }
+        if (error instanceof GateNotAssignedError) {
+          sendError(req, res, 409, "GATE_NOT_ASSIGNED", "No gate has been assigned to your account yet. Contact the admin.");
           return;
         }
         throw error;
@@ -128,21 +143,26 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       try {
+        const gate = await resolveEffectiveGate(prisma, req.authUser.id, req.authUser.role, parsed.data.gate);
         const result = await overrideEntry(prisma, {
           rawToken: parsed.data.token,
           teamLeaderUserId: req.authUser.id,
           reasonText: parsed.data.reason,
-          gate: parsed.data.gate,
+          gate,
           requestId: req.id !== undefined ? String(req.id) : null
         });
-        res.status(200).json({ allowed: true, overridden: true, ...result });
+        res.status(200).json({ allowed: true, overridden: true, gate, ...result });
       } catch (error) {
         if (error instanceof CredentialNotFoundError) {
           sendError(req, res, 404, "CREDENTIAL_NOT_FOUND", "No active credential matches this code");
           return;
         }
         if (error instanceof NotYetEnteredError) {
-          sendError(req, res, 409, "NOT_YET_ENTERED", "This participant has not entered yet; use normal allow-entry instead");
+          sendError(req, res, 409, "NOT_YET_ENTERED", "This participant has not entered through this gate yet; use normal allow-entry instead");
+          return;
+        }
+        if (error instanceof GateNotAssignedError) {
+          sendError(req, res, 409, "GATE_NOT_ASSIGNED", "No gate has been assigned to your account yet. Contact the admin.");
           return;
         }
         throw error;

@@ -24,6 +24,11 @@ function formatShiftTime(iso: string | null): string | null {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
+const GATE_LABELS: Record<string, string> = {
+  COLLEGE_GATE: "College Gate",
+  EVENT_GATE: "Event Entry Gate"
+};
+
 export function VolunteerHomePage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const { logout } = useAuth();
@@ -143,6 +148,16 @@ export function VolunteerHomePage() {
           No camera was found on this device. Scanning won't be available here.
         </GlassPanel>
       )}
+
+      <GlassPanel className="mb-4 flex items-center gap-3 p-4">
+        <MapPin size={18} className="text-festival-gold" />
+        <div>
+          <p className="text-xs uppercase tracking-[0.12em] text-white/50">Assigned Gate</p>
+          <p className="text-sm font-semibold text-white">
+            {user.profile?.assignedGate ? GATE_LABELS[user.profile.assignedGate] : "Not assigned yet — contact the admin"}
+          </p>
+        </div>
+      </GlassPanel>
 
       <GlassPanel className="flex flex-col gap-4 p-6">
         <div className="flex items-center gap-3 text-sm text-white/80">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowSquareOut, QrCode, X } from "@phosphor-icons/react";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
@@ -10,30 +10,6 @@ import { formatPriceInPaise, useEventConfig } from "../../lib/hooks/useEventConf
 interface PresignResponse {
   uploadUrl: string;
   objectKey: string;
-}
-
-function QrModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-      role="presentation"
-    >
-      <div
-        className="w-full max-w-xs rounded-2xl bg-white p-6 text-center"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <img src="/qr-code.png" alt="Payment QR code" className="mx-auto h-56 w-56" />
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-4 inline-flex items-center gap-1 rounded-pill bg-midnight-950 px-4 py-2 text-sm font-medium text-white"
-        >
-          <X size={16} /> Close
-        </button>
-      </div>
-    </div>
-  );
 }
 
 export function PaymentStep({
@@ -47,7 +23,6 @@ export function PaymentStep({
   const [ackInstructions, setAckInstructions] = useState(false);
   const [ackNoRefund, setAckNoRefund] = useState(false);
   const [proceeded, setProceeded] = useState(false);
-  const [showQr, setShowQr] = useState(false);
   const [transactionId, setTransactionId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -181,36 +156,23 @@ export function PaymentStep({
             </p>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="button" variant="secondary" className="w-full sm:flex-1" disabled={!bothAcknowledged} onClick={() => setShowQr(true)}>
-              <QrCode size={16} /> View Payment QR
-            </Button>
-              <Button
-              type="button"
-              className="w-full sm:flex-1"
-              disabled={!bothAcknowledged || !config?.erpPaymentUrl}
-              onClick={() => {
-                if (!config?.erpPaymentUrl) return;
-                window.open(config.erpPaymentUrl, "_blank", "noopener,noreferrer");
-                setProceeded(true);
-              }}
-            >
-              Continue to Payment <ArrowSquareOut size={16} />
-            </Button>
-          </div>
-          {showQr && bothAcknowledged && (
-            <QrModal
-              onClose={() => {
-                setShowQr(false);
-                setProceeded(true);
-              }}
-            />
-          )}
+          <Button
+            type="button"
+            className="w-full"
+            disabled={!bothAcknowledged || !config?.erpPaymentUrl}
+            onClick={() => {
+              if (!config?.erpPaymentUrl) return;
+              window.open(config.erpPaymentUrl, "_blank", "noopener,noreferrer");
+              setProceeded(true);
+            }}
+          >
+            Continue to Payment <ArrowSquareOut size={16} />
+          </Button>
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-5">
           <p className="text-xs text-white/50">
-            Opening the payment page/QR does not confirm payment — enter your transaction reference below once
+            Opening the payment page does not confirm payment — enter your transaction reference below once
             you've completed the payment.
           </p>
           <FormField

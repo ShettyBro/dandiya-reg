@@ -37,15 +37,13 @@ async function createNonAcharyanRegistration(suffix: string) {
       name: `Non Acharyan ${suffix}`,
       phone: randomPhone(),
       email: `na-flow-${suffix}-${Date.now()}@example.com`,
-      collegeName: "Some Other College",
-      aadhaarNumber: `${Date.now()}${Math.floor(Math.random() * 1000)}`
+      collegeName: "Some Other College"
     });
   createdRegistrationIds.push(created.body.registrationId);
   await prisma.registration.update({
     where: { id: created.body.registrationId },
     data: {
       photoObjectKey: `test-photo/${created.body.registrationId}.jpg`,
-      aadhaarImageObjectKey: `test-aadhaar/${created.body.registrationId}.jpg`,
       collegeIdImageObjectKey: `test-college-id/${created.body.registrationId}.jpg`
     }
   });
@@ -168,13 +166,9 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
     });
     expect(rejectedPayment.status).toBe("REJECTED");
 
-    // Resubmission: new registration, same Aadhaar (released since the original is now rejected),
-    // reusing the SAME UTR — must succeed since the old payment's UTR no longer counts as active.
+    // Resubmission: a fresh registration reusing the SAME UTR — must succeed since the old
+    // payment's UTR no longer counts as active once its registration was rejected.
     const resubmission = await createNonAcharyanRegistration("identity-reject-reuse-2");
-    await prisma.registration.update({
-      where: { id: resubmission.registrationId },
-      data: { aadhaarNumber: rejected.aadhaarNumber }
-    });
     const secondObjectKey = `payments/${resubmission.registrationId}/proof/reused.jpg`;
     await createProofIntent(resubmission.registrationId, secondObjectKey);
 

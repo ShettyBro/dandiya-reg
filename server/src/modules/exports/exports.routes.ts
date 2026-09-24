@@ -46,10 +46,12 @@ export function createExportsRouter(prisma: PrismaClient, env: Env): Router {
             year: r.year ?? "",
             employeeId: r.employeeId ?? "",
             collegeName: r.collegeName ?? "",
+            identityDocumentType: r.identityDocumentType ?? "",
             identityStatus: r.identityStatus ?? "",
             status: r.status,
             paymentStatus: r.payment?.status ?? "",
-            attendanceState: r.attendance?.state ?? "",
+            collegeGateState: r.attendance?.collegeGateState ?? "",
+            eventGateState: r.attendance?.eventGateState ?? "",
             createdAt: r.createdAt
           })),
           [
@@ -65,10 +67,12 @@ export function createExportsRouter(prisma: PrismaClient, env: Env): Router {
             "year",
             "employeeId",
             "collegeName",
+            "identityDocumentType",
             "identityStatus",
             "status",
             "paymentStatus",
-            "attendanceState",
+            "collegeGateState",
+            "eventGateState",
             "createdAt"
           ]
         );
@@ -115,21 +119,27 @@ export function createExportsRouter(prisma: PrismaClient, env: Env): Router {
             registrationId: a.registrationId,
             publicCode: a.registration.publicCode,
             name: a.registration.name,
-            state: a.state,
-            entryCount: a.entryCount,
-            firstEntryAt: a.firstEntryAt,
-            lastEntryAt: a.lastEntryAt,
-            lastGate: a.lastGate
+            collegeGateState: a.collegeGateState,
+            collegeGateEntryCount: a.collegeGateEntryCount,
+            collegeGateFirstEntryAt: a.collegeGateFirstEntryAt,
+            collegeGateLastEntryAt: a.collegeGateLastEntryAt,
+            eventGateState: a.eventGateState,
+            eventGateEntryCount: a.eventGateEntryCount,
+            eventGateFirstEntryAt: a.eventGateFirstEntryAt,
+            eventGateLastEntryAt: a.eventGateLastEntryAt
           })),
           [
             "registrationId",
             "publicCode",
             "name",
-            "state",
-            "entryCount",
-            "firstEntryAt",
-            "lastEntryAt",
-            "lastGate"
+            "collegeGateState",
+            "collegeGateEntryCount",
+            "collegeGateFirstEntryAt",
+            "collegeGateLastEntryAt",
+            "eventGateState",
+            "eventGateEntryCount",
+            "eventGateFirstEntryAt",
+            "eventGateLastEntryAt"
           ]
         );
         filename = "attendance.csv";

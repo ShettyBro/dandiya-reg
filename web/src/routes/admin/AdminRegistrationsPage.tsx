@@ -5,7 +5,16 @@ import { FormField } from "../../components/ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
-type Filter = "all" | "payment_pending" | "proof_submitted" | "approved" | "rejected" | "entered" | "not_entered";
+type Filter =
+  | "all"
+  | "payment_pending"
+  | "proof_submitted"
+  | "approved"
+  | "rejected"
+  | "college_gate_entered"
+  | "college_gate_not_entered"
+  | "event_gate_entered"
+  | "event_gate_not_entered";
 
 const FILTERS: Array<{ label: string; value: Filter }> = [
   { label: "All", value: "all" },
@@ -13,13 +22,16 @@ const FILTERS: Array<{ label: string; value: Filter }> = [
   { label: "Proof submitted", value: "proof_submitted" },
   { label: "Approved", value: "approved" },
   { label: "Rejected", value: "rejected" },
-  { label: "Entered", value: "entered" },
-  { label: "Not entered", value: "not_entered" }
+  { label: "College Gate entered", value: "college_gate_entered" },
+  { label: "College Gate not entered", value: "college_gate_not_entered" },
+  { label: "Event Gate entered", value: "event_gate_entered" },
+  { label: "Event Gate not entered", value: "event_gate_not_entered" }
 ];
 
 const TYPE_LABELS: Record<string, string> = {
   ACHARYA_STUDENT: "Acharya Student",
   ACHARYA_FACULTY: "Acharya Faculty",
+  ACHARYA_ALUMNI: "Acharya Alumni",
   NON_ACHARYAN_STUDENT: "Non-Acharyan Student"
 };
 
@@ -37,13 +49,14 @@ interface RegistrationItem {
   identityStatus: string | null;
   createdAt: string;
   payment: { status: string; amountInPaise: number; transactionId: string | null } | null;
-  attendance: { state: string } | null;
+  attendance: { collegeGateState: string; eventGateState: string } | null;
 }
 
 interface RegistrationDetail extends RegistrationItem {
   auid: string | null;
   year: number | null;
   employeeId: string | null;
+  identityDocumentType: string | null;
   identityRejectionReason: string | null;
   photoUrl: string | null;
   aadhaarImageUrl: string | null;
@@ -219,9 +232,14 @@ export function AdminRegistrationsPage() {
                       </span>
                     )}
                     {item.attendance && (
-                      <span className="rounded-pill border border-white/15 px-3 py-1 text-xs text-white/70">
-                        {item.attendance.state.replaceAll("_", " ")}
-                      </span>
+                      <>
+                        <span className="rounded-pill border border-white/15 px-3 py-1 text-xs text-white/70">
+                          College Gate: {item.attendance.collegeGateState.replaceAll("_", " ")}
+                        </span>
+                        <span className="rounded-pill border border-white/15 px-3 py-1 text-xs text-white/70">
+                          Event Gate: {item.attendance.eventGateState.replaceAll("_", " ")}
+                        </span>
+                      </>
                     )}
                     <CaretDown
                       size={16}
@@ -265,6 +283,14 @@ export function AdminRegistrationsPage() {
                             <div>
                               <p className="text-xs text-white/50">Transaction ID</p>
                               <p className="mt-1 font-mono text-white/85">{detail.payment.transactionId}</p>
+                            </div>
+                          )}
+                          {detail.identityDocumentType && (
+                            <div>
+                              <p className="text-xs text-white/50">Identity document</p>
+                              <p className="mt-1 text-white/85">
+                                {detail.identityDocumentType === "AADHAAR" ? "Aadhaar Card" : "College ID Card"}
+                              </p>
                             </div>
                           )}
                           {detail.identityStatus && (

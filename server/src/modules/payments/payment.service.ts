@@ -2,6 +2,7 @@ import type { Payment, PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { deriveSignedCredentialToken, hashCredentialToken, newCredentialId } from "../../lib/qr/credential.js";
 import { recordAuditLog } from "../audit/audit.service.js";
+import { IDENTITY_REQUIRED_TYPES } from "../registration/identity.service.js";
 import type { Env } from "../../app/config/env.js";
 
 export class PaymentNotFoundError extends Error {}
@@ -44,11 +45,19 @@ export async function submitPaymentProof(
   if (!registrationForPhotoCheck.photoObjectKey) {
     throw new PhotoRequiredError();
   }
-  if (
-    registrationForPhotoCheck.registrationType === "NON_ACHARYAN_STUDENT" &&
-    (!registrationForPhotoCheck.aadhaarImageObjectKey || !registrationForPhotoCheck.collegeIdImageObjectKey)
-  ) {
+  if (registrationForPhotoCheck.registrationType === "NON_ACHARYAN_STUDENT" && !registrationForPhotoCheck.collegeIdImageObjectKey) {
     throw new PhotoRequiredError();
+  }
+  if (registrationForPhotoCheck.registrationType === "ACHARYA_ALUMNI") {
+    const hasChosenDocument =
+      registrationForPhotoCheck.identityDocumentType === "AADHAAR"
+        ? Boolean(registrationForPhotoCheck.aadhaarImageObjectKey)
+        : registrationForPhotoCheck.identityDocumentType === "COLLEGE_ID"
+          ? Boolean(registrationForPhotoCheck.collegeIdImageObjectKey)
+          : false;
+    if (!hasChosenDocument) {
+      throw new PhotoRequiredError();
+    }
   }
 
   try {
@@ -86,10 +95,9 @@ export async function submitPaymentProof(
       await tx.registration.update({
         where: { id: input.registrationId },
         data: {
-          status:
-            registrationBefore.registrationType === "NON_ACHARYAN_STUDENT"
-              ? "IDENTITY_PENDING"
-              : "PAYMENT_SUBMITTED"
+          status: IDENTITY_REQUIRED_TYPES.includes(registrationBefore.registrationType)
+            ? "IDENTITY_PENDING"
+            : "PAYMENT_SUBMITTED"
         }
       });
 
@@ -116,7 +124,8 @@ export async function approvePayment(
       include: { registration: true }
     });
     if (
-      pending?.registration.registrationType === "NON_ACHARYAN_STUDENT" &&
+      pending?.registration.registrationType &&
+      IDENTITY_REQUIRED_TYPES.includes(pending.registration.registrationType) &&
       pending.registration.identityStatus !== "APPROVED"
     ) {
       throw new IdentityNotApprovedError();
@@ -191,7 +200,8 @@ export async function rejectPayment(
       include: { registration: true }
     });
     if (
-      pending?.registration.registrationType === "NON_ACHARYAN_STUDENT" &&
+      pending?.registration.registrationType &&
+      IDENTITY_REQUIRED_TYPES.includes(pending.registration.registrationType) &&
       pending.registration.identityStatus !== "APPROVED"
     ) {
       throw new IdentityNotApprovedError();

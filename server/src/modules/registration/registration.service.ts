@@ -74,23 +74,25 @@ export async function createRegistration(
           throw new DuplicateEmailError();
         }
 
-        if (data.registrationType === "ACHARYA_STUDENT") {
+        if (data.registrationType === "ACHARYA_STUDENT" || data.registrationType === "ACHARYA_ALUMNI") {
           const dup = await findActiveDuplicate(tx, { auid: data.auid });
           if (dup) throw new DuplicateAuidError();
         } else if (data.registrationType === "ACHARYA_FACULTY") {
           const dup = await findActiveDuplicate(tx, { employeeId: data.employeeId });
           if (dup) throw new DuplicateEmployeeIdError();
-        } else {
+        }
+
+        if (data.registrationType === "ACHARYA_ALUMNI" && data.aadhaarNumber) {
           const dup = await findActiveDuplicate(tx, { aadhaarNumber: data.aadhaarNumber });
           if (dup) throw new DuplicateAadhaarError();
         }
 
         const resubmissionOf =
-          data.registrationType === "ACHARYA_STUDENT"
+          data.registrationType === "ACHARYA_STUDENT" || data.registrationType === "ACHARYA_ALUMNI"
             ? await findMostRecentRejected(tx, { auid: data.auid })
             : data.registrationType === "ACHARYA_FACULTY"
               ? await findMostRecentRejected(tx, { employeeId: data.employeeId })
-              : await findMostRecentRejected(tx, { aadhaarNumber: data.aadhaarNumber });
+              : null;
 
         const publicCode = generatePublicCode();
         const eightDigitCode = generateEightDigitCode();
@@ -111,11 +113,18 @@ export async function createRegistration(
               ? { auid: data.auid, institution: data.institution, year: data.year }
               : data.registrationType === "ACHARYA_FACULTY"
                 ? { employeeId: data.employeeId, institution: data.institution }
-                : {
-                    collegeName: data.collegeName,
-                    aadhaarNumber: data.aadhaarNumber,
-                    identityStatus: "PENDING" as const
-                  })
+                : data.registrationType === "ACHARYA_ALUMNI"
+                  ? {
+                      auid: data.auid,
+                      identityDocumentType: data.identityDocumentType,
+                      aadhaarNumber: data.identityDocumentType === "AADHAAR" ? (data.aadhaarNumber ?? null) : null,
+                      identityStatus: "PENDING" as const
+                    }
+                  : {
+                      collegeName: data.collegeName,
+                      identityDocumentType: "COLLEGE_ID" as const,
+                      identityStatus: "PENDING" as const
+                    })
           }
         });
 

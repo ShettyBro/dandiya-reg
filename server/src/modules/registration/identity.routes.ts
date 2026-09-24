@@ -7,7 +7,7 @@ import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 import { requireActiveUser } from "../auth/require-active-user.middleware.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { presignGetUrl } from "../../lib/r2/presign.js";
-import { approveIdentity, IdentityNotReviewableError, rejectIdentity } from "./identity.service.js";
+import { approveIdentity, IDENTITY_REQUIRED_TYPES, IdentityNotReviewableError, rejectIdentity } from "./identity.service.js";
 import type { Env } from "../../app/config/env.js";
 
 const listQuerySchema = z.object({
@@ -47,7 +47,7 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       const where = {
-        registrationType: "NON_ACHARYAN_STUDENT" as const,
+        registrationType: { in: IDENTITY_REQUIRED_TYPES },
         ...(parsed.data.status ? { status: parsed.data.status } : {})
       };
 
@@ -59,10 +59,13 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
           take: parsed.data.pageSize,
           select: {
             id: true,
+            registrationType: true,
             name: true,
             email: true,
             phone: true,
             collegeName: true,
+            auid: true,
+            identityDocumentType: true,
             publicCode: true,
             status: true,
             identityStatus: true,
@@ -85,7 +88,7 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
       const id = stringParam(req.params.id);
       const registration = id
         ? await prisma.registration.findFirst({
-            where: { id, registrationType: "NON_ACHARYAN_STUDENT" },
+            where: { id, registrationType: { in: IDENTITY_REQUIRED_TYPES } },
             include: { payment: true }
           })
         : null;
@@ -103,10 +106,13 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
 
       res.status(200).json({
         id: registration.id,
+        registrationType: registration.registrationType,
         name: registration.name,
         email: registration.email,
         phone: registration.phone,
         collegeName: registration.collegeName,
+        auid: registration.auid,
+        identityDocumentType: registration.identityDocumentType,
         publicCode: registration.publicCode,
         status: registration.status,
         identityStatus: registration.identityStatus,

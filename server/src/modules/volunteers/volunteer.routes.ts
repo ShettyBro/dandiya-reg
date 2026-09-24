@@ -12,6 +12,8 @@ import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
 import { createVolunteer, resetVolunteerPassword, updateVolunteer, VolunteerNotFoundError } from "./volunteer.service.js";
 import type { Env } from "../../app/config/env.js";
 
+const assignedGateSchema = z.enum(["COLLEGE_GATE", "EVENT_GATE"]);
+
 const createSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().toLowerCase().email(),
@@ -20,7 +22,8 @@ const createSchema = z.object({
   gate: z.string().trim().max(60).optional(),
   zone: z.string().trim().max(60).optional(),
   shiftStart: z.coerce.date().optional(),
-  shiftEnd: z.coerce.date().optional()
+  shiftEnd: z.coerce.date().optional(),
+  assignedGate: assignedGateSchema.optional()
 });
 
 const updateSchema = z.object({
@@ -29,7 +32,8 @@ const updateSchema = z.object({
   gate: z.string().trim().max(60).nullable().optional(),
   zone: z.string().trim().max(60).nullable().optional(),
   shiftStart: z.coerce.date().nullable().optional(),
-  shiftEnd: z.coerce.date().nullable().optional()
+  shiftEnd: z.coerce.date().nullable().optional(),
+  assignedGate: assignedGateSchema.nullable().optional()
 });
 
 export function createVolunteerRouter(prisma: PrismaClient, env: Env): Router {

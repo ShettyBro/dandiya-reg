@@ -10,11 +10,19 @@ import type { AuthUser } from "../../lib/hooks/useAuth.js";
 
 const SCANNER_ELEMENT_ID = "volunteer-qr-reader";
 
+type Gate = "COLLEGE_GATE" | "EVENT_GATE";
+
+const GATE_LABELS: Record<Gate, string> = {
+  COLLEGE_GATE: "College Gate",
+  EVENT_GATE: "Event Entry Gate"
+};
+
 interface ScanLookupResult {
   credentialType: "PARTICIPANT" | "STAFF_GUEST_ADMIN";
   registrationId: string | null;
   name: string | null;
   publicCode: string | null;
+  gate: Gate | null;
   attendanceState: "NOT_ENTERED" | "ENTERED" | "OVERRIDE_ENTRY" | null;
   eligibleForAllow: boolean;
   eligibleForOverride: boolean;
@@ -32,6 +40,8 @@ type ResultState =
 export function VolunteerScanPage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const navigate = useNavigate();
+  const isTeamLeader = user.role === "TEAM_LEADER";
+  const [selectedGate, setSelectedGate] = useState<Gate>(user.profile?.assignedGate ?? "COLLEGE_GATE");
   const [starting, setStarting] = useState(false);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -43,6 +53,10 @@ export function VolunteerScanPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const pendingTokenRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
+
+  // A plain volunteer's scanner is locked to their own admin-assigned gate — never client-editable.
+  // A Team Leader may switch gates (override authority exists at both regardless of their own assignment).
+  const effectiveGate: Gate | null = isTeamLeader ? selectedGate : user.profile?.assignedGate ?? null;
 
   useEffect(() => {
     return () => {
@@ -114,7 +128,7 @@ export function VolunteerScanPage() {
     try {
       const lookup = await apiRequest<ScanLookupResult>("/scan/lookup", {
         method: "POST",
-        body: { token }
+        body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
       });
       setResult({ kind: "lookup", data: lookup });
     } catch (error) {
@@ -124,6 +138,8 @@ export function VolunteerScanPage() {
         setResult({ kind: "session-expired" });
       } else if (error instanceof ApiError && error.code === "CREDENTIAL_NOT_FOUND") {
         setResult({ kind: "not-found" });
+      } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
+        setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
       } else {
         setResult({ kind: "blocked", message: "Could not check this code. Try again." });
       }
@@ -141,7 +157,7 @@ export function VolunteerScanPage() {
     try {
       const response = await apiRequest<{ type: string; name?: string; label?: string }>("/scan/allow", {
         method: "POST",
-        body: { token }
+        body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
       });
       setResult({ kind: "allowed", label: response.name ?? response.label ?? "Entry allowed" });
     } catch (error) {
@@ -151,6 +167,8 @@ export function VolunteerScanPage() {
         setResult({ kind: "session-expired" });
       } else if (error instanceof ApiError && error.code === "ALREADY_ENTERED") {
         setResult({ kind: "blocked", message: "Someone already scanned this a moment ago." });
+      } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
+        setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
       } else {
         setResult({ kind: "blocked", message: "Could not allow entry. Try again." });
       }
@@ -168,7 +186,7 @@ export function VolunteerScanPage() {
     try {
       const response = await apiRequest<{ name: string }>("/scan/override", {
         method: "POST",
-        body: { token, reason: overrideReason.trim() }
+        body: { token, reason: overrideReason.trim(), ...(effectiveGate ? { gate: effectiveGate } : {}) }
       });
       setResult({ kind: "overridden", label: response.name });
     } catch (error) {
@@ -176,6 +194,8 @@ export function VolunteerScanPage() {
         setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
       } else if (error instanceof ApiError && error.status === 401) {
         setResult({ kind: "session-expired" });
+      } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
+        setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
       } else {
         setResult({ kind: "blocked", message: "Override failed. Try again." });
       }
@@ -191,9 +211,43 @@ export function VolunteerScanPage() {
     inFlightRef.current = false;
   }
 
+  if (!isTeamLeader && !user.profile?.assignedGate) {
+    return (
+      <Container className="max-w-md py-10">
+        <h1 className="mb-6 font-display text-2xl font-semibold text-white">Scan</h1>
+        <GlassPanel className="flex flex-col items-center gap-3 border-amber-400/40 p-8 text-center">
+          <Warning size={32} className="text-amber-300" />
+          <p className="font-display text-lg font-semibold text-amber-300">No gate assigned yet</p>
+          <p className="text-sm text-white/60">Contact the admin to get a gate assignment before you can scan.</p>
+        </GlassPanel>
+      </Container>
+    );
+  }
+
   return (
     <Container className="max-w-md py-10">
-      <h1 className="mb-6 font-display text-2xl font-semibold text-white">Scan</h1>
+      <h1 className="mb-4 font-display text-2xl font-semibold text-white">Scan</h1>
+
+      {isTeamLeader ? (
+        <div className="mb-6 flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
+          {(["COLLEGE_GATE", "EVENT_GATE"] as Gate[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setSelectedGate(g)}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
+                effectiveGate === g ? "bg-festival-gold text-midnight-950 shadow" : "text-white/60 hover:text-white"
+              }`}
+            >
+              {GATE_LABELS[g]}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-6 text-sm text-white/60">
+          Scanning at <span className="font-semibold text-festival-gold">{GATE_LABELS[effectiveGate as Gate]}</span>
+        </p>
+      )}
 
       {!starting && !cameraStarted && !result && (
         <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">

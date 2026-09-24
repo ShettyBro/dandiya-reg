@@ -12,12 +12,20 @@ type RegistrationStatus =
   | "PAYMENT_APPROVED"
   | "PAYMENT_REJECTED";
 
+const TYPE_LABELS: Record<string, string> = {
+  NON_ACHARYAN_STUDENT: "Non-Acharyan Student",
+  ACHARYA_ALUMNI: "Acharya Alumni"
+};
+
 interface ListItem {
   id: string;
+  registrationType: string;
   name: string;
   email: string;
   phone: string;
   collegeName: string | null;
+  auid: string | null;
+  identityDocumentType: "AADHAAR" | "COLLEGE_ID" | null;
   publicCode: string;
   status: RegistrationStatus;
   identityStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
@@ -167,7 +175,8 @@ export function IdentityReviewPanel() {
                   <div>
                     <p className="font-display text-sm font-semibold text-white">{item.name}</p>
                     <p className="text-xs text-white/50">
-                      {item.publicCode} &middot; {item.collegeName ?? "—"}
+                      {TYPE_LABELS[item.registrationType] ?? item.registrationType} &middot; {item.publicCode}{" "}
+                      &middot; {item.collegeName ?? item.auid ?? "—"}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -194,9 +203,17 @@ export function IdentityReviewPanel() {
                             <p className="mt-1 text-white/85">{detail.email}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-white/50">Aadhaar number</p>
-                            <p className="mt-1 font-mono text-white/85">{detail.aadhaarNumber ?? "—"}</p>
+                            <p className="text-xs text-white/50">Identity document</p>
+                            <p className="mt-1 text-white/85">
+                              {detail.identityDocumentType === "AADHAAR" ? "Aadhaar Card" : "College ID Card"}
+                            </p>
                           </div>
+                          {detail.identityDocumentType === "AADHAAR" && (
+                            <div>
+                              <p className="text-xs text-white/50">Aadhaar number</p>
+                              <p className="mt-1 font-mono text-white/85">{detail.aadhaarNumber ?? "—"}</p>
+                            </div>
+                          )}
                           {detail.identityRejectionReason && (
                             <div className="col-span-full">
                               <p className="text-xs text-white/50">Previous rejection reason</p>
@@ -210,8 +227,9 @@ export function IdentityReviewPanel() {
                         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                           {[
                             { label: "Photo", url: detail.photoUrl },
-                            { label: "Aadhaar image", url: detail.aadhaarImageUrl },
-                            { label: "College ID image", url: detail.collegeIdImageUrl }
+                            ...(detail.identityDocumentType === "AADHAAR"
+                              ? [{ label: "Aadhaar image", url: detail.aadhaarImageUrl }]
+                              : [{ label: "College ID image", url: detail.collegeIdImageUrl }])
                           ].map((slot) => (
                             <div key={slot.label}>
                               <p className="mb-1.5 text-xs text-white/50">{slot.label}</p>

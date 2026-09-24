@@ -32,11 +32,19 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
+type AssignedGate = "COLLEGE_GATE" | "EVENT_GATE";
+
+const GATE_LABELS: Record<AssignedGate, string> = {
+  COLLEGE_GATE: "College Gate",
+  EVENT_GATE: "Event Entry Gate"
+};
+
 interface VolunteerProfile {
   name: string;
   phone: string;
   gate: string | null;
   zone: string | null;
+  assignedGate: AssignedGate | null;
   mustChangePassword: boolean;
 }
 
@@ -67,8 +75,10 @@ export function AdminVolunteersPage() {
   const [role, setRole] = useState<"VOLUNTEER" | "TEAM_LEADER">("VOLUNTEER");
   const [gate, setGate] = useState("");
   const [zone, setZone] = useState("");
+  const [assignedGate, setAssignedGate] = useState<AssignedGate | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [gateBusyId, setGateBusyId] = useState<string | null>(null);
 
   function fetchVolunteers() {
     setLoading(true);
@@ -104,7 +114,8 @@ export function AdminVolunteersPage() {
             phone,
             role,
             ...(gate.trim() ? { gate: gate.trim() } : {}),
-            ...(zone.trim() ? { zone: zone.trim() } : {})
+            ...(zone.trim() ? { zone: zone.trim() } : {}),
+            ...(assignedGate ? { assignedGate } : {})
           }
         }
       );
@@ -114,6 +125,7 @@ export function AdminVolunteersPage() {
       setPhone("");
       setGate("");
       setZone("");
+      setAssignedGate("");
       setRole("VOLUNTEER");
       setShowForm(false);
       fetchVolunteers();
@@ -146,6 +158,26 @@ export function AdminVolunteersPage() {
       );
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function changeAssignedGate(volunteer: VolunteerUser, next: AssignedGate) {
+    setGateBusyId(volunteer.id);
+    setError(null);
+    try {
+      await apiRequest(`/admin/volunteers/${volunteer.id}`, {
+        method: "PATCH",
+        body: { assignedGate: next }
+      });
+      fetchVolunteers();
+    } catch (gateError) {
+      setError(
+        gateError instanceof ApiError && gateError.code === SERVER_UNREACHABLE_CODE
+          ? gateError.message
+          : "Could not update gate assignment."
+      );
+    } finally {
+      setGateBusyId(null);
     }
   }
 
@@ -228,7 +260,17 @@ export function AdminVolunteersPage() {
                 { value: "TEAM_LEADER", label: "Team Leader" }
               ]}
             />
-            <FormField label="Gate (optional)" value={gate} onChange={(e) => setGate(e.target.value)} />
+            <CustomSelect
+              label="Gate assignment"
+              value={assignedGate}
+              onChange={(value) => setAssignedGate(value as AssignedGate)}
+              placeholder="Not assigned yet"
+              options={[
+                { value: "COLLEGE_GATE", label: "College Gate" },
+                { value: "EVENT_GATE", label: "Event Entry Gate" }
+              ]}
+            />
+            <FormField label="Gate label (optional)" value={gate} onChange={(e) => setGate(e.target.value)} />
             <FormField label="Zone (optional)" value={zone} onChange={(e) => setZone(e.target.value)} />
             {formError && <p className="col-span-full text-sm text-red-300">{formError}</p>}
             <div className="col-span-full">
@@ -259,6 +301,19 @@ export function AdminVolunteersPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <div className="w-40">
+                  <CustomSelect
+                    label="Gate"
+                    value={volunteer.volunteerProfile?.assignedGate ?? ""}
+                    onChange={(value) => changeAssignedGate(volunteer, value as AssignedGate)}
+                    placeholder="Assign gate"
+                    options={[
+                      { value: "COLLEGE_GATE", label: "College Gate" },
+                      { value: "EVENT_GATE", label: "Event Entry Gate" }
+                    ]}
+                  />
+                </div>
+                {gateBusyId === volunteer.id && <span className="text-xs text-white/40">Saving...</span>}
                 <span
                   className={`rounded-pill border px-3 py-1 text-xs font-semibold ${
                     volunteer.status === "ACTIVE"

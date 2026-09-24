@@ -1,7 +1,11 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, RegistrationType } from "@prisma/client";
 import { recordAuditLog } from "../audit/audit.service.js";
 
 export class IdentityNotReviewableError extends Error {}
+
+// Registration types that go through manual identity-document review before payment can be
+// approved/rejected: Non-Acharyan Student (College ID only) and Acharya Alumni (Aadhaar or College ID).
+export const IDENTITY_REQUIRED_TYPES: RegistrationType[] = ["NON_ACHARYAN_STUDENT", "ACHARYA_ALUMNI"];
 
 export async function approveIdentity(
   prisma: PrismaClient,
@@ -11,7 +15,7 @@ export async function approveIdentity(
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const result = await tx.registration.updateMany({
-      where: { id: registrationId, registrationType: "NON_ACHARYAN_STUDENT", status: "IDENTITY_PENDING" },
+      where: { id: registrationId, registrationType: { in: IDENTITY_REQUIRED_TYPES }, status: "IDENTITY_PENDING" },
       data: {
         identityStatus: "APPROVED",
         identityVerifiedById: verifiedByUserId,
@@ -43,7 +47,7 @@ export async function rejectIdentity(
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const result = await tx.registration.updateMany({
-      where: { id: registrationId, registrationType: "NON_ACHARYAN_STUDENT", status: "IDENTITY_PENDING" },
+      where: { id: registrationId, registrationType: { in: IDENTITY_REQUIRED_TYPES }, status: "IDENTITY_PENDING" },
       data: {
         identityStatus: "REJECTED",
         identityRejectionReason: reasonText,

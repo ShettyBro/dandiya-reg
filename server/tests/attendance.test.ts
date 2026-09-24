@@ -94,10 +94,22 @@ afterAll(() => {
 beforeAll(async () => {
   const passwordHash = await hashPassword(PASSWORD);
   await prisma.user.create({
-    data: { email: VOLUNTEER_EMAIL, passwordHash, role: "VOLUNTEER", status: "ACTIVE" }
+    data: {
+      email: VOLUNTEER_EMAIL,
+      passwordHash,
+      role: "VOLUNTEER",
+      status: "ACTIVE",
+      volunteerProfile: { create: { name: "Test Volunteer", phone: "9000000001", assignedGate: "COLLEGE_GATE" } }
+    }
   });
   await prisma.user.create({
-    data: { email: TEAM_LEADER_EMAIL, passwordHash, role: "TEAM_LEADER", status: "ACTIVE" }
+    data: {
+      email: TEAM_LEADER_EMAIL,
+      passwordHash,
+      role: "TEAM_LEADER",
+      status: "ACTIVE",
+      volunteerProfile: { create: { name: "Test Team Leader", phone: "9000000002", assignedGate: "COLLEGE_GATE" } }
+    }
   });
   await prisma.user.create({
     data: { email: DISABLED_VOLUNTEER_EMAIL, passwordHash, role: "VOLUNTEER", status: "DISABLED" }
@@ -172,16 +184,17 @@ describe("scan allow — participant single entry", () => {
       .post("/api/v1/scan/allow")
       .set("Cookie", volunteerCookies)
       .set("X-CSRF-Token", volunteerCsrf)
-      .send({ token: participant.token, gate: "Gate A" });
+      .send({ token: participant.token });
 
     expect(first.status).toBe(200);
     expect(first.body.allowed).toBe(true);
+    expect(first.body.gate).toBe("COLLEGE_GATE");
 
     const second = await request(app)
       .post("/api/v1/scan/allow")
       .set("Cookie", volunteerCookies)
       .set("X-CSRF-Token", volunteerCsrf)
-      .send({ token: participant.token, gate: "Gate A" });
+      .send({ token: participant.token });
 
     expect(second.status).toBe(409);
     expect(second.body.code).toBe("ALREADY_ENTERED");
@@ -189,8 +202,43 @@ describe("scan allow — participant single entry", () => {
     const attendance = await prisma.attendance.findUniqueOrThrow({
       where: { registrationId: participant.registrationId }
     });
-    expect(attendance.state).toBe("ENTERED");
-    expect(attendance.entryCount).toBe(1);
+    expect(attendance.collegeGateState).toBe("ENTERED");
+    expect(attendance.collegeGateEntryCount).toBe(1);
+    // The other gate is untouched — the second gate must still work independently later.
+    expect(attendance.eventGateState).toBe("NOT_ENTERED");
+  });
+
+  it("the same QR still works at the Event Gate after College Gate entry (gates are independent)", async () => {
+    const participant = await createParticipantWithCredential("cross-gate");
+
+    const collegeGateEntry = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Cookie", volunteerCookies)
+      .set("X-CSRF-Token", volunteerCsrf)
+      .send({ token: participant.token, gate: "COLLEGE_GATE" });
+    expect(collegeGateEntry.status).toBe(200);
+
+    const eventGateEntry = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Cookie", teamLeaderCookies)
+      .set("X-CSRF-Token", teamLeaderCsrf)
+      .send({ token: participant.token, gate: "EVENT_GATE" });
+    expect(eventGateEntry.status).toBe(200);
+    expect(eventGateEntry.body.gate).toBe("EVENT_GATE");
+
+    const secondEventGateAttempt = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Cookie", teamLeaderCookies)
+      .set("X-CSRF-Token", teamLeaderCsrf)
+      .send({ token: participant.token, gate: "EVENT_GATE" });
+    expect(secondEventGateAttempt.status).toBe(409);
+    expect(secondEventGateAttempt.body.code).toBe("ALREADY_ENTERED");
+
+    const attendance = await prisma.attendance.findUniqueOrThrow({
+      where: { registrationId: participant.registrationId }
+    });
+    expect(attendance.collegeGateState).toBe("ENTERED");
+    expect(attendance.eventGateState).toBe("ENTERED");
   });
 
   it("resolves a concurrent duplicate-scan race to exactly one successful entry", async () => {
@@ -203,7 +251,7 @@ describe("scan allow — participant single entry", () => {
           .post("/api/v1/scan/allow")
           .set("Cookie", volunteerCookies)
           .set("X-CSRF-Token", volunteerCsrf)
-          .send({ token: participant.token, gate: "Gate B" })
+          .send({ token: participant.token })
       )
     );
 
@@ -220,8 +268,8 @@ describe("scan allow — participant single entry", () => {
     const attendance = await prisma.attendance.findUniqueOrThrow({
       where: { registrationId: participant.registrationId }
     });
-    expect(attendance.state).toBe("ENTERED");
-    expect(attendance.entryCount).toBe(1);
+    expect(attendance.collegeGateState).toBe("ENTERED");
+    expect(attendance.collegeGateEntryCount).toBe(1);
   }, 20000);
 });
 
@@ -310,8 +358,8 @@ describe("Team Leader override", () => {
     const attendance = await prisma.attendance.findUniqueOrThrow({
       where: { registrationId: participant.registrationId }
     });
-    expect(attendance.state).toBe("OVERRIDE_ENTRY");
-    expect(attendance.entryCount).toBe(2);
+    expect(attendance.collegeGateState).toBe("OVERRIDE_ENTRY");
+    expect(attendance.collegeGateEntryCount).toBe(2);
 
     const overrideRow = await prisma.attendanceOverride.findFirst({
       where: { registrationId: participant.registrationId }
@@ -319,11 +367,76 @@ describe("Team Leader override", () => {
     expect(overrideRow).not.toBeNull();
     expect(overrideRow?.reasonText).toContain("Lost original device");
     expect(overrideRow?.originalState).toBe("ENTERED");
+    expect(overrideRow?.gate).toBe("COLLEGE_GATE");
 
     const auditRow = await prisma.auditLog.findFirst({
       where: { action: "ATTENDANCE_OVERRIDE", entityId: participant.registrationId }
     });
     expect(auditRow).not.toBeNull();
+  });
+
+  it("overrides the Event Gate independently of the College Gate's state", async () => {
+    const participant = await createParticipantWithCredential("override-event-gate");
+    await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Cookie", volunteerCookies)
+      .set("X-CSRF-Token", volunteerCsrf)
+      .send({ token: participant.token, gate: "EVENT_GATE" });
+
+    const response = await request(app)
+      .post("/api/v1/scan/override")
+      .set("Cookie", teamLeaderCookies)
+      .set("X-CSRF-Token", teamLeaderCsrf)
+      .send({ token: participant.token, reason: "Event Gate override test", gate: "EVENT_GATE" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.gate).toBe("EVENT_GATE");
+
+    const attendance = await prisma.attendance.findUniqueOrThrow({
+      where: { registrationId: participant.registrationId }
+    });
+    expect(attendance.eventGateState).toBe("OVERRIDE_ENTRY");
+    expect(attendance.collegeGateState).toBe("NOT_ENTERED");
+
+    const overrideRow = await prisma.attendanceOverride.findFirst({
+      where: { registrationId: participant.registrationId, gate: "EVENT_GATE" }
+    });
+    expect(overrideRow).not.toBeNull();
+  });
+});
+
+describe("gate assignment enforcement", () => {
+  it("blocks a volunteer with no assigned gate from scanning", async () => {
+    const passwordHash = await hashPassword(PASSWORD);
+    const email = `test-att-unassigned-${Date.now()}@acharya.ac.in`;
+    await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: "VOLUNTEER",
+        status: "ACTIVE",
+        volunteerProfile: { create: { name: "Unassigned Volunteer", phone: "9000000003" } }
+      }
+    });
+    try {
+      const login = await request(app).post("/api/v1/auth/login").send({ email, password: PASSWORD });
+      const cookies = login.headers["set-cookie"] as unknown as string[];
+      const csrf = extractCookie(cookies, "csrf_token") ?? "";
+
+      const participant = await createParticipantWithCredential("unassigned-gate");
+      const response = await request(app)
+        .post("/api/v1/scan/lookup")
+        .set("Cookie", cookies)
+        .set("X-CSRF-Token", csrf)
+        .send({ token: participant.token });
+
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe("GATE_NOT_ASSIGNED");
+    } finally {
+      await prisma.refreshToken.deleteMany({ where: { user: { email } } });
+      await prisma.auditLog.deleteMany({ where: { actorUser: { email } } });
+      await prisma.user.delete({ where: { email } });
+    }
   });
 });
 

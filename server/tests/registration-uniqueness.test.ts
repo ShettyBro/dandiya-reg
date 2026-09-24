@@ -132,19 +132,22 @@ describe("lifecycle-aware uniqueness", () => {
     await expect(register(openEventId, faculty())).rejects.toBeInstanceOf(DuplicateEmployeeIdError);
   });
 
-  it("rejects a second active registration with the same Aadhaar number", async () => {
+  it("rejects a second active Acharya Alumni registration with the same Aadhaar number", async () => {
     const aadhaarNumber = `${Date.now()}`.padStart(12, "1");
-    const nonAcharyan = (overrides: Record<string, unknown> = {}) => ({
-      registrationType: "NON_ACHARYAN_STUDENT" as const,
-      name: "test outsider",
+    const alumni = (overrides: Record<string, unknown> = {}) => ({
+      registrationType: "ACHARYA_ALUMNI" as const,
+      name: "test alumni",
       phone: randomPhone(),
-      email: `outsider-${Date.now()}-${Math.random()}@example.com`,
-      collegeName: "some other college",
+      email: `alumni-${Date.now()}-${Math.random()}@acharya.ac.in`,
+      auid: `alumni-auid-${Date.now()}-${Math.random()}`,
+      identityDocumentType: "AADHAAR" as const,
       aadhaarNumber,
       ...overrides
     });
-    await register(openEventId, nonAcharyan());
-    await expect(register(openEventId, nonAcharyan())).rejects.toBeInstanceOf(DuplicateAadhaarError);
+    await register(openEventId, alumni());
+    await expect(register(openEventId, alumni({ auid: `alumni-auid-${Date.now()}-${Math.random()}` }))).rejects.toBeInstanceOf(
+      DuplicateAadhaarError
+    );
   });
 
   it("rejects a second active registration with the same phone within the same type", async () => {

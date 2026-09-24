@@ -28,7 +28,17 @@ async function presignIfPresent(env: Env, objectKey: string | null): Promise<str
 const filterSchema = z.object({
   search: z.string().trim().max(200).optional(),
   filter: z
-    .enum(["all", "payment_pending", "proof_submitted", "approved", "rejected", "entered", "not_entered"])
+    .enum([
+      "all",
+      "payment_pending",
+      "proof_submitted",
+      "approved",
+      "rejected",
+      "college_gate_entered",
+      "college_gate_not_entered",
+      "event_gate_entered",
+      "event_gate_not_entered"
+    ])
     .default("all"),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20)
@@ -67,8 +77,10 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
       if (filter === "proof_submitted") where.payment = { status: "PROOF_SUBMITTED" };
       if (filter === "approved") where.payment = { status: "APPROVED" };
       if (filter === "rejected") where.payment = { status: "REJECTED" };
-      if (filter === "entered") where.attendance = { state: { in: ["ENTERED", "OVERRIDE_ENTRY"] } };
-      if (filter === "not_entered") where.attendance = { state: "NOT_ENTERED" };
+      if (filter === "college_gate_entered") where.attendance = { collegeGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } };
+      if (filter === "college_gate_not_entered") where.attendance = { collegeGateState: "NOT_ENTERED" };
+      if (filter === "event_gate_entered") where.attendance = { eventGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } };
+      if (filter === "event_gate_not_entered") where.attendance = { eventGateState: "NOT_ENTERED" };
 
       const [items, total] = await Promise.all([
         prisma.registration.findMany({
@@ -90,7 +102,7 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
             identityStatus: true,
             createdAt: true,
             payment: { select: { status: true, amountInPaise: true, transactionId: true } },
-            attendance: { select: { state: true } }
+            attendance: { select: { collegeGateState: true, eventGateState: true } }
           }
         }),
         prisma.registration.count({ where })
@@ -140,6 +152,7 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
         employeeId: registration.employeeId,
         collegeName: registration.collegeName,
         status: registration.status,
+        identityDocumentType: registration.identityDocumentType,
         identityStatus: registration.identityStatus,
         identityRejectionReason: registration.identityRejectionReason,
         createdAt: registration.createdAt,
@@ -156,7 +169,12 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
               proofUrl: paymentProofUrl
             }
           : null,
-        attendance: registration.attendance ? { state: registration.attendance.state } : null
+        attendance: registration.attendance
+          ? {
+              collegeGateState: registration.attendance.collegeGateState,
+              eventGateState: registration.attendance.eventGateState
+            }
+          : null
       });
     }
   );

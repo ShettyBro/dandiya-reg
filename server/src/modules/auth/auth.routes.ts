@@ -152,7 +152,8 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
             gate: user.volunteerProfile.gate,
             zone: user.volunteerProfile.zone,
             shiftStart: user.volunteerProfile.shiftStart,
-            shiftEnd: user.volunteerProfile.shiftEnd
+            shiftEnd: user.volunteerProfile.shiftEnd,
+            assignedGate: user.volunteerProfile.assignedGate
           }
         : null
     });

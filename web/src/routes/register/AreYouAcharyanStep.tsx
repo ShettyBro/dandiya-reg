@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { CaretRight, Buildings, ChalkboardTeacher, GraduationCap } from "@phosphor-icons/react";
+import { CaretRight, Buildings, ChalkboardTeacher, GraduationCap, Users } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import type { RegistrationType } from "./registrationTypes.js";
 
@@ -20,6 +20,12 @@ const CATEGORIES: Array<{
     label: "Acharya Faculty",
     description: "Faculty or staff at an Acharya institution",
     icon: ChalkboardTeacher
+  },
+  {
+    type: "ACHARYA_ALUMNI",
+    label: "Acharya Alumni",
+    description: "Previously studied at an Acharya institution",
+    icon: Users
   },
   {
     type: "NON_ACHARYAN_STUDENT",

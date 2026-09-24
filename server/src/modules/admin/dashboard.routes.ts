@@ -20,7 +20,8 @@ export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
         approved,
         rejected,
         collectionAgg,
-        entered,
+        collegeGateEntered,
+        eventGateEntered,
         overrideCount,
         event
       ] = await Promise.all([
@@ -30,7 +31,8 @@ export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
         prisma.payment.count({ where: { status: "APPROVED" } }),
         prisma.payment.count({ where: { status: "REJECTED" } }),
         prisma.payment.aggregate({ where: { status: "APPROVED" }, _sum: { amountInPaise: true } }),
-        prisma.attendance.count({ where: { state: { in: ["ENTERED", "OVERRIDE_ENTRY"] } } }),
+        prisma.attendance.count({ where: { collegeGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } } }),
+        prisma.attendance.count({ where: { eventGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } } }),
         prisma.attendanceOverride.count(),
         prisma.event.findUnique({ where: { id: env.EVENT_ID } })
       ]);
@@ -42,7 +44,8 @@ export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
         approved,
         rejected,
         totalCollectionInPaise: collectionAgg._sum.amountInPaise ?? 0,
-        entered,
+        collegeGateEntered,
+        eventGateEntered,
         remainingCapacity: event ? Math.max(event.capacity - totalRegistrations, 0) : null,
         overrideCount,
         registrationOpen: event?.registrationOpen ?? null,

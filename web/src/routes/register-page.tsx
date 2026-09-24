@@ -27,8 +27,10 @@ export function RegisterPage() {
   const [registrationType, setRegistrationType] = useState<RegistrationType | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [publicCode, setPublicCode] = useState<string | null>(null);
+  const [identityDocumentType, setIdentityDocumentType] = useState<"AADHAAR" | "COLLEGE_ID" | undefined>(undefined);
   const checkingAvailability = step === 0 && configLoading;
   const closedForNewRegistrations = step === 0 && !configLoading && config !== null && !config.registrationOpen;
+  const needsIdentityStep = registrationType === "NON_ACHARYAN_STUDENT" || registrationType === "ACHARYA_ALUMNI";
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -39,7 +41,7 @@ export function RegisterPage() {
           <h1 className="mb-2 font-display text-2xl font-semibold text-white sm:text-3xl">Register</h1>
           <p className="mb-8 text-sm text-white/60">Mobile-friendly, takes about two minutes.</p>
 
-          {step > 0 && <ProgressIndicator current={step} showIdentity={registrationType === "NON_ACHARYAN_STUDENT"} />}
+          {step > 0 && <ProgressIndicator current={step} showIdentity={needsIdentityStep} />}
 
           {checkingAvailability && (
             <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
@@ -68,9 +70,10 @@ export function RegisterPage() {
               registrationType={registrationType}
               idempotencyKey={idempotencyKey}
               onBack={() => setStep(0)}
-              onComplete={(response) => {
+              onComplete={(response, docType) => {
                 setRegistrationId(response.registrationId);
                 setPublicCode(response.publicCode);
+                setIdentityDocumentType(docType);
                 setStep(2);
               }}
             />
@@ -79,12 +82,17 @@ export function RegisterPage() {
           {step === 2 && registrationId && (
             <PhotoUploadStep
               registrationId={registrationId}
-              onComplete={() => setStep(registrationType === "NON_ACHARYAN_STUDENT" ? 3 : 4)}
+              onComplete={() => setStep(needsIdentityStep ? 3 : 4)}
             />
           )}
 
-          {step === 3 && registrationId && registrationType === "NON_ACHARYAN_STUDENT" && (
-            <IdentityUploadStep registrationId={registrationId} onComplete={() => setStep(4)} />
+          {step === 3 && registrationId && registrationType && needsIdentityStep && (
+            <IdentityUploadStep
+              registrationId={registrationId}
+              registrationType={registrationType}
+              identityDocumentType={identityDocumentType}
+              onComplete={() => setStep(4)}
+            />
           )}
 
           {step === 4 && registrationId && (
