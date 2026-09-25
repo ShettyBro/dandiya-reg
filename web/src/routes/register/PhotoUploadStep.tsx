@@ -80,7 +80,7 @@ export function PhotoUploadStep({
       } else if (uploadError instanceof ApiError && uploadError.code === "IMAGE_VALIDATION_FAILED") {
         setError("That image doesn't look like a valid passport-style photo. Try a square, well-lit photo.");
       } else {
-        setError("Upload failed. Please try again.");
+        setError("Upload failed — this is usually a weak connection. Please check your signal and try again.");
       }
     } finally {
       setUploading(false);

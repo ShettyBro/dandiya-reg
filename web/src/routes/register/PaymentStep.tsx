@@ -130,7 +130,9 @@ export function PaymentStep({
       if (submitError instanceof ApiError && submitError.code === SERVER_UNREACHABLE_CODE) {
         setError(submitError.message);
       } else if (submitError instanceof ApiError && submitError.code === "DUPLICATE_TRANSACTION_ID") {
-        setError("This transaction ID has already been used for another registration.");
+        setError(
+          "This transaction/reference ID has already been used for a different registration. Each person needs to make their own separate payment — if you already registered with this reference, use \"Check status\" instead of submitting again."
+        );
       } else if (submitError instanceof ApiError && submitError.code === "R2_NOT_CONFIGURED") {
         setError("Proof storage isn't ready yet on our end. Please try again shortly.");
       } else if (submitError instanceof ApiError && submitError.code === "PHOTO_REQUIRED") {
@@ -140,7 +142,7 @@ export function PaymentStep({
       } else if (submitError instanceof ApiError && submitError.code === "RATE_LIMITED") {
         setError("Too many attempts from this network right now. Please wait a couple of minutes and try again.");
       } else {
-        setError("Could not submit payment proof. Please try again.");
+        setError("Could not submit payment proof — this is usually a weak connection. Please check your signal and try again.");
       }
     } finally {
       setSubmitting(false);

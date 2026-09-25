@@ -1,13 +1,35 @@
-export async function putFileToPresignedUrl(uploadUrl: string, file: File): Promise<void> {
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file
-  });
+const UPLOAD_RETRY_DELAYS_MS = [800, 2000];
 
-  if (!response.ok) {
-    throw new Error(`Upload failed with status ${response.status}`);
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// The direct PUT to R2 is the single most failure-prone step of the whole registration flow —
+// it runs over whatever mobile connection the user happens to have, for as long as their photo
+// takes to upload, with no server-side retry possible once the presigned URL is issued. A brief
+// signal drop shouldn't force the user to reselect their photo and start over, so retry a couple
+// of times with backoff before surfacing a failure.
+export async function putFileToPresignedUrl(uploadUrl: string, file: File): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const response = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file
+      });
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+      return;
+    } catch (error) {
+      lastError = error;
+      const delayMs = UPLOAD_RETRY_DELAYS_MS[attempt];
+      if (delayMs === undefined) break;
+      await sleep(delayMs);
+    }
   }
+  throw lastError;
 }
 
 export const IDENTITY_IMAGE_MAX_BYTES = 1 * 1024 * 1024;
