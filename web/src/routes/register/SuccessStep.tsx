@@ -1,10 +1,16 @@
 import { CheckCircle, InstagramLogo } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
-import { LinkButton } from "../../components/ui/Button.js";
+import { Button, LinkButton } from "../../components/ui/Button.js";
 
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
-export function SuccessStep({ publicCode }: { publicCode: string }) {
+export function SuccessStep({
+  publicCode,
+  onRegisterAnother
+}: {
+  publicCode: string;
+  onRegisterAnother: () => void;
+}) {
   return (
     <GlassPanel variant="solid" className="flex flex-col items-center gap-4 p-8 text-center">
       <CheckCircle size={48} weight="fill" className="text-festival-gold" />
@@ -24,6 +30,9 @@ export function SuccessStep({ publicCode }: { publicCode: string }) {
       <LinkButton to={`/registration/status?code=${publicCode}`} className="mt-2">
         Check status
       </LinkButton>
+      <Button variant="secondary" onClick={onRegisterAnother} className="mt-1">
+        Register another person
+      </Button>
       <a
         href={INSTAGRAM_URL}
         target="_blank"

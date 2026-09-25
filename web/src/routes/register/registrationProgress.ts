@@ -4,11 +4,13 @@ import type { RegistrationType } from "./registrationTypes.js";
 // user is away completing payment in the ERP (a different app/tab) doesn't lose their place —
 // without this, returning to the browser recreated the page from scratch and dumped them back at
 // "Choose your registration category" even though a real registration already existed server-side.
-// A sliding 10-minute TTL means an abandoned/stale attempt naturally expires and a later visit
-// starts a genuinely fresh registration — multiple registrations from the same device remain fine.
+// Deliberately no time-based expiry: an ERP payment can genuinely take much longer than any fixed
+// window, and a fixed TTL just relocates the same lost-progress complaint to whoever is slower
+// than it. Progress instead only clears on an explicit action — reaching the final success step
+// (registration.tsx clears it once confirmed), or the person tapping "Register another person"
+// there to deliberately start a fresh attempt on the same device.
 
 const STORAGE_KEY = "dandiya-registration-progress";
-const TTL_MS = 10 * 60 * 1000;
 
 export interface RegistrationProgress {
   idempotencyKey: string;
@@ -24,7 +26,7 @@ export function loadRegistrationProgress(): RegistrationProgress | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as RegistrationProgress;
-    if (typeof parsed.savedAt !== "number" || Date.now() - parsed.savedAt > TTL_MS) {
+    if (typeof parsed.savedAt !== "number") {
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }

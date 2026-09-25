@@ -24,7 +24,7 @@ function createIdempotencyKey(): string {
 export function RegisterPage() {
   const { config, loading: configLoading } = useEventConfig();
   const restored = useState(loadRegistrationProgress)[0];
-  const [idempotencyKey] = useState(() => restored?.idempotencyKey ?? createIdempotencyKey());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => restored?.idempotencyKey ?? createIdempotencyKey());
   const [step, setStep] = useState(restored?.step ?? 0);
   const [registrationType, setRegistrationType] = useState<RegistrationType | null>(restored?.registrationType ?? null);
   const [registrationId, setRegistrationId] = useState<string | null>(restored?.registrationId ?? null);
@@ -46,6 +46,15 @@ export function RegisterPage() {
     }
     saveRegistrationProgress({ idempotencyKey, step, registrationType, registrationId, publicCode });
   }, [idempotencyKey, step, registrationType, registrationId, publicCode]);
+
+  function resetForNewRegistration() {
+    clearRegistrationProgress();
+    setIdempotencyKey(createIdempotencyKey());
+    setRegistrationType(null);
+    setRegistrationId(null);
+    setPublicCode(null);
+    setStep(0);
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -112,7 +121,9 @@ export function RegisterPage() {
             <PaymentStep registrationId={registrationId} registrationType={registrationType} onComplete={() => setStep(5)} />
           )}
 
-          {step === 5 && publicCode && <SuccessStep publicCode={publicCode} />}
+          {step === 5 && publicCode && (
+            <SuccessStep publicCode={publicCode} onRegisterAnother={resetForNewRegistration} />
+          )}
         </Container>
       </main>
       <div className="relative z-10">
