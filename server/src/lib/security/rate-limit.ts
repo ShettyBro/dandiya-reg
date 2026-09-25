@@ -18,8 +18,15 @@ export function createRateLimiter(windowMs: number, max: number) {
 }
 
 export const loginRateLimiter = createRateLimiter(15 * 60 * 1000, 10);
-export const registrationRateLimiter = createRateLimiter(15 * 60 * 1000, 300);
-export const uploadPresignRateLimiter = createRateLimiter(15 * 60 * 1000, 500);
-export const paymentSubmitRateLimiter = createRateLimiter(15 * 60 * 1000, 300);
+
+// Registration/upload/payment/status-lookup are hit by hundreds of students on the same campus
+// WiFi NAT, which all share one public IP as far as the server can tell — a per-IP limit sized
+// for a single user falsely blocks the whole building. These stay generous (not removed outright,
+// so a genuine single-source flood is still capped) while auth and gate-scanning stay tight since
+// those aren't subject to shared-WiFi collision and matter more for abuse/security.
+export const registrationRateLimiter = createRateLimiter(15 * 60 * 1000, 3000);
+export const uploadPresignRateLimiter = createRateLimiter(15 * 60 * 1000, 5000);
+export const paymentSubmitRateLimiter = createRateLimiter(15 * 60 * 1000, 3000);
+export const publicLookupRateLimiter = createRateLimiter(15 * 60 * 1000, 600);
+
 export const scanRateLimiter = createRateLimiter(60 * 1000, 60);
-export const publicLookupRateLimiter = createRateLimiter(15 * 60 * 1000, 60);
