@@ -157,7 +157,7 @@ export function renderEmailTemplate(
         html: shell(
           assets,
           `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we were unable to verify your Dandiya Celebration Kit payment.</p>
-           <p style="text-align:center;font-size:14px;color:${MUTED};">Please register again using the same details with a valid payment reference and screenshot. Your code <strong>${publicCode}</strong> stays on record.</p>`
+           <p style="text-align:center;font-size:14px;color:${MUTED};line-height:1.6;"><strong style="color:${TEXT};">You do NOT need to pay again.</strong> Please register again using the same details, and upload a clear screenshot with the correct transaction ID for the same payment you already made. Only make a new payment if you were specifically told the amount or the payment itself was wrong. Your code <strong>${publicCode}</strong> stays on record.</p>`
         )
       };
     case "IDENTITY_REJECTED":
@@ -166,7 +166,7 @@ export function renderEmailTemplate(
         html: shell(
           assets,
           `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we were unable to verify your identity.</p>
-           <p style="text-align:center;font-size:14px;color:${MUTED};line-height:1.6;">Please register again with valid identity proof. Use your existing payment proof — <strong style="color:${TEXT};">do not make another payment.</strong></p>`
+           <p style="text-align:center;font-size:14px;color:${MUTED};line-height:1.6;">Please register again with valid identity proof, and use the same payment screenshot and transaction ID from before — <strong style="color:${TEXT};">do not make another payment.</strong></p>`
         )
       };
     case "VOLUNTEER_INVITE":

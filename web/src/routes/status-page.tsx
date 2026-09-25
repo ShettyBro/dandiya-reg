@@ -155,10 +155,16 @@ export function StatusPage() {
                 {REJECTED_STATUSES.has(result.status) && result.rejectionReason && (
                   <>
                     <p className="mt-2 text-sm text-red-300">Reason: {result.rejectionReason}</p>
-                    <p className="mt-2 text-xs text-white/50">
-                      You can register again using your existing payment proof if it wasn't the issue — do
-                      not make another payment unless asked to.
-                    </p>
+                    <div className="mt-3 rounded-xl border border-red-400/25 bg-red-400/8 px-4 py-3 text-sm text-white/80">
+                      <p className="font-semibold text-red-200">You do NOT need to pay again.</p>
+                      <p className="mt-1 text-xs text-white/70">
+                        Fill the registration form again with the same details, and upload the same
+                        payment screenshot and the same transaction ID you already have — your money has
+                        already been paid. Only make a new payment if the rejection reason above
+                        specifically says the payment itself was wrong (e.g. wrong amount or unreadable
+                        screenshot).
+                      </p>
+                    </div>
                   </>
                 )}
               </div>
