@@ -135,6 +135,10 @@ export function PaymentStep({
         setError("Proof storage isn't ready yet on our end. Please try again shortly.");
       } else if (submitError instanceof ApiError && submitError.code === "PHOTO_REQUIRED") {
         setError("Required photo uploads are missing. Please go back and complete them first.");
+      } else if (submitError instanceof ApiError && submitError.code === "IMAGE_VALIDATION_FAILED") {
+        setError("That screenshot couldn't be read. Please upload a clear JPG or PNG (not HEIC/WEBP) under 2MB.");
+      } else if (submitError instanceof ApiError && submitError.code === "RATE_LIMITED") {
+        setError("Too many attempts from this network right now. Please wait a couple of minutes and try again.");
       } else {
         setError("Could not submit payment proof. Please try again.");
       }
