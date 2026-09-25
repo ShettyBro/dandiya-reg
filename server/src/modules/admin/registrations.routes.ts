@@ -12,6 +12,7 @@ import {
 } from "../registration/registration-cleanup.service.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { presignGetUrl } from "../../lib/r2/presign.js";
+import { buildVerifiedRegistrationsWorkbook } from "./registrations-export.service.js";
 import type { Env } from "../../app/config/env.js";
 
 async function presignIfPresent(env: Env, objectKey: string | null): Promise<string | null> {
@@ -109,6 +110,30 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
       ]);
 
       res.status(200).json({ items, total, page, pageSize });
+    }
+  );
+
+  router.get(
+    "/admin/registrations/export",
+    requireAuth(env),
+    requireRole("ADMIN"),
+    requireActiveUser(prisma),
+    async (req, res) => {
+      const buffer = await buildVerifiedRegistrationsWorkbook(prisma, env);
+      const filename = `dandiya-verified-registrations-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      await recordAuditLog(prisma, {
+        actorUserId: req.authUser?.id ?? null,
+        action: "REGISTRATIONS_EXPORTED",
+        entityType: "Registration",
+        entityId: "bulk-export",
+        requestId: req.id !== undefined ? String(req.id) : null
+      });
+      res.status(200).send(buffer);
     }
   );
 

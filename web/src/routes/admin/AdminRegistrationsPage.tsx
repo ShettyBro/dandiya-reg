@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { CaretDown, Trash } from "@phosphor-icons/react";
+import { CaretDown, DownloadSimple, Trash } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
 
 type Filter =
   | "all"
@@ -86,6 +88,7 @@ export function AdminRegistrationsPage() {
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const pageSize = 20;
 
   const fetchItems = useCallback(() => {
@@ -155,24 +158,61 @@ export function AdminRegistrationsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  async function handleExport() {
+    setExporting(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/registrations/export`, {
+        credentials: "include"
+      });
+      if (!response.ok) {
+        throw new Error(`Export failed with status ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dandiya-verified-registrations-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not export registrations. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[220px] flex-1">
-          <FormField
-            label="Search"
-            placeholder="Name, email, phone, code, or transaction ID"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-        </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[220px] flex-1">
+            <FormField
+              label="Search"
+              placeholder="Name, email, phone, code, or transaction ID"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            className="h-[42px] rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-semibold text-white hover:border-festival-gold/50"
+          >
+            Search
+          </button>
+        </form>
         <button
-          type="submit"
-          className="h-[42px] rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-semibold text-white hover:border-festival-gold/50"
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex h-[42px] items-center gap-2 rounded-xl border border-festival-gold/40 bg-festival-gold/10 px-5 text-sm font-semibold text-festival-gold hover:bg-festival-gold/20 disabled:opacity-50"
         >
-          Search
+          <DownloadSimple size={16} weight="bold" />
+          {exporting ? "Generating..." : "Export verified to Excel"}
         </button>
-      </form>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
