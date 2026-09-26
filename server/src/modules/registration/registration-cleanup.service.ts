@@ -3,7 +3,7 @@ import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { deleteObject } from "../../lib/r2/presign.js";
 import type { Env } from "../../app/config/env.js";
 
-export const INCOMPLETE_REGISTRATION_EXPIRY_MS = 20 * 60 * 1000;
+export const INCOMPLETE_REGISTRATION_EXPIRY_MS = 45 * 60 * 1000;
 
 export class RegistrationNotFoundError extends Error {}
 
