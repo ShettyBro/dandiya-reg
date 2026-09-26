@@ -12,6 +12,7 @@ import { validateUploadedImage, ImageValidationError } from "../../lib/r2/valida
 import { MAX_UPLOAD_SIZE_BYTES } from "../../lib/r2/object-keys.js";
 import {
   approvePayment,
+  DocumentMissingError,
   DuplicateTransactionIdError,
   IdentityNotApprovedError,
   InvalidUploadIntentError,
@@ -213,6 +214,16 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
         }
         if (error instanceof IdentityNotApprovedError) {
           sendError(req, res, 409, "IDENTITY_NOT_APPROVED", "Identity must be approved before payment can be reviewed");
+          return;
+        }
+        if (error instanceof DocumentMissingError) {
+          sendError(
+            req,
+            res,
+            409,
+            "DOCUMENT_MISSING",
+            "The photo or payment screenshot is missing from storage and cannot be verified. Ask the participant to re-upload before approving."
+          );
           return;
         }
         throw error;

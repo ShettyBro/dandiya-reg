@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { createApp } from "../src/app/create-app.js";
 import { loadEnv, resetEnvCacheForTests } from "../src/app/config/env.js";
 import { hashPassword } from "../src/lib/security/password.js";
+import { getR2Client } from "../src/lib/r2/client.js";
 import { submitPaymentProof } from "../src/modules/payments/payment.service.js";
 
 const prisma = new PrismaClient();
@@ -11,6 +13,26 @@ const prisma = new PrismaClient();
 resetEnvCacheForTests();
 const env = loadEnv(process.env);
 const app = createApp(env, prisma);
+const r2 = getR2Client(env);
+const createdObjectKeys: string[] = [];
+
+// approvePayment/approveIdentity now verify the photo/identity-proof genuinely exist in R2 (not
+// just that the DB's object-key field is non-null), so tests that reach either approve step need
+// a real object at that key.
+async function uploadRealObject(objectKey: string): Promise<void> {
+  createdObjectKeys.push(objectKey);
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Key: objectKey,
+      Body: Buffer.from(
+        "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+        "base64"
+      ),
+      ContentType: "image/jpeg"
+    })
+  );
+}
 
 const FINANCE_EMAIL = `test-na-finance-${Date.now()}@acharya.ac.in`;
 const VERIFIER_EMAIL = `test-na-verifier-${Date.now()}@acharya.ac.in`;
@@ -43,12 +65,13 @@ async function createNonAcharyanRegistration(suffix: string) {
       collegeName: "Some Other College"
     });
   createdRegistrationIds.push(created.body.registrationId);
+  const photoObjectKey = `test-photo/${created.body.registrationId}.jpg`;
+  const collegeIdImageObjectKey = `test-college-id/${created.body.registrationId}.jpg`;
+  await uploadRealObject(photoObjectKey);
+  await uploadRealObject(collegeIdImageObjectKey);
   await prisma.registration.update({
     where: { id: created.body.registrationId },
-    data: {
-      photoObjectKey: `test-photo/${created.body.registrationId}.jpg`,
-      collegeIdImageObjectKey: `test-college-id/${created.body.registrationId}.jpg`
-    }
+    data: { photoObjectKey, collegeIdImageObjectKey }
   });
   return created.body as { registrationId: string; publicCode: string };
 }
@@ -84,6 +107,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  for (const key of createdObjectKeys) {
+    await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key })).catch(() => undefined);
+  }
   await prisma.auditLog.deleteMany({ where: { entityId: { in: createdRegistrationIds } } });
   await prisma.passCredential.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.emailJob.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
@@ -101,6 +127,7 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
   it("goes registration -> IDENTITY_PENDING -> blocks payment review -> identity approved -> payment approved", async () => {
     const registration = await createNonAcharyanRegistration("full-flow");
     const objectKey = `payments/${registration.registrationId}/proof/na-flow.jpg`;
+    await uploadRealObject(objectKey);
     await createProofIntent(registration.registrationId, objectKey);
 
     const payment = await submitPaymentProof(prisma, {

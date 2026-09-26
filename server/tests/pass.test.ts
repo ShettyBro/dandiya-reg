@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { createApp } from "../src/app/create-app.js";
 import { loadEnv, resetEnvCacheForTests } from "../src/app/config/env.js";
 import { hashPassword } from "../src/lib/security/password.js";
+import { getR2Client } from "../src/lib/r2/client.js";
 import { submitPaymentProof } from "../src/modules/payments/payment.service.js";
 
 const prisma = new PrismaClient();
@@ -11,6 +13,25 @@ const prisma = new PrismaClient();
 resetEnvCacheForTests();
 const env = loadEnv(process.env);
 const app = createApp(env, prisma);
+const r2 = getR2Client(env);
+const createdObjectKeys: string[] = [];
+
+// approvePayment now verifies the photo/proof genuinely exist in R2, so a registration this
+// suite approves needs a real object at that key, not just a fake string.
+async function uploadRealObject(objectKey: string): Promise<void> {
+  createdObjectKeys.push(objectKey);
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Key: objectKey,
+      Body: Buffer.from(
+        "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+        "base64"
+      ),
+      ContentType: "image/jpeg"
+    })
+  );
+}
 
 const FINANCE_EMAIL = `test-pass-finance-${Date.now()}@acharya.ac.in`;
 const PASSWORD = "correct horse battery staple";
@@ -42,12 +63,15 @@ async function createApprovedRegistration(suffix: string) {
       year: 2
     });
   createdRegistrationIds.push(created.body.registrationId);
+  const photoObjectKey = `test-photo/${created.body.registrationId}.jpg`;
+  await uploadRealObject(photoObjectKey);
   await prisma.registration.update({
     where: { id: created.body.registrationId },
-    data: { photoObjectKey: `test-photo/${created.body.registrationId}.jpg` }
+    data: { photoObjectKey }
   });
 
   const objectKey = `payments/${created.body.registrationId}/proof/pass-test.jpg`;
+  await uploadRealObject(objectKey);
   await prisma.uploadIntent.create({
     data: {
       registrationId: created.body.registrationId,
@@ -86,6 +110,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  for (const key of createdObjectKeys) {
+    await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key })).catch(() => undefined);
+  }
   await prisma.auditLog.deleteMany({ where: { entityType: "Payment" } });
   await prisma.passCredential.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.emailJob.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });

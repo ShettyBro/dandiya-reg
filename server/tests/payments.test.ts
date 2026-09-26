@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { createApp } from "../src/app/create-app.js";
 import { loadEnv, resetEnvCacheForTests } from "../src/app/config/env.js";
 import { hashPassword } from "../src/lib/security/password.js";
+import { getR2Client } from "../src/lib/r2/client.js";
 import {
   DuplicateTransactionIdError,
   InvalidUploadIntentError,
@@ -16,6 +18,26 @@ const prisma = new PrismaClient();
 resetEnvCacheForTests();
 const env = loadEnv(process.env);
 const app = createApp(env, prisma);
+const r2 = getR2Client(env);
+const createdObjectKeys: string[] = [];
+
+// approvePayment now verifies the photo/proof genuinely exist in R2 (not just that the DB's
+// object-key field is non-null) before allowing approval, so tests that reach the approve step
+// need a real object at that key, not just a fake string.
+async function uploadRealObject(objectKey: string): Promise<void> {
+  createdObjectKeys.push(objectKey);
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Key: objectKey,
+      Body: Buffer.from(
+        "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+        "base64"
+      ),
+      ContentType: "image/jpeg"
+    })
+  );
+}
 
 const FINANCE_EMAIL = `test-finance-${Date.now()}@acharya.ac.in`;
 const VOLUNTEER_EMAIL = `test-vol-${Date.now()}@acharya.ac.in`;
@@ -49,9 +71,11 @@ async function createTestRegistration(suffix: string) {
       year: 2
     });
   createdRegistrationIds.push(response.body.registrationId);
+  const photoObjectKey = `test-photo/${response.body.registrationId}.jpg`;
+  await uploadRealObject(photoObjectKey);
   await prisma.registration.update({
     where: { id: response.body.registrationId },
-    data: { photoObjectKey: `test-photo/${response.body.registrationId}.jpg` }
+    data: { photoObjectKey }
   });
   return response.body as { registrationId: string; publicCode: string };
 }
@@ -95,6 +119,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  for (const key of createdObjectKeys) {
+    await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key })).catch(() => undefined);
+  }
   await prisma.auditLog.deleteMany({ where: { entityType: "Payment" } });
   await prisma.passCredential.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.emailJob.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
@@ -272,6 +299,7 @@ describe("finance approve/reject", () => {
   it("approves a submitted payment, issues a pass credential, and queues the approval email", async () => {
     const registration = await createTestRegistration("approve-flow");
     const objectKey = `payments/${registration.registrationId}/proof/approve.jpg`;
+    await uploadRealObject(objectKey);
     await createProofIntent(registration.registrationId, objectKey);
     await submitProofDirect(registration.registrationId, `TXN-AF-${Date.now()}`, objectKey);
 
@@ -308,6 +336,7 @@ describe("finance approve/reject", () => {
   it("does not allow approving the same payment twice", async () => {
     const registration = await createTestRegistration("double-approve");
     const objectKey = `payments/${registration.registrationId}/proof/double.jpg`;
+    await uploadRealObject(objectKey);
     await createProofIntent(registration.registrationId, objectKey);
     await submitProofDirect(registration.registrationId, `TXN-DA-${Date.now()}`, objectKey);
 

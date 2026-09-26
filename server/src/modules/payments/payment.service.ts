@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { deriveSignedCredentialToken, hashCredentialToken, newCredentialId } from "../../lib/qr/credential.js";
 import { recordAuditLog } from "../audit/audit.service.js";
 import { IDENTITY_REQUIRED_TYPES } from "../registration/identity.service.js";
+import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
+import { headObject, ObjectNotFoundError } from "../../lib/r2/presign.js";
 import type { Env } from "../../app/config/env.js";
 
 export class PaymentNotFoundError extends Error {}
@@ -12,6 +14,25 @@ export class PaymentNotSubmittableError extends Error {}
 export class PaymentNotInReviewableStateError extends Error {}
 export class IdentityNotApprovedError extends Error {}
 export class PhotoRequiredError extends Error {}
+// The DB field pointing at the photo/proof object is non-null, but the object itself is gone
+// from R2 (a prior storage incident is exactly the scenario this guards against) — approval must
+// never proceed as if a document had been reviewed when it can't actually be seen.
+export class DocumentMissingError extends Error {}
+
+async function assertDocumentExists(env: Env, objectKey: string | null): Promise<void> {
+  if (!objectKey) {
+    throw new DocumentMissingError();
+  }
+  const client = getR2Client(env);
+  try {
+    await headObject(client, env.R2_BUCKET_NAME, objectKey);
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      throw new DocumentMissingError();
+    }
+    throw error;
+  }
+}
 
 export interface SubmitPaymentProofInput {
   registrationId: string;
@@ -110,6 +131,26 @@ export async function approvePayment(
   verifiedByUserId: string,
   requestId: string | null
 ): Promise<void> {
+  // Document existence is checked against R2 (a network call) before opening the transaction,
+  // so approval can never proceed as if a photo/proof had been reviewed when it's actually
+  // missing from storage — this is a direct safeguard against a repeat of a prior incident where
+  // a registration's photoObjectKey/proofObjectKey stayed non-null in the DB after the underlying
+  // R2 object was deleted.
+  const preCheck = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { registration: true }
+  });
+  if (preCheck?.status === "PROOF_SUBMITTED") {
+    try {
+      await assertDocumentExists(env, preCheck.registration.photoObjectKey);
+      await assertDocumentExists(env, preCheck.proofObjectKey);
+    } catch (error) {
+      if (!(error instanceof R2NotConfiguredError)) {
+        throw error;
+      }
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     const pending = await tx.payment.findUnique({
       where: { id: paymentId },

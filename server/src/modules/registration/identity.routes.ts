@@ -7,7 +7,13 @@ import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 import { requireActiveUser } from "../auth/require-active-user.middleware.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { presignGetUrl } from "../../lib/r2/presign.js";
-import { approveIdentity, IDENTITY_REQUIRED_TYPES, IdentityNotReviewableError, rejectIdentity } from "./identity.service.js";
+import {
+  approveIdentity,
+  DocumentMissingError,
+  IDENTITY_REQUIRED_TYPES,
+  IdentityNotReviewableError,
+  rejectIdentity
+} from "./identity.service.js";
 import type { Env } from "../../app/config/env.js";
 
 const listQuerySchema = z.object({
@@ -171,11 +177,21 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       try {
-        await approveIdentity(prisma, id, req.authUser.id, req.id !== undefined ? String(req.id) : null);
+        await approveIdentity(prisma, env, id, req.authUser.id, req.id !== undefined ? String(req.id) : null);
         res.status(200).json({ identityStatus: "APPROVED" });
       } catch (error) {
         if (error instanceof IdentityNotReviewableError) {
           sendError(req, res, 409, "NOT_REVIEWABLE", "Identity is not in a state that can be approved");
+          return;
+        }
+        if (error instanceof DocumentMissingError) {
+          sendError(
+            req,
+            res,
+            409,
+            "DOCUMENT_MISSING",
+            "The identity document is missing from storage and cannot be verified. Ask the participant to resubmit before approving."
+          );
           return;
         }
         throw error;
