@@ -42,10 +42,12 @@ function UploadSlot({
 export function IdentityUploadStep({
   registrationId,
   registrationType,
+  onBack,
   onComplete
 }: {
   registrationId: string;
   registrationType: RegistrationType;
+  onBack: () => void;
   onComplete: () => void;
 }) {
   const isAlumni = registrationType === "ACHARYA_ALUMNI";
@@ -110,6 +112,14 @@ export function IdentityUploadStep({
 
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
+      <button
+        type="button"
+        onClick={onBack}
+        disabled={submitting}
+        className="mb-3 block text-xs text-white/40 underline disabled:opacity-40"
+      >
+        &larr; Change photo
+      </button>
       <div className="mb-3 flex items-center gap-2 text-festival-gold">
         <IdentificationCard size={22} />
         <h2 className="font-display text-xl font-semibold text-white">Identity verification</h2>

@@ -12,9 +12,11 @@ interface PresignResponse {
 
 export function PhotoUploadStep({
   registrationId,
+  onBack,
   onComplete
 }: {
   registrationId: string;
+  onBack: () => void;
   onComplete: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
@@ -89,6 +91,14 @@ export function PhotoUploadStep({
 
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
+      <button
+        type="button"
+        onClick={onBack}
+        disabled={uploading}
+        className="mb-3 text-xs text-white/40 underline disabled:opacity-40"
+      >
+        &larr; Edit details
+      </button>
       <h2 className="font-display text-xl font-semibold text-white">Passport-style photo</h2>
       <p className="mt-1 text-sm text-white/60">
         Well-lit JPG/PNG. Must end up under 1MB with a 1:1 square ratio — we crop and resize it for you

@@ -195,6 +195,35 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
     });
   });
 
+  // Lets the in-progress wizard verify what's actually been uploaded/submitted against the
+  // server before trusting a locally-persisted step number to decide what to render — a stale
+  // or desynced step (e.g. resuming after closing the tab mid-flow) must never be able to skip
+  // a mandatory upload step. registrationId itself is the bearer credential already trusted for
+  // every other unauthenticated wizard call (photo/identity binds, payment submission), so this
+  // is consistent with the existing trust model; only booleans/type are returned, never files.
+  router.get("/registrations/:id/wizard-state", uploadPresignRateLimiter, async (req, res) => {
+    const registrationId = stringParam(req.params.id);
+    const registration = registrationId
+      ? await prisma.registration.findUnique({
+          where: { id: registrationId },
+          include: { payment: { select: { status: true } } }
+        })
+      : null;
+
+    if (!registration) {
+      sendError(req, res, 404, "NOT_FOUND", "Registration not found");
+      return;
+    }
+
+    res.status(200).json({
+      registrationType: registration.registrationType,
+      publicCode: registration.publicCode,
+      hasPhoto: Boolean(registration.photoObjectKey),
+      hasIdentityProof: Boolean(registration.collegeIdImageObjectKey || registration.acharyanProofObjectKey),
+      paymentSubmitted: registration.payment ? registration.payment.status !== "PENDING" : false
+    });
+  });
+
   for (const [path, config] of Object.entries(IMAGE_BIND_PURPOSES)) {
     router.patch(`/registrations/:id/${path}`, uploadPresignRateLimiter, async (req, res) => {
       const parsed = photoBindSchema.safeParse(req.body);

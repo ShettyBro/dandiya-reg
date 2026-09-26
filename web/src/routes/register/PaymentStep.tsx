@@ -73,10 +73,12 @@ function PaymentInstructions({
 export function PaymentStep({
   registrationId,
   registrationType,
+  onBack,
   onComplete
 }: {
   registrationId: string;
   registrationType: RegistrationType;
+  onBack: () => void;
   onComplete: () => void;
 }) {
   const { config } = useEventConfig();
@@ -87,11 +89,13 @@ export function PaymentStep({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [photoRequired, setPhotoRequired] = useState(false);
 
   const bothAcknowledged = ackInstructions && ackNoRefund;
 
   function handleFileChange(selected: File | null) {
     setError(null);
+    setPhotoRequired(false);
     if (!selected) {
       setFile(null);
       return;
@@ -112,6 +116,7 @@ export function PaymentStep({
 
     setSubmitting(true);
     setError(null);
+    setPhotoRequired(false);
     try {
       const presign = await apiRequest<PresignResponse>("/uploads/presign", {
         method: "POST",
@@ -136,7 +141,7 @@ export function PaymentStep({
       } else if (submitError instanceof ApiError && submitError.code === "R2_NOT_CONFIGURED") {
         setError("Proof storage isn't ready yet on our end. Please try again shortly.");
       } else if (submitError instanceof ApiError && submitError.code === "PHOTO_REQUIRED") {
-        setError("Required photo uploads are missing. Please go back and complete them first.");
+        setPhotoRequired(true);
       } else if (submitError instanceof ApiError && submitError.code === "IMAGE_VALIDATION_FAILED") {
         setError("That screenshot couldn't be read. Please upload a clear JPG or PNG (not HEIC/WEBP) under 2MB.");
       } else if (submitError instanceof ApiError && submitError.code === "RATE_LIMITED") {
@@ -151,6 +156,13 @@ export function PaymentStep({
 
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
+      <button
+        type="button"
+        onClick={() => (proceeded ? setProceeded(false) : onBack())}
+        className="mb-3 block text-xs text-white/40 underline"
+      >
+        {proceeded ? <>&larr; Back to instructions</> : <>&larr; Change upload</>}
+      </button>
       <h2 className="font-display text-xl font-semibold text-white">Dandiya Celebration Kit</h2>
       <p className="mt-1 text-sm text-white/60">
         Dandiya Celebration Kit — {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}
@@ -234,6 +246,19 @@ export function PaymentStep({
           </div>
 
           {error && <p className="text-sm text-red-300">{error}</p>}
+
+          {photoRequired && (
+            <div className="rounded-xl border border-red-400/30 bg-red-400/8 p-4 text-sm text-white/80">
+              <p className="text-red-300">A required upload from an earlier step is missing.</p>
+              <button
+                type="button"
+                onClick={onBack}
+                className="mt-2 font-semibold text-festival-gold hover:underline"
+              >
+                Go back and upload it now
+              </button>
+            </div>
+          )}
 
           <Button type="button" onClick={handleSubmit} disabled={submitting}>
             {submitting ? "Submitting..." : "Submit payment proof"}
