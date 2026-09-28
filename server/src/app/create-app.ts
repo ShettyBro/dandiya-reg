@@ -101,6 +101,23 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   });
 
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    // body-parser (JSON/urlencoded) throws its own errors for a malformed request body — these
+    // are client mistakes (invalid JSON, oversized payload), not server failures, and were
+    // previously falling through to a generic 500 here instead of a proper 400.
+    if (err && typeof err === "object" && "type" in err && typeof (err as { type: unknown }).type === "string") {
+      const bodyParserErr = err as { type: string; status?: number; statusCode?: number };
+      if (bodyParserErr.type.startsWith("entity.") || bodyParserErr.type.startsWith("request.")) {
+        const status = bodyParserErr.status ?? bodyParserErr.statusCode ?? 400;
+        res.status(status).json({
+          code: "INVALID_REQUEST_BODY",
+          message: "The request body could not be parsed.",
+          details: null,
+          requestId: req.id ?? null
+        });
+        return;
+      }
+    }
+
     console.error("RAW UNHANDLED ERROR", err);
     req.log?.error({ err }, "unhandled error");
     res.status(500).json({
