@@ -90,7 +90,7 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
           res,
           409,
           "DUPLICATE_AUID",
-          "This AUID is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+          "This AUID is locked to another registration. If that one is incomplete and yours, it will be released after 15 minutes — please try again after that."
         );
         return;
       }
@@ -100,7 +100,7 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
           res,
           409,
           "DUPLICATE_EMPLOYEE_ID",
-          "This Employee ID is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+          "This Employee ID is locked to another registration. If that one is incomplete and yours, it will be released after 15 minutes — please try again after that."
         );
         return;
       }
@@ -110,7 +110,7 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
           res,
           409,
           "DUPLICATE_AADHAAR",
-          "This Aadhaar number is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+          "This Aadhaar number is locked to another registration. If that one is incomplete and yours, it will be released after 15 minutes — please try again after that."
         );
         return;
       }
@@ -120,7 +120,7 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
           res,
           409,
           "DUPLICATE_PHONE",
-          "This phone number is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+          "This phone number is locked to another registration. If that one is incomplete and yours, it will be released after 15 minutes — please try again after that."
         );
         return;
       }
@@ -130,7 +130,7 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
           res,
           409,
           "DUPLICATE_EMAIL",
-          "This email address is locked to another registration. If that one is incomplete and yours, it clears automatically within a few minutes — try again shortly."
+          "This email address is locked to another registration. If that one is incomplete and yours, it will be released after 15 minutes — please try again after that."
         );
         return;
       }
