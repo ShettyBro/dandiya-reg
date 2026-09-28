@@ -213,7 +213,7 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       try {
-        await rejectIdentity(prisma, id, req.authUser.id, parsed.data.reason, req.id !== undefined ? String(req.id) : null);
+        await rejectIdentity(prisma, env, id, req.authUser.id, parsed.data.reason, req.id !== undefined ? String(req.id) : null);
         res.status(200).json({ identityStatus: "REJECTED" });
       } catch (error) {
         if (error instanceof IdentityNotReviewableError) {

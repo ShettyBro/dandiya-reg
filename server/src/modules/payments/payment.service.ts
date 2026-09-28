@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { deriveSignedCredentialToken, hashCredentialToken, newCredentialId } from "../../lib/qr/credential.js";
 import { recordAuditLog } from "../audit/audit.service.js";
 import { IDENTITY_REQUIRED_TYPES } from "../registration/identity.service.js";
+import { purgeRejectedPaymentProof } from "../registration/registration-cleanup.service.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { headObject, ObjectNotFoundError } from "../../lib/r2/presign.js";
 import type { Env } from "../../app/config/env.js";
@@ -222,6 +223,7 @@ export async function approvePayment(
 
 export async function rejectPayment(
   prisma: PrismaClient,
+  env: Env,
   paymentId: string,
   verifiedByUserId: string,
   reasonText: string,
@@ -284,4 +286,6 @@ export async function rejectPayment(
       requestId
     });
   });
+
+  await purgeRejectedPaymentProof(prisma, env, paymentId);
 }

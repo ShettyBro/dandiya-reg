@@ -252,6 +252,7 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
       try {
         await rejectPayment(
           prisma,
+          env,
           paymentId,
           req.authUser.id,
           parsed.data.reason,

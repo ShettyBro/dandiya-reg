@@ -7,7 +7,7 @@ export const INCOMPLETE_REGISTRATION_EXPIRY_MS = 45 * 60 * 1000;
 
 export class RegistrationNotFoundError extends Error {}
 
-async function deleteR2ObjectsForRegistration(env: Env, objectKeys: Array<string | null>): Promise<void> {
+export async function deleteR2ObjectsForRegistration(env: Env, objectKeys: Array<string | null>): Promise<void> {
   let client;
   try {
     client = getR2Client(env);
@@ -45,6 +45,7 @@ export async function deleteRegistrationAndAssets(
     registration.photoObjectKey,
     registration.aadhaarImageObjectKey,
     registration.collegeIdImageObjectKey,
+    registration.acharyanProofObjectKey,
     registration.payment?.proofObjectKey ?? null
   ]);
 
@@ -57,6 +58,52 @@ export async function deleteRegistrationAndAssets(
     registrationType: registration.registrationType,
     status: registration.status
   };
+}
+
+// Only the specific document that was actually rejected gets purged from R2 -- not the whole
+// registration's files. A rejected PAYMENT can legitimately be resubmitted in place on the same
+// registration (just a corrected transaction ID/screenshot; the participant photo is unrelated
+// and stays valid), so wiping the photo there would break that path. The rejection reason, status,
+// and audit log entries are always kept intact as the record of what happened; only the specific
+// rejected file and its DB pointer are cleared.
+export async function purgeRejectedPaymentProof(prisma: PrismaClient, env: Env, paymentId: string): Promise<void> {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment?.proofObjectKey) return;
+
+  await deleteR2ObjectsForRegistration(env, [payment.proofObjectKey]);
+  await prisma.payment.update({ where: { id: paymentId }, data: { proofObjectKey: null } });
+}
+
+// Identity rejection also cascades the payment to REJECTED (see rejectIdentity) and the tested/
+// supported recovery path is a brand new registration, not an in-place resubmission -- so both
+// the identity document and the payment proof are cleared here. The photo is left alone since
+// it was never the reason for rejection and costs nothing to keep.
+export async function purgeRejectedIdentityDocuments(
+  prisma: PrismaClient,
+  env: Env,
+  registrationId: string
+): Promise<void> {
+  const registration = await prisma.registration.findUnique({
+    where: { id: registrationId },
+    include: { payment: true }
+  });
+  if (!registration) return;
+
+  await deleteR2ObjectsForRegistration(env, [
+    registration.aadhaarImageObjectKey,
+    registration.collegeIdImageObjectKey,
+    registration.acharyanProofObjectKey,
+    registration.payment?.proofObjectKey ?? null
+  ]);
+
+  await prisma.registration.update({
+    where: { id: registrationId },
+    data: { aadhaarImageObjectKey: null, collegeIdImageObjectKey: null, acharyanProofObjectKey: null }
+  });
+
+  if (registration.payment?.proofObjectKey) {
+    await prisma.payment.update({ where: { id: registration.payment.id }, data: { proofObjectKey: null } });
+  }
 }
 
 export async function cleanupIncompleteRegistrations(prisma: PrismaClient, env: Env): Promise<number> {

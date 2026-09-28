@@ -2,6 +2,7 @@ import type { PrismaClient, RegistrationType } from "@prisma/client";
 import { recordAuditLog } from "../audit/audit.service.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { headObject, ObjectNotFoundError } from "../../lib/r2/presign.js";
+import { purgeRejectedIdentityDocuments } from "./registration-cleanup.service.js";
 import type { Env } from "../../app/config/env.js";
 
 export class IdentityNotReviewableError extends Error {}
@@ -79,6 +80,7 @@ export async function approveIdentity(
 
 export async function rejectIdentity(
   prisma: PrismaClient,
+  env: Env,
   registrationId: string,
   verifiedByUserId: string,
   reasonText: string,
@@ -128,4 +130,6 @@ export async function rejectIdentity(
       requestId
     });
   });
+
+  await purgeRejectedIdentityDocuments(prisma, env, registrationId);
 }
