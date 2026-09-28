@@ -195,6 +195,57 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
     });
   });
 
+  // A single free-text field on the frontend — the server decides whether the input is a
+  // registration code or a phone number instead of making the user pick a mode first. Anything
+  // that's only digits/phone punctuation and normalizes to a valid Indian mobile number is
+  // treated as a phone lookup; everything else (registration codes contain letters and a dash,
+  // e.g. "DN26-B7WZG5") is treated as a code lookup.
+  const lookupBodySchema = z.object({
+    query: z.string().trim().min(1).max(50)
+  });
+  const PHONE_LIKE_REGEX = /^[+()\-\s\d]+$/;
+
+  router.post("/registrations/status/lookup", publicLookupRateLimiter, async (req, res) => {
+    const parsed = lookupBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(req, res, 400, "VALIDATION_ERROR", "Invalid lookup payload", parsed.error.flatten());
+      return;
+    }
+
+    const raw = parsed.data.query;
+    const looksLikePhone = PHONE_LIKE_REGEX.test(raw);
+
+    let registration;
+    if (looksLikePhone) {
+      const normalized = normalizeIndianPhone(raw);
+      if (!INDIAN_PHONE_REGEX.test(normalized)) {
+        sendError(req, res, 400, "INVALID_QUERY", "Enter a valid registration code or 10-digit phone number");
+        return;
+      }
+      registration = await prisma.registration.findFirst({
+        where: { phone: normalized },
+        orderBy: { createdAt: "desc" }
+      });
+    } else {
+      registration = await getRegistrationByPublicCode(prisma, raw.toUpperCase());
+    }
+
+    if (!registration) {
+      sendError(req, res, 404, "NOT_FOUND", "No registration found for that code or phone number");
+      return;
+    }
+
+    const payment = await prisma.payment.findUnique({ where: { registrationId: registration.id } });
+
+    res.status(200).json({
+      publicCode: registration.publicCode,
+      name: registration.name,
+      status: registration.status,
+      paymentStatus: payment?.status ?? null,
+      rejectionReason: payment?.rejectionReason ?? registration.identityRejectionReason ?? null
+    });
+  });
+
   // Lets the in-progress wizard verify what's actually been uploaded/submitted against the
   // server before trusting a locally-persisted step number to decide what to render — a stale
   // or desynced step (e.g. resuming after closing the tab mid-flow) must never be able to skip

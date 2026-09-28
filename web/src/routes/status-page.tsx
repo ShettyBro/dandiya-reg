@@ -28,22 +28,12 @@ const STATUS_LABELS: Record<string, string> = {
 
 const REJECTED_STATUSES = new Set(["PAYMENT_REJECTED", "IDENTITY_REJECTED"]);
 
-type LookupMode = "code" | "phone";
-
 export function StatusPage() {
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<LookupMode>("code");
-  const [code, setCode] = useState(searchParams.get("code") ?? "");
-  const [phone, setPhone] = useState("");
+  const [query, setQuery] = useState(searchParams.get("code") ?? "");
   const [result, setResult] = useState<StatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  function handleModeSwitch(next: LookupMode) {
-    setMode(next);
-    setResult(null);
-    setError(null);
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -51,27 +41,16 @@ export function StatusPage() {
     setError(null);
     setResult(null);
     try {
-      if (mode === "code") {
-        const response = await apiRequest<StatusResponse>(
-          `/registrations/status/${encodeURIComponent(code.trim())}`
-        );
-        setResult(response);
-      } else {
-        const response = await apiRequest<StatusResponse>(
-          "/registrations/status/by-phone",
-          { method: "POST", body: { phone: phone.trim() } }
-        );
-        setResult(response);
-      }
+      const response = await apiRequest<StatusResponse>("/registrations/status/lookup", {
+        method: "POST",
+        body: { query: query.trim() }
+      });
+      setResult(response);
     } catch (fetchError) {
       if (fetchError instanceof ApiError && fetchError.code === SERVER_UNREACHABLE_CODE) {
         setError(fetchError.message);
       } else if (fetchError instanceof ApiError && fetchError.status === 404) {
-        setError(
-          mode === "phone"
-            ? "No registration found for that phone number."
-            : "No registration found for that code."
-        );
+        setError("No registration found for that code or phone number.");
       } else if (fetchError instanceof ApiError && fetchError.status === 400) {
         setError(fetchError.message);
       } else {
@@ -92,47 +71,18 @@ export function StatusPage() {
             Check registration status
           </h1>
           <p className="mb-8 text-sm text-white/60">
-            Look up your registration using your code or registered phone number.
+            Enter your registration code or your registered phone number — either works.
           </p>
-
-          {/* Tab toggle */}
-          <div className="mb-5 flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
-            {(["code", "phone"] as LookupMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => handleModeSwitch(m)}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
-                  mode === m
-                    ? "bg-festival-gold text-midnight-950 shadow"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                {m === "code" ? "Registration Code" : "Phone Number"}
-              </button>
-            ))}
-          </div>
 
           <GlassPanel className="p-6 sm:p-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              {mode === "code" ? (
-                <FormField
-                  label="Registration code"
-                  placeholder="e.g. A1B2C3D4"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  required
-                />
-              ) : (
-                <FormField
-                  label="Registered phone number"
-                  placeholder="e.g. 9876543210"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-              )}
+              <FormField
+                label="Registration code or phone number"
+                placeholder="e.g. DN26-B7WZG5 or 9876543210"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                required
+              />
               <Button type="submit" disabled={loading}>
                 {loading ? "Checking..." : "Check status"}
               </Button>
