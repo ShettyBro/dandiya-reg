@@ -12,31 +12,32 @@ const sender = createBrevoSender(env);
 
 const HEARTBEAT_PATH = process.env.WORKER_HEARTBEAT_PATH ?? "/tmp/dandiya-worker-heartbeat";
 
+// Runs on its own fixed 15-minute cadence, independent of EMAIL_WORKER_INTERVAL_MS -- a phone/
+// email/AUID lock on an incomplete registration is advertised to users as releasing "after 15
+// minutes", so the check has to happen roughly that often regardless of how infrequently the
+// email-send loop is tuned for DB-cost reasons (e.g. 45 minutes).
+const REGISTRATION_CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+
 let stopping = false;
 
 async function writeHeartbeat(): Promise<void> {
   await writeFile(HEARTBEAT_PATH, String(Date.now())).catch(() => undefined);
 }
 
-async function runOnce(): Promise<void> {
+async function runEmailBatch(): Promise<void> {
   const jobs = await claimDueEmailJobs(prisma, env.EMAIL_WORKER_BATCH_SIZE);
   for (const job of jobs) {
     const outcome = await processEmailJob(prisma, env, job, sender);
     console.log(`email job ${job.id} (${job.type}) -> ${outcome}`);
   }
 
-  const cleared = await cleanupIncompleteRegistrations(prisma, env);
-  if (cleared > 0) {
-    console.log(`cleared ${cleared} incomplete registration(s)`);
-  }
-
   await writeHeartbeat();
 }
 
-async function loop(): Promise<void> {
+async function emailLoop(): Promise<void> {
   while (!stopping) {
     try {
-      await runOnce();
+      await runEmailBatch();
     } catch (error) {
       console.error("email worker batch failed:", error instanceof Error ? error.message : "unknown error");
     }
@@ -44,15 +45,36 @@ async function loop(): Promise<void> {
   }
 }
 
+async function registrationCleanupLoop(): Promise<void> {
+  while (!stopping) {
+    try {
+      const cleared = await cleanupIncompleteRegistrations(prisma, env);
+      if (cleared > 0) {
+        console.log(`cleared ${cleared} incomplete registration(s)`);
+      }
+    } catch (error) {
+      console.error(
+        "registration cleanup batch failed:",
+        error instanceof Error ? error.message : "unknown error"
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, REGISTRATION_CLEANUP_INTERVAL_MS));
+  }
+}
+
 console.log(
-  `dandiya-email-worker starting (batch=${env.EMAIL_WORKER_BATCH_SIZE}, interval=${env.EMAIL_WORKER_INTERVAL_MS}ms)`
+  `dandiya-email-worker starting (batch=${env.EMAIL_WORKER_BATCH_SIZE}, email-interval=${env.EMAIL_WORKER_INTERVAL_MS}ms, cleanup-interval=${REGISTRATION_CLEANUP_INTERVAL_MS}ms)`
 );
 
 writeHeartbeat();
 
-loop().catch((error: unknown) => {
+emailLoop().catch((error: unknown) => {
   console.error("email worker crashed:", error instanceof Error ? error.message : "unknown error");
   process.exitCode = 1;
+});
+
+registrationCleanupLoop().catch((error: unknown) => {
+  console.error("registration cleanup loop crashed:", error instanceof Error ? error.message : "unknown error");
 });
 
 function shutdown(signal: string): void {
