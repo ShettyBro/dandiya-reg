@@ -1,4 +1,5 @@
 const UPLOAD_RETRY_DELAYS_MS = [800, 2000];
+const UPLOAD_ATTEMPT_TIMEOUT_MS = 45000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -8,15 +9,21 @@ function sleep(ms: number): Promise<void> {
 // it runs over whatever mobile connection the user happens to have, for as long as their photo
 // takes to upload, with no server-side retry possible once the presigned URL is issued. A brief
 // signal drop shouldn't force the user to reselect their photo and start over, so retry a couple
-// of times with backoff before surfacing a failure.
+// of times with backoff before surfacing a failure. Each attempt is also bounded by its own
+// timeout — a stalled connection (as opposed to one that fails outright) would otherwise leave
+// the fetch promise never settling at all, which left users stuck on "Submitting..." forever
+// with no error and no retry ever kicking in.
 export async function putFileToPresignedUrl(uploadUrl: string, file: File): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; ; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), UPLOAD_ATTEMPT_TIMEOUT_MS);
     try {
       const response = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
-        body: file
+        body: file,
+        signal: controller.signal
       });
       if (!response.ok) {
         throw new Error(`Upload failed with status ${response.status}`);
@@ -27,6 +34,8 @@ export async function putFileToPresignedUrl(uploadUrl: string, file: File): Prom
       const delayMs = UPLOAD_RETRY_DELAYS_MS[attempt];
       if (delayMs === undefined) break;
       await sleep(delayMs);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
   throw lastError;
