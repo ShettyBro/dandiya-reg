@@ -58,6 +58,8 @@ const FILTERS: Array<{ label: string; value: RegistrationStatus | "ALL" }> = [
 export function IdentityReviewPanel() {
   const [filter, setFilter] = useState<RegistrationStatus | "ALL">("IDENTITY_PENDING");
   const [items, setItems] = useState<ListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -65,13 +67,18 @@ export function IdentityReviewPanel() {
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const pageSize = 20;
 
   const fetchItems = useCallback(() => {
     setLoading(true);
     setError(null);
-    const query = filter === "ALL" ? "" : `?status=${filter}`;
-    apiRequest<{ items: ListItem[] }>(`/admin/identity/non-acharyan${query}`)
-      .then((data) => setItems(data.items))
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (filter !== "ALL") params.set("status", filter);
+    apiRequest<{ items: ListItem[]; total: number }>(`/admin/identity/non-acharyan?${params.toString()}`)
+      .then((data) => {
+        setItems(data.items);
+        setTotal(data.total);
+      })
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
@@ -80,11 +87,13 @@ export function IdentityReviewPanel() {
         )
       )
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, page]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   async function toggleExpand(id: string) {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -148,7 +157,10 @@ export function IdentityReviewPanel() {
           <button
             key={f.value}
             type="button"
-            onClick={() => setFilter(f.value)}
+            onClick={() => {
+              setFilter(f.value);
+              setPage(1);
+            }}
             className={`rounded-pill border px-4 py-1.5 text-sm font-medium transition-colors ${
               filter === f.value
                 ? "border-festival-gold bg-festival-gold/10 text-festival-gold"
@@ -301,6 +313,30 @@ export function IdentityReviewPanel() {
               </GlassPanel>
             );
           })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 text-sm text-white/60">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="rounded-pill border border-white/15 px-3 py-1 disabled:opacity-30"
+          >
+            Prev
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="rounded-pill border border-white/15 px-3 py-1 disabled:opacity-30"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

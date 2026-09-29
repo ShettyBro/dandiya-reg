@@ -59,6 +59,8 @@ const FILTERS: Array<{ label: string; value: PaymentStatus | "ALL" }> = [
 export function PaymentsPanel() {
   const [filter, setFilter] = useState<PaymentStatus | "ALL">("PROOF_SUBMITTED");
   const [items, setItems] = useState<PaymentItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -66,13 +68,18 @@ export function PaymentsPanel() {
   const [proofLoading, setProofLoading] = useState<string | null>(null);
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const pageSize = 20;
 
   const fetchPayments = useCallback(() => {
     setLoading(true);
     setError(null);
-    const query = filter === "ALL" ? "" : `?status=${filter}`;
-    apiRequest<{ items: PaymentItem[] }>(`/admin/payments${query}`)
-      .then((data) => setItems(data.items))
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (filter !== "ALL") params.set("status", filter);
+    apiRequest<{ items: PaymentItem[]; total: number }>(`/admin/payments?${params.toString()}`)
+      .then((data) => {
+        setItems(data.items);
+        setTotal(data.total);
+      })
       .catch((error) =>
         setError(
           error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE
@@ -81,11 +88,13 @@ export function PaymentsPanel() {
         )
       )
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, page]);
 
   useEffect(() => {
     fetchPayments();
   }, [fetchPayments]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   async function loadProofUrl(paymentId: string) {
     setProofLoading(paymentId);
@@ -161,7 +170,10 @@ export function PaymentsPanel() {
           <button
             key={f.value}
             type="button"
-            onClick={() => setFilter(f.value)}
+            onClick={() => {
+              setFilter(f.value);
+              setPage(1);
+            }}
             className={`rounded-pill border px-4 py-1.5 text-sm font-medium transition-colors ${
               filter === f.value
                 ? "border-festival-gold bg-festival-gold/10 text-festival-gold"
@@ -334,6 +346,30 @@ export function PaymentsPanel() {
               </GlassPanel>
             );
           })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 text-sm text-white/60">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="rounded-pill border border-white/15 px-3 py-1 disabled:opacity-30"
+          >
+            Prev
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="rounded-pill border border-white/15 px-3 py-1 disabled:opacity-30"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>
