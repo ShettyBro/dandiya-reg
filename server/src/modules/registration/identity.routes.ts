@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { sendError } from "../../app/middleware/errors.js";
 import { stringParam } from "../../app/middleware/params.js";
@@ -18,6 +18,7 @@ import type { Env } from "../../app/config/env.js";
 
 const listQuerySchema = z.object({
   status: z.enum(["IDENTITY_PENDING", "IDENTITY_REJECTED", "PAYMENT_SUBMITTED", "PAYMENT_APPROVED", "PAYMENT_REJECTED"]).optional(),
+  search: z.string().trim().max(200).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20)
 });
@@ -75,10 +76,21 @@ export function createIdentityRouter(prisma: PrismaClient, env: Env): Router {
         return;
       }
 
-      const where = {
+      const where: Prisma.RegistrationWhereInput = {
         registrationType: { in: IDENTITY_REQUIRED_TYPES },
         ...(parsed.data.status ? { status: parsed.data.status } : {})
       };
+      if (parsed.data.search) {
+        const search = parsed.data.search;
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search } },
+          { publicCode: { contains: search, mode: "insensitive" } },
+          { auid: { contains: search, mode: "insensitive" } },
+          { collegeName: { contains: search, mode: "insensitive" } }
+        ];
+      }
 
       const [items, total] = await Promise.all([
         prisma.registration.findMany({

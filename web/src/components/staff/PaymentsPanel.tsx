@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CaretDown } from "@phosphor-icons/react";
 import { GlassPanel } from "../ui/GlassPanel.js";
 import { Button } from "../ui/Button.js";
+import { FormField } from "../ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
 
@@ -58,6 +59,8 @@ const FILTERS: Array<{ label: string; value: PaymentStatus | "ALL" }> = [
 
 export function PaymentsPanel() {
   const [filter, setFilter] = useState<PaymentStatus | "ALL">("PROOF_SUBMITTED");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [items, setItems] = useState<PaymentItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -75,6 +78,7 @@ export function PaymentsPanel() {
     setError(null);
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (filter !== "ALL") params.set("status", filter);
+    if (search) params.set("search", search);
     apiRequest<{ items: PaymentItem[]; total: number }>(`/admin/payments?${params.toString()}`)
       .then((data) => {
         setItems(data.items);
@@ -88,13 +92,19 @@ export function PaymentsPanel() {
         )
       )
       .finally(() => setLoading(false));
-  }, [filter, page]);
+  }, [filter, search, page]);
 
   useEffect(() => {
     fetchPayments();
   }, [fetchPayments]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  function handleSearchSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setPage(1);
+    setSearch(searchInput.trim());
+  }
 
   async function loadProofUrl(paymentId: string) {
     setProofLoading(paymentId);
@@ -165,6 +175,23 @@ export function PaymentsPanel() {
 
   return (
     <div className="flex flex-col gap-5">
+      <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[220px] flex-1">
+          <FormField
+            label="Search"
+            placeholder="Name, email, phone, code, or transaction ID"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        <button
+          type="submit"
+          className="h-[42px] rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-semibold text-white hover:border-festival-gold/50"
+        >
+          Search
+        </button>
+      </form>
+
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button

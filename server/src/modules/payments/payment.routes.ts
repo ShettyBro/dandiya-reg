@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { sendError } from "../../app/middleware/errors.js";
 import { stringParam } from "../../app/middleware/params.js";
@@ -36,6 +36,7 @@ const rejectSchema = z.object({
 
 const listQuerySchema = z.object({
   status: z.enum(["PENDING", "PROOF_SUBMITTED", "APPROVED", "REJECTED"]).optional(),
+  search: z.string().trim().max(200).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20)
 });
@@ -115,7 +116,18 @@ export function createPaymentRouter(prisma: PrismaClient, env: Env): Router {
         return;
       }
 
-      const where = parsed.data.status ? { status: parsed.data.status } : {};
+      const where: Prisma.PaymentWhereInput = {};
+      if (parsed.data.status) where.status = parsed.data.status;
+      if (parsed.data.search) {
+        const search = parsed.data.search;
+        where.OR = [
+          { transactionId: { contains: search, mode: "insensitive" } },
+          { registration: { name: { contains: search, mode: "insensitive" } } },
+          { registration: { email: { contains: search, mode: "insensitive" } } },
+          { registration: { phone: { contains: search } } },
+          { registration: { publicCode: { contains: search, mode: "insensitive" } } }
+        ];
+      }
       const [items, total] = await Promise.all([
         prisma.payment.findMany({
           where,
