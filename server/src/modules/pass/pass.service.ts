@@ -25,16 +25,6 @@ export interface PassData {
   qrImageDataUrl: string;
 }
 
-// Brevo's transactional email API does not support CID-embedded/inline images (confirmed with
-// their own support team, Oct 2025) -- images must be a normal externally-hosted HTTPS URL, not
-// a data: URI, or many email clients (and Brevo's own recommendation) will fail to render it.
-// The QR payload is fully deterministic from the credential id, so this can regenerate the exact
-// same PNG on demand indefinitely without storing anything -- no R2 upload, no expiry to manage.
-export async function renderCredentialQrPng(env: Env, credentialId: string): Promise<Buffer> {
-  const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
-  return QRCode.toBuffer(qrPayload, { errorCorrectionLevel: "M", margin: 1, width: 400 });
-}
-
 export async function buildPassData(
   prisma: PrismaClient,
   env: Env,

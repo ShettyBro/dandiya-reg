@@ -45,9 +45,6 @@ const envSchema = z.object({
 
   FRONTEND_ORIGIN: z.string().url(),
   CORS_ORIGINS: z.string().min(1),
-  // The server's own publicly-reachable origin — used to build absolute links (e.g. the QR pass
-  // image URL embedded in emails) that only the backend can serve, not the frontend.
-  API_BASE_URL: z.string().url().default("http://localhost:3000"),
 
   SESSION_SECRET: z.string().min(32),
   QR_SECRET: z.string().min(32),

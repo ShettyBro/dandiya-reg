@@ -2,6 +2,7 @@ import type { EmailJob, PrismaClient } from "@prisma/client";
 import type { EmailSender } from "../../lib/brevo/client.js";
 import { BrevoPermanentError } from "../../lib/brevo/client.js";
 import { renderEmailTemplate, type EmailAssets } from "./templates.js";
+import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
 import {
   MAX_ATTEMPTS,
   markEmailJobFailed,
@@ -43,8 +44,14 @@ async function buildAssets(prisma: PrismaClient, env: Env, job: EmailJob): Promi
 
   // A plain externally-hosted URL, not a data: URI — Brevo does not support CID-embedded images
   // in transactional emails, and several real inboxes (confirmed: Gmail's mobile app) silently
-  // strip embedded base64 images entirely, leaving a blank box where the QR should be.
-  return { ...base, qrImageUrl: `${env.API_BASE_URL}/api/v1/pass/credential/${credentialId}/qr.png` };
+  // strip embedded base64 images entirely, leaving a blank box where the QR should be. Rendered
+  // by a public QR image service (same approach already proven working in production for the
+  // sister VTU Habba project) rather than our own backend, so email clients that prefetch/proxy
+  // images never depend on our API's reachability or cold-start latency.
+  const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(qrPayload)}`;
+
+  return { ...base, qrImageUrl };
 }
 
 export async function processEmailJob(

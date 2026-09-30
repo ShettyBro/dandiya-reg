@@ -205,26 +205,3 @@ describe("GET /api/v1/pass/:registrationId", () => {
     expect(second.body.qrPayload).toBe(first.body.qrPayload);
   });
 });
-
-describe("GET /api/v1/pass/credential/:credentialId/qr.png", () => {
-  it("returns a real PNG image for an active credential, keyed by credential id alone", async () => {
-    const registration = await createApprovedRegistration("qr-png");
-    const credential = await prisma.passCredential.findUniqueOrThrow({
-      where: { registrationId: registration.registrationId }
-    });
-
-    const response = await request(app).get(`/api/v1/pass/credential/${credential.id}/qr.png`);
-
-    expect(response.status).toBe(200);
-    expect(response.headers["content-type"]).toBe("image/png");
-    // PNG file signature
-    expect(response.body.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  });
-
-  it("returns 404 for an unknown credential id", async () => {
-    const response = await request(app).get(
-      "/api/v1/pass/credential/00000000-0000-0000-0000-000000000000/qr.png"
-    );
-    expect(response.status).toBe(404);
-  });
-});
