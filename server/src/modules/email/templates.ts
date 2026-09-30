@@ -17,7 +17,7 @@ export interface RenderedEmail {
 export interface EmailAssets {
   logoUrl: string;
   dancersUrl: string;
-  qrImageDataUrl?: string;
+  qrImageUrl?: string;
 }
 
 const GOLD = "#e8b84b";
@@ -43,10 +43,10 @@ function shell(assets: EmailAssets, bodyHtml: string): string {
 </div>`;
 }
 
-function passCard(name: string, publicCode: string, qrImageDataUrl?: string): string {
-  const qrBlock = qrImageDataUrl
+function passCard(name: string, publicCode: string, qrImageUrl?: string): string {
+  const qrBlock = qrImageUrl
     ? `<div style="background:#ffffff;border-radius:16px;padding:16px;display:inline-block;margin:16px 0;">
-         <img src="${qrImageDataUrl}" alt="Entry QR code" width="200" height="200" style="display:block;width:200px;height:200px;" />
+         <img src="${qrImageUrl}" alt="Entry QR code" width="200" height="200" style="display:block;width:200px;height:200px;" />
        </div>`
     : "";
 
@@ -144,7 +144,7 @@ export function renderEmailTemplate(
           `<p style="text-align:center;font-size:15px;margin:0 0 4px;"><strong style="text-transform:capitalize;">${name}</strong>, your participation for Dandiya Night 2026 has been successfully confirmed.</p>
            <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 4px;">Dandiya Celebration Kit &mdash; &#8377;151</p>
            <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 16px;">Your Dandiya Celebration Kit will be provided at the event venue.</p>
-           ${passCard(name, publicCode, assets.qrImageDataUrl)}
+           ${passCard(name, publicCode, assets.qrImageUrl)}
            <p style="text-align:center;font-size:12px;color:${MUTED};margin:8px 0 0;">Please present this QR code at the event venue to collect your Dandiya Celebration Kit.</p>
            <p style="text-align:center;font-size:12px;color:${MUTED};margin:4px 0 16px;">The same QR code will be verified by the event team during venue entry.</p>
            ${entryInfoBlock()}
@@ -178,7 +178,7 @@ export function renderEmailTemplate(
            ${credentialsBlock(loginEmail, temporaryPassword)}
            ${loginButton(portalUrl, "Login to volunteer portal")}
            <p style="text-align:center;font-size:12px;color:${MUTED};margin:0 0 4px;">You'll be asked to set your own password on first login.</p>
-           ${passCard(name, publicCode, assets.qrImageDataUrl)}
+           ${passCard(name, publicCode, assets.qrImageUrl)}
            <p style="text-align:center;font-size:12px;color:${MUTED};">This is also your Dandiya Celebration Kit QR for the event.</p>`
         )
       };

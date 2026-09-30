@@ -14,13 +14,14 @@ describe("renderEmailTemplate", () => {
     expect(result.html).toContain("DN26-ABC123");
   });
 
-  it("renders PAYMENT_APPROVED with an inline QR image when provided", () => {
+  it("renders PAYMENT_APPROVED with the QR image as a plain externally-hosted URL, not a data: URI", () => {
     const result = renderEmailTemplate(
       "PAYMENT_APPROVED",
       { name: "Asha", publicCode: "DN26-ABC123" },
-      { ...assets, qrImageDataUrl: "data:image/png;base64,AAAA" }
+      { ...assets, qrImageUrl: "https://dandiya-api.example.test/api/v1/pass/credential/abc-123/qr.png" }
     );
-    expect(result.html).toContain("data:image/png;base64,AAAA");
+    expect(result.html).toContain("https://dandiya-api.example.test/api/v1/pass/credential/abc-123/qr.png");
+    expect(result.html).not.toContain("data:image");
   });
 
   it("renders PAYMENT_REJECTED with a generic message, no specific reason text", () => {

@@ -10,7 +10,8 @@ import {
   buildPassData,
   findRegistrationByAnyCode,
   PassNotAvailableError,
-  RegistrationNotFoundError
+  RegistrationNotFoundError,
+  renderCredentialQrPng
 } from "./pass.service.js";
 import type { Env } from "../../app/config/env.js";
 
@@ -81,6 +82,35 @@ export function createPassRouter(prisma: PrismaClient, env: Env): Router {
       }
       throw error;
     }
+  });
+
+  // Publicly embeddable QR image, used in email <img src> (Brevo does not support CID-embedded
+  // images — confirmed with their support team) and as a plain-URL fallback anywhere a data: URI
+  // can't be trusted to render. Keyed directly by credential id rather than registrationId+code
+  // so it works uniformly for both participant passes (tied to a registration) and staff/
+  // volunteer credentials (which are not). The credential id is already an opaque, unguessable
+  // UUID used as this system's primary key throughout, and the thing that actually needs to stay
+  // secret — the signed QR payload — requires QR_SECRET to derive and is never exposed by this
+  // id alone; showing this image to whoever has the id is exactly equivalent to that person
+  // holding the physical pass, the same trust model as any ticket QR. Fully deterministic from
+  // the credential id, so it's safe to cache aggressively.
+  router.get("/pass/credential/:credentialId/qr.png", publicLookupRateLimiter, async (req, res) => {
+    const credentialId = stringParam(req.params.credentialId);
+    if (!credentialId) {
+      sendError(req, res, 400, "VALIDATION_ERROR", "credentialId is required");
+      return;
+    }
+
+    const credential = await prisma.passCredential.findUnique({ where: { id: credentialId } });
+    if (!credential || !credential.active || credential.revokedAt) {
+      sendError(req, res, 404, "NOT_FOUND", "No active credential for that id");
+      return;
+    }
+
+    const png = await renderCredentialQrPng(env, credential.id);
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.status(200).send(png);
   });
 
   return router;
