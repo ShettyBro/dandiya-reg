@@ -26,21 +26,36 @@ const CARD_BG = "#11142a";
 const TEXT = "#f4f4f8";
 const MUTED = "#9a9db4";
 
+// Table-based layout throughout (role="presentation" tables, no position:absolute/relative,
+// no flexbox) -- Gmail and most other email clients strip unsupported CSS like absolute
+// positioning entirely, which previously left the dancers image floating in normal document flow
+// above the title instead of overlapping the card's top-right corner as intended. Tables are the
+// one layout primitive that renders consistently across real email clients.
 function shell(assets: EmailAssets, bodyHtml: string): string {
-  return `<div style="background:${BG};padding:32px 16px;font-family:'Segoe UI',Arial,sans-serif;">
-  <div style="max-width:480px;margin:0 auto;">
-    <div style="text-align:center;margin-bottom:20px;">
-      <img src="${assets.logoUrl}" alt="Acharya" height="40" style="height:40px;width:auto;vertical-align:middle;" />
-    </div>
-    <div style="background:${CARD_BG};border:1px solid rgba(232,184,75,0.35);border-radius:20px;padding:28px 24px;color:${TEXT};position:relative;">
-      <img src="${assets.dancersUrl}" alt="" height="56" style="position:absolute;top:-28px;right:20px;height:56px;width:auto;" />
-      <p style="margin:0 0 4px;text-align:center;letter-spacing:2px;font-size:11px;text-transform:uppercase;color:${GOLD};">Dandiya Night</p>
-      <h1 style="margin:0 0 20px;text-align:center;font-size:26px;font-weight:800;color:${TEXT};letter-spacing:1px;">2026</h1>
-      ${bodyHtml}
-    </div>
-    <p style="text-align:center;color:${MUTED};font-size:11px;margin-top:18px;">Acharya Stadium &middot; 15 October 2026 &middot; Entry from 3:00 PM, gate closes 5:00 PM</p>
-  </div>
-</div>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};font-family:'Segoe UI',Arial,sans-serif;"><tr><td align="center" style="padding:32px 16px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;width:100%;">
+    <tr><td align="center" style="padding-bottom:20px;">
+      <img src="${assets.logoUrl}" alt="Acharya" height="40" style="height:40px;width:auto;display:inline-block;" />
+    </td></tr>
+    <tr><td style="background:${CARD_BG};border:1px solid rgba(232,184,75,0.35);border-radius:20px;color:${TEXT};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="padding:20px 0 0 24px;">
+          <p style="margin:0 0 4px;text-align:left;letter-spacing:2px;font-size:11px;text-transform:uppercase;color:${GOLD};">Dandiya Night</p>
+          <h1 style="margin:0;text-align:left;font-size:26px;font-weight:800;color:${TEXT};letter-spacing:1px;">2026</h1>
+        </td>
+        <td width="56" align="right" valign="top" style="padding:12px 20px 0 0;">
+          <img src="${assets.dancersUrl}" alt="" height="56" style="height:56px;width:auto;display:block;" />
+        </td>
+      </tr></table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:20px 24px 28px;">
+        ${bodyHtml}
+      </td></tr></table>
+    </td></tr>
+    <tr><td align="center" style="padding-top:18px;">
+      <p style="margin:0;color:${MUTED};font-size:11px;">Acharya Stadium &middot; 15 October 2026 &middot; Entry from 3:00 PM, gate closes 5:00 PM</p>
+    </td></tr>
+  </table>
+</td></tr></table>`;
 }
 
 function passCard(name: string, publicCode: string, qrImageUrl?: string): string {
