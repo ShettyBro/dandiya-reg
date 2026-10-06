@@ -119,7 +119,7 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
     requireRole("ADMIN"),
     requireActiveUser(prisma),
     async (req, res) => {
-      const buffer = await buildVerifiedRegistrationsWorkbook(prisma, env);
+      const buffer = await buildVerifiedRegistrationsWorkbook(prisma);
       const filename = `dandiya-verified-registrations-${new Date().toISOString().slice(0, 10)}.xlsx`;
       res.setHeader(
         "Content-Type",
