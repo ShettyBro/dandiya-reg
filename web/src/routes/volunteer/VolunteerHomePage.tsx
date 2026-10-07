@@ -136,7 +136,7 @@ export function VolunteerHomePage() {
 
   async function handleLogout() {
     await logout();
-    navigate("/vol/login", { replace: true });
+    navigate("/vol-login", { replace: true });
   }
 
   const shiftStart = formatShiftTime(user.profile?.shiftStart ?? null);

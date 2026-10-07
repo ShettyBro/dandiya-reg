@@ -30,6 +30,7 @@ export function RegisterPage() {
   const [registrationType, setRegistrationType] = useState<RegistrationType | null>(restored?.registrationType ?? null);
   const [registrationId, setRegistrationId] = useState<string | null>(restored?.registrationId ?? null);
   const [publicCode, setPublicCode] = useState<string | null>(restored?.publicCode ?? null);
+  const [paymentProceeded, setPaymentProceeded] = useState(restored?.paymentProceeded ?? false);
   const [verifying, setVerifying] = useState(Boolean(restored?.registrationId));
   const checkingAvailability = step === 0 && configLoading;
   const closedForNewRegistrations = step === 0 && !configLoading && config !== null && !config.registrationOpen;
@@ -91,8 +92,8 @@ export function RegisterPage() {
       clearRegistrationProgress();
       return;
     }
-    saveRegistrationProgress({ idempotencyKey, step, registrationType, registrationId, publicCode });
-  }, [idempotencyKey, step, registrationType, registrationId, publicCode]);
+    saveRegistrationProgress({ idempotencyKey, step, registrationType, registrationId, publicCode, paymentProceeded });
+  }, [idempotencyKey, step, registrationType, registrationId, publicCode, paymentProceeded]);
 
   function resetForNewRegistration() {
     clearRegistrationProgress();
@@ -100,6 +101,7 @@ export function RegisterPage() {
     setRegistrationType(null);
     setRegistrationId(null);
     setPublicCode(null);
+    setPaymentProceeded(false);
     setStep(0);
   }
 
@@ -176,6 +178,23 @@ export function RegisterPage() {
             <PaymentStep
               registrationId={registrationId}
               registrationType={registrationType}
+              proceeded={paymentProceeded}
+              onProceed={() => {
+                // Written synchronously (not left to the save effect) because the caller may
+                // navigate the same tab away immediately after this returns — a same-tab
+                // fallback when the payment popup is blocked — which would otherwise race the
+                // effect and lose this flag.
+                saveRegistrationProgress({
+                  idempotencyKey,
+                  step,
+                  registrationType,
+                  registrationId,
+                  publicCode,
+                  paymentProceeded: true
+                });
+                setPaymentProceeded(true);
+              }}
+              onUnproceed={() => setPaymentProceeded(false)}
               onBack={() => setStep(needsIdentityStep ? 3 : 2)}
               onComplete={() => setStep(5)}
             />

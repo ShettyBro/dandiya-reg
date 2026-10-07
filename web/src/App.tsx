@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { AuthProvider } from "./lib/hooks/useAuth.js";
 import { LandingPage } from "./routes/landing-page.js";
@@ -107,13 +107,15 @@ export function App() {
         />
 
         <Route
-          path="/vol/login"
+          path="/vol-login"
           element={
             <Suspense fallback={<VolunteerFallback />}>
               <VolunteerLoginPage />
             </Suspense>
           }
         />
+        {/* Backward compatibility: already-sent volunteer invite/reset emails link here. */}
+        <Route path="/vol/login" element={<Navigate to="/vol-login" replace />} />
         <Route
           element={
             <Suspense fallback={<VolunteerFallback />}>

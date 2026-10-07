@@ -11,7 +11,7 @@ export class VolunteerNotFoundError extends Error {}
 const STAFF_CODE_MAX_ATTEMPTS = 5;
 
 function portalUrl(env: Env): string {
-  return `${env.FRONTEND_ORIGIN}/vol/login`;
+  return `${env.FRONTEND_ORIGIN}/vol-login`;
 }
 
 interface StaffCredentialResult {

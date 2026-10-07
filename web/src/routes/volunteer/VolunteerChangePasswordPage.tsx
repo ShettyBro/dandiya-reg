@@ -84,7 +84,7 @@ export function VolunteerChangePasswordPage() {
             </Button>
             <button
               type="button"
-              onClick={() => logout().then(() => navigate("/vol/login", { replace: true }))}
+              onClick={() => logout().then(() => navigate("/vol-login", { replace: true }))}
               className="text-xs text-white/40 underline"
             >
               Sign out instead

@@ -12,7 +12,7 @@ describe("VolunteerLayout", () => {
     render(
       <MemoryRouter initialEntries={["/vol/home"]}>
         <Routes>
-          <Route path="/vol/login" element={<div>Login screen</div>} />
+          <Route path="/vol-login" element={<div>Login screen</div>} />
           <Route element={<VolunteerLayout />}>
             <Route path="/vol/home" element={<div>Home screen</div>} />
           </Route>

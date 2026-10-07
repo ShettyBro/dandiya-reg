@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
 import "./index.css";
 
-if (!location.pathname.startsWith("/vol/")) {
+if (!location.pathname.startsWith("/vol/") && location.pathname !== "/vol-login") {
   document.querySelector('link[rel="manifest"]')?.remove();
 }
 

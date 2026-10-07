@@ -73,18 +73,23 @@ function PaymentInstructions({
 export function PaymentStep({
   registrationId,
   registrationType,
+  proceeded,
+  onProceed,
+  onUnproceed,
   onBack,
   onComplete
 }: {
   registrationId: string;
   registrationType: RegistrationType;
+  proceeded: boolean;
+  onProceed: () => void;
+  onUnproceed: () => void;
   onBack: () => void;
   onComplete: () => void;
 }) {
   const { config } = useEventConfig();
   const [ackInstructions, setAckInstructions] = useState(false);
   const [ackNoRefund, setAckNoRefund] = useState(false);
-  const [proceeded, setProceeded] = useState(false);
   const [transactionId, setTransactionId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +163,7 @@ export function PaymentStep({
     <GlassPanel variant="solid" className="p-6 sm:p-8">
       <button
         type="button"
-        onClick={() => (proceeded ? setProceeded(false) : onBack())}
+        onClick={() => (proceeded ? onUnproceed() : onBack())}
         className="mb-3 block text-xs text-white/40 underline"
       >
         {proceeded ? <>&larr; Back to instructions</> : <>&larr; Change upload</>}
@@ -211,8 +216,15 @@ export function PaymentStep({
             disabled={!bothAcknowledged || !config?.erpPaymentUrl}
             onClick={() => {
               if (!config?.erpPaymentUrl) return;
-              window.open(config.erpPaymentUrl, "_blank", "noopener,noreferrer");
-              setProceeded(true);
+              // Mobile browsers and in-app browsers (WhatsApp/Instagram, common for a shared
+              // event link) frequently block window.open silently — it returns null/undefined
+              // instead of throwing. Without this fallback, the person was left on the
+              // transaction-ID entry screen having never actually reached the payment page.
+              const opened = window.open(config.erpPaymentUrl, "_blank", "noopener,noreferrer");
+              if (!opened) {
+                window.location.href = config.erpPaymentUrl;
+              }
+              onProceed();
             }}
           >
             Continue to Payment <ArrowSquareOut size={16} />

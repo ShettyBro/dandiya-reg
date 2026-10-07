@@ -15,7 +15,7 @@ export function VolunteerLayout() {
   }
 
   if (!user || (user.role !== "VOLUNTEER" && user.role !== "TEAM_LEADER")) {
-    return <Navigate to="/vol/login" replace />;
+    return <Navigate to="/vol-login" replace />;
   }
 
   if (user.mustChangePassword && location.pathname !== "/vol/change-password") {
