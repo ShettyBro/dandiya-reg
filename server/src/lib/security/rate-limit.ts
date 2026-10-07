@@ -30,3 +30,8 @@ export const paymentSubmitRateLimiter = createRateLimiter(15 * 60 * 1000, 3000);
 export const publicLookupRateLimiter = createRateLimiter(15 * 60 * 1000, 600);
 
 export const scanRateLimiter = createRateLimiter(60 * 1000, 60);
+
+// Brute-forcing a 6-digit code (1-in-a-million per 60s window) isn't realistically feasible over
+// the network regardless, but this still caps abusive guessing attempts per IP.
+export const qrDownloadUnlockRateLimiter = createRateLimiter(15 * 60 * 1000, 20);
+export const qrDownloadLookupRateLimiter = createRateLimiter(15 * 60 * 1000, 100);

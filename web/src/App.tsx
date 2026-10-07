@@ -8,6 +8,10 @@ import { StatusPage } from "./routes/status-page.js";
 import { PassPage } from "./routes/pass-page.js";
 import { TermsPage } from "./routes/terms-page.js";
 
+const QrDownloadPage = lazy(() =>
+  import("./routes/qr-download-page.js").then((m) => ({ default: m.QrDownloadPage }))
+);
+
 const VolunteerLoginPage = lazy(() =>
   import("./routes/volunteer/VolunteerLoginPage.js").then((m) => ({ default: m.VolunteerLoginPage }))
 );
@@ -93,6 +97,14 @@ export function App() {
         <Route path="/registration/status" element={<StatusPage />} />
         <Route path="/registration/pass" element={<PassPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route
+          path="/qr-down"
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <QrDownloadPage />
+            </Suspense>
+          }
+        />
 
         <Route
           path="/vol/login"

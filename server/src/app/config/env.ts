@@ -48,6 +48,7 @@ const envSchema = z.object({
 
   SESSION_SECRET: z.string().min(32),
   QR_SECRET: z.string().min(32),
+  QR_DOWNLOAD_SECRET: z.string().min(32),
 
   EMAIL_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(10),
   EMAIL_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(15000)

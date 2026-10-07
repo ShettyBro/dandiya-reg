@@ -11,6 +11,7 @@ export function testEnv(overrides: Record<string, string> = {}): NodeJS.ProcessE
     CORS_ORIGINS: "https://dandiya.example.com",
     SESSION_SECRET: "a".repeat(32),
     QR_SECRET: "b".repeat(32),
+    QR_DOWNLOAD_SECRET: "c".repeat(32),
     ...overrides
   };
 }

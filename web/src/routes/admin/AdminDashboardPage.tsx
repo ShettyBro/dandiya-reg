@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { StatCard } from "../../components/staff/StatCard.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
@@ -26,13 +25,80 @@ interface IdentityDashboardMetrics {
   total: number;
 }
 
+function QrDownloadCodeCard() {
+  const [code, setCode] = useState<string | null>(null);
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const response = await apiRequest<{ code: string; secondsRemaining: number }>(
+          "/admin/qr-download/current-code"
+        );
+        if (!cancelled) {
+          setCode(response.code);
+          setSecondsRemaining(response.secondsRemaining);
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) setError("Could not load code.");
+      }
+    }
+
+    poll();
+    const interval = window.setInterval(poll, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  async function handleCopy() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard access can be denied/unavailable — the code is still visible to copy by hand.
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-festival-gold/40 bg-festival-gold p-6 shadow-goldGlow">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-midnight-950/70">
+          QR Download Page Access Code
+        </p>
+        {code ? (
+          <p className="mt-1 font-mono text-4xl font-bold tracking-[0.2em] text-midnight-950">{code}</p>
+        ) : (
+          <p className="mt-1 text-sm text-midnight-950/70">{error ?? "Loading..."}</p>
+        )}
+        {code && <p className="mt-1 text-xs text-midnight-950/70">Changes in {secondsRemaining}s · /qr-down</p>}
+      </div>
+      {code && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="rounded-pill border border-midnight-950/20 bg-midnight-950/10 px-5 py-2 text-sm font-semibold text-midnight-950 transition-colors hover:bg-midnight-950/20"
+        >
+          {copied ? "Copied!" : "Copy code"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AdminDashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [identityMetrics, setIdentityMetrics] = useState<IdentityDashboardMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState(false);
-  const [toggleError, setToggleError] = useState<string | null>(null);
 
   function fetchMetrics() {
     setLoading(true);
@@ -56,28 +122,6 @@ export function AdminDashboardPage() {
     fetchMetrics();
   }, []);
 
-  async function handleToggleRegistration() {
-    if (!metrics || metrics.registrationOpen === null) return;
-    const next = !metrics.registrationOpen;
-    setToggling(true);
-    setToggleError(null);
-    try {
-      await apiRequest("/admin/settings", {
-        method: "POST",
-        body: { registrationOpen: next }
-      });
-      setMetrics({ ...metrics, registrationOpen: next });
-    } catch (err) {
-      setToggleError(
-        err instanceof ApiError && err.code === SERVER_UNREACHABLE_CODE
-          ? err.message
-          : "Could not update registration status."
-      );
-    } finally {
-      setToggling(false);
-    }
-  }
-
   if (loading) {
     return <p className="text-sm text-white/50">Loading dashboard...</p>;
   }
@@ -86,38 +130,9 @@ export function AdminDashboardPage() {
     return <p className="text-sm text-red-300">{error ?? "No data available."}</p>;
   }
 
-  const isOpen = metrics.registrationOpen ?? false;
-
   return (
     <div className="flex flex-col gap-6">
-      <GlassPanel className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.12em] text-white/50">Registration status</p>
-          <p className={`mt-1 font-display text-lg font-semibold ${isOpen ? "text-emerald-300" : "text-red-300"}`}>
-            {isOpen ? "Open" : "Closed"}
-          </p>
-          {toggleError && <p className="mt-1 text-xs text-red-300">{toggleError}</p>}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {metrics.maintenanceMode && (
-            <span className="rounded-pill border border-amber-400/40 bg-amber-400/10 px-4 py-1.5 text-xs font-semibold text-amber-300">
-              Maintenance mode active
-            </span>
-          )}
-          <button
-            type="button"
-            disabled={toggling}
-            onClick={handleToggleRegistration}
-            className={`rounded-pill border px-5 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
-              isOpen
-                ? "border-red-400/40 bg-red-400/10 text-red-300 hover:bg-red-400/20"
-                : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
-            }`}
-          >
-            {toggling ? "Updating..." : isOpen ? "Close registrations" : "Open registrations"}
-          </button>
-        </div>
-      </GlassPanel>
+      <QrDownloadCodeCard />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         <StatCard label="Total registrations" value={String(metrics.totalRegistrations)} />

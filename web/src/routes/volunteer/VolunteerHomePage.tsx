@@ -29,6 +29,73 @@ const GATE_LABELS: Record<string, string> = {
   EVENT_GATE: "Event Entry Gate"
 };
 
+function QrDownloadCodeCard() {
+  const [code, setCode] = useState<string | null>(null);
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const response = await apiRequest<{ code: string; secondsRemaining: number }>(
+          "/admin/qr-download/current-code"
+        );
+        if (!cancelled) {
+          setCode(response.code);
+          setSecondsRemaining(response.secondsRemaining);
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) setError("Could not load code.");
+      }
+    }
+
+    poll();
+    const interval = window.setInterval(poll, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  async function handleCopy() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard access can be denied/unavailable — the code is still visible to copy by hand.
+    }
+  }
+
+  return (
+    <GlassPanel className="mb-4 flex flex-col items-center gap-2 border-festival-gold/40 bg-festival-gold p-5 text-center">
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-midnight-950/70">
+        QR Download Page Access Code
+      </p>
+      {code ? (
+        <p className="font-mono text-4xl font-bold tracking-[0.2em] text-midnight-950">{code}</p>
+      ) : (
+        <p className="text-sm text-midnight-950/70">{error ?? "Loading..."}</p>
+      )}
+      {code && <p className="text-xs text-midnight-950/70">Changes in {secondsRemaining}s · /qr-down</p>}
+      {code && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="mt-1 w-full rounded-pill border border-midnight-950/20 bg-midnight-950/10 px-5 py-2.5 text-sm font-semibold text-midnight-950 transition-colors hover:bg-midnight-950/20"
+        >
+          {copied ? "Copied!" : "Copy code"}
+        </button>
+      )}
+    </GlassPanel>
+  );
+}
+
 export function VolunteerHomePage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const { logout } = useAuth();
@@ -102,6 +169,8 @@ export function VolunteerHomePage() {
           <SignOut size={22} />
         </button>
       </div>
+
+      {user.role === "TEAM_LEADER" && <QrDownloadCodeCard />}
 
       {canInstall && !installed && (
         <button

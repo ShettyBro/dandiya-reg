@@ -25,6 +25,7 @@ import { createAdminSystemRouter } from "../modules/admin/system.routes.js";
 import { createVolunteerRouter } from "../modules/volunteers/volunteer.routes.js";
 import { createExportsRouter } from "../modules/exports/exports.routes.js";
 import { createAuditLogRouter } from "../modules/audit/audit.routes.js";
+import { createQrDownloadRouter } from "../modules/qr-download/qr-download.routes.js";
 import type { Env } from "./config/env.js";
 
 export function createApp(env: Env, prisma: PrismaClient): Express {
@@ -90,6 +91,7 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   app.use("/api/v1", createVolunteerRouter(prisma, env));
   app.use("/api/v1", createExportsRouter(prisma, env));
   app.use("/api/v1", createAuditLogRouter(prisma, env));
+  app.use("/api/v1", createQrDownloadRouter(prisma, env));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
