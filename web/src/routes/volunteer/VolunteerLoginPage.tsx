@@ -54,18 +54,20 @@ export function VolunteerLoginPage() {
           </button>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} method="post" className="mt-6 flex flex-col gap-5">
           <FormField
             label="Email"
             type="email"
+            name="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            autoComplete="email"
+            autoComplete="username"
           />
           <FormField
             label="Password"
             type="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
