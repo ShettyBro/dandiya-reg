@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "@phosphor-icons/react";
 
@@ -11,7 +12,12 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
-  return (
+  // Rendered through a portal straight to <body> instead of inline where it's used — otherwise
+  // it inherits whatever stacking context its parent page happens to be in (e.g. register-page's
+  // <main> sits in a z-10 stacking context that loses to a later z-10 sibling like the footer, no
+  // matter what z-index this modal declares internally), and on some pages/devices the modal
+  // ended up rendering BEHIND page content instead of on top of it.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -41,6 +47,7 @@ export function Modal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
