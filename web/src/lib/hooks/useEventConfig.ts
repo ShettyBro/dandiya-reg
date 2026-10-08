@@ -7,6 +7,7 @@ export interface EventConfig {
   eventDate: string;
   venue: string;
   registrationOpen: boolean;
+  nonAcharyanRegistrationOpen: boolean;
   capacity: number;
   remainingCapacity: number;
   priceInPaise: number;

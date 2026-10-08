@@ -137,6 +137,7 @@ export function RegisterPage() {
 
           {!verifying && !checkingAvailability && !closedForNewRegistrations && step === 0 && (
             <AreYouAcharyanStep
+              nonAcharyanOpen={config?.nonAcharyanRegistrationOpen ?? true}
               onSelect={(type) => {
                 setRegistrationType(type);
                 setStep(1);

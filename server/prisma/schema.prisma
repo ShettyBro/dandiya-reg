@@ -103,6 +103,7 @@ model Event {
   eventDate          DateTime
   venue              String
   registrationOpen   Boolean  @default(true)
+  nonAcharyanRegistrationOpen Boolean @default(true)
   registrationDeadline DateTime?
   capacity           Int
   gateClosesAt       DateTime?

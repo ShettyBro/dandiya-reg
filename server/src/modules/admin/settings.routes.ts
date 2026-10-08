@@ -13,6 +13,7 @@ const settingsSchema = z
     venue: z.string().trim().min(1).max(300),
     eventDate: z.coerce.date(),
     registrationOpen: z.boolean(),
+    nonAcharyanRegistrationOpen: z.boolean(),
     registrationDeadline: z.coerce.date().nullable(),
     capacity: z.number().int().positive(),
     priceInPaise: z.number().int().nonnegative(),

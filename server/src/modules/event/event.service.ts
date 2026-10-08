@@ -4,6 +4,7 @@ export interface EventAvailability {
   event: Event;
   registeredCount: number;
   isOpen: boolean;
+  nonAcharyanOpen: boolean;
   remainingCapacity: number;
 }
 
@@ -22,6 +23,7 @@ export async function getEventAvailability(
   // Capacity is advisory/display-only per the three-type registration update — registration
   // volume is explicitly unlimited and must never be gated on remainingCapacity.
   const isOpen = event.registrationOpen && !event.maintenanceMode && !deadlinePassed;
+  const nonAcharyanOpen = isOpen && event.nonAcharyanRegistrationOpen;
 
-  return { event, registeredCount, isOpen, remainingCapacity };
+  return { event, registeredCount, isOpen, nonAcharyanOpen, remainingCapacity };
 }

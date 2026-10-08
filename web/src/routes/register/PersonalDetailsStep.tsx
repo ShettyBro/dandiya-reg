@@ -110,6 +110,8 @@ export function PersonalDetailsStep({
       if (error instanceof ApiError) {
         if (error.code === "REGISTRATION_CLOSED") {
           setFormError("Registration is currently closed.");
+        } else if (error.code === "NON_ACHARYAN_REGISTRATION_CLOSED") {
+          setFormError(error.message);
         } else if (error.code === "VALIDATION_ERROR") {
           setFormError("Please check the highlighted fields and try again.");
         } else {

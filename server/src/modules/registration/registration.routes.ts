@@ -16,6 +16,7 @@ import {
   DuplicateEmployeeIdError,
   DuplicatePhoneError,
   getRegistrationByPublicCode,
+  NonAcharyanRegistrationClosedError,
   RegistrationClosedError
 } from "./registration.service.js";
 import { registrationSchema } from "./registration.schemas.js";
@@ -82,6 +83,16 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
     } catch (error) {
       if (error instanceof RegistrationClosedError) {
         sendError(req, res, 409, "REGISTRATION_CLOSED", "Registration is currently closed");
+        return;
+      }
+      if (error instanceof NonAcharyanRegistrationClosedError) {
+        sendError(
+          req,
+          res,
+          409,
+          "NON_ACHARYAN_REGISTRATION_CLOSED",
+          "Registration for Non-Acharyan students is currently closed. Acharya student, faculty, and alumni registration remain open."
+        );
         return;
       }
       if (error instanceof DuplicateAuidError) {

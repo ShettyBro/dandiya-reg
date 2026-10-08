@@ -9,6 +9,7 @@ interface EventSettings {
   venue: string;
   eventDate: string;
   registrationOpen: boolean;
+  nonAcharyanRegistrationOpen: boolean;
   registrationDeadline: string | null;
   capacity: number;
   priceInPaise: number;
@@ -93,6 +94,7 @@ export function AdminSettingsPage() {
           venue: settings.venue,
           eventDate: settings.eventDate,
           registrationOpen: settings.registrationOpen,
+          nonAcharyanRegistrationOpen: settings.nonAcharyanRegistrationOpen,
           registrationDeadline: settings.registrationDeadline,
           capacity: settings.capacity,
           priceInPaise: settings.priceInPaise,
@@ -132,6 +134,22 @@ export function AdminSettingsPage() {
           checked={settings.registrationOpen}
           onChange={(value) => setSettings({ ...settings, registrationOpen: value })}
         />
+      </GlassPanel>
+
+      <GlassPanel className="p-5">
+        <Toggle
+          label={
+            settings.nonAcharyanRegistrationOpen
+              ? "Non-Acharyan student registration is OPEN"
+              : "Non-Acharyan student registration is CLOSED"
+          }
+          checked={settings.nonAcharyanRegistrationOpen}
+          onChange={(value) => setSettings({ ...settings, nonAcharyanRegistrationOpen: value })}
+        />
+        <p className="mt-2 text-xs text-white/40">
+          Acharya Student, Acharya Faculty, and Acharya Alumni registration are controlled separately by the
+          main registration toggle above and are unaffected by this.
+        </p>
       </GlassPanel>
 
       <GlassPanel className="flex flex-col gap-4 p-5">

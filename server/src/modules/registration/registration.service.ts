@@ -4,6 +4,7 @@ import { generateEightDigitCode, generatePublicCode } from "../../lib/security/c
 import type { RegistrationInput } from "./registration.schemas.js";
 
 export class RegistrationClosedError extends Error {}
+export class NonAcharyanRegistrationClosedError extends Error {}
 export class DuplicateAuidError extends Error {}
 export class DuplicateEmployeeIdError extends Error {}
 export class DuplicateAadhaarError extends Error {}
@@ -62,6 +63,10 @@ export async function createRegistration(
 
         if (!event.registrationOpen || event.maintenanceMode || deadlinePassed) {
           throw new RegistrationClosedError();
+        }
+
+        if (data.registrationType === "NON_ACHARYAN_STUDENT" && !event.nonAcharyanRegistrationOpen) {
+          throw new NonAcharyanRegistrationClosedError();
         }
 
         const phoneDuplicate = await findActiveDuplicate(tx, { phone: data.phone });

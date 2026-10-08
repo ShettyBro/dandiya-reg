@@ -36,9 +36,11 @@ const CATEGORIES: Array<{
 ];
 
 export function AreYouAcharyanStep({
-  onSelect
+  onSelect,
+  nonAcharyanOpen = true
 }: {
   onSelect: (type: RegistrationType) => void;
+  nonAcharyanOpen?: boolean;
 }) {
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
@@ -48,14 +50,20 @@ export function AreYouAcharyanStep({
       <div className="mt-6 flex flex-col gap-3">
         {CATEGORIES.map((category) => {
           const Icon = category.icon;
+          const closed = category.type === "NON_ACHARYAN_STUDENT" && !nonAcharyanOpen;
           return (
             <motion.button
               key={category.type}
               type="button"
-              onClick={() => onSelect(category.type)}
-              whileHover={{ x: 3 }}
-              whileTap={{ scale: 0.98 }}
-              className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-midnight-800 p-4 text-left transition-colors hover:border-festival-gold/50 hover:bg-midnight-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festival-gold/60 sm:p-5"
+              disabled={closed}
+              onClick={() => !closed && onSelect(category.type)}
+              whileHover={closed ? undefined : { x: 3 }}
+              whileTap={closed ? undefined : { scale: 0.98 }}
+              className={`group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-midnight-800 p-4 text-left transition-colors sm:p-5 ${
+                closed
+                  ? "cursor-not-allowed opacity-50"
+                  : "hover:border-festival-gold/50 hover:bg-midnight-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festival-gold/60"
+              }`}
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-festival-gold/15 text-festival-gold transition-colors group-hover:bg-festival-gold/25">
                 <Icon size={22} weight="duotone" />
@@ -65,14 +73,18 @@ export function AreYouAcharyanStep({
                 <span className="font-display text-base font-semibold leading-snug text-white">
                   {category.label}
                 </span>
-                <span className="text-sm leading-snug text-white/60">{category.description}</span>
+                <span className="text-sm leading-snug text-white/60">
+                  {closed ? "Registration for this category is currently closed." : category.description}
+                </span>
               </span>
 
-              <CaretRight
-                size={20}
-                weight="bold"
-                className="shrink-0 text-white/30 transition-colors group-hover:text-festival-gold"
-              />
+              {!closed && (
+                <CaretRight
+                  size={20}
+                  weight="bold"
+                  className="shrink-0 text-white/30 transition-colors group-hover:text-festival-gold"
+                />
+              )}
             </motion.button>
           );
         })}
