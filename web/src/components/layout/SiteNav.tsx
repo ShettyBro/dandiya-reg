@@ -4,6 +4,8 @@ import { InstagramLogo, List, X } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
 import { Container } from "../ui/Container.js";
 import { LinkButton } from "../ui/Button.js";
+import { RegistrationDeadlineBadge } from "../RegistrationDeadlineBadge.js";
+import { useEventConfig } from "../../lib/hooks/useEventConfig.js";
 
 const NAV_LINKS = [
   { label: "Event", href: "#highlights" },
@@ -14,6 +16,8 @@ const NAV_LINKS = [
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
+  const { config } = useEventConfig();
+  const closed = config ? !config.registrationOpen : false;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -54,30 +58,33 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-2 rounded-pill border border-white/10 bg-white/5 p-1.5 md:flex">
-          {NAV_LINKS.map((link) =>
-            link.to ? (
-              <Link
-                key={link.label}
-                to={link.to}
-                className="rounded-pill px-4 py-1.5 text-sm text-white/75 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ) : (
-              <a
-                key={link.label}
-                href={link.href}
-                className="rounded-pill px-4 py-1.5 text-sm text-white/75 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                {link.label}
-              </a>
-            )
-          )}
-          <LinkButton to="/register" className="px-5 py-2 text-sm">
-            Join the Celebration
-          </LinkButton>
-        </nav>
+        <div className="hidden items-center gap-3 md:flex">
+          <nav className="flex items-center gap-2 rounded-pill border border-white/10 bg-white/5 p-1.5">
+            {NAV_LINKS.map((link) =>
+              link.to ? (
+                <Link
+                  key={link.label}
+                  to={link.to}
+                  className="rounded-pill px-4 py-1.5 text-sm text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="rounded-pill px-4 py-1.5 text-sm text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
+            <LinkButton to="/register1" disabled={closed} className="px-5 py-2 text-sm">
+              {closed ? "Registration Closed" : "Join the Celebration"}
+            </LinkButton>
+          </nav>
+          <RegistrationDeadlineBadge className="hidden lg:inline-flex" />
+        </div>
 
         <a
           href={INSTAGRAM_URL}
@@ -140,9 +147,10 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 <InstagramLogo size={18} weight="fill" />
                 @acharya_sahitya
               </a>
-              <LinkButton to="/register" className="w-full">
-                Join the Celebration
+              <LinkButton to="/register1" disabled={closed} className="w-full">
+                {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
+              <RegistrationDeadlineBadge className="justify-center" />
             </Container>
           </motion.nav>
         )}

@@ -60,10 +60,11 @@ export function VolunteerChangePasswordPage() {
             <p className="text-xs text-white/50">Taking you to your home screen...</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+          <form onSubmit={handleSubmit} method="post" className="mt-6 flex flex-col gap-5">
             <FormField
               label="Temporary / current password"
               type="password"
+              name="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
@@ -72,6 +73,7 @@ export function VolunteerChangePasswordPage() {
             <FormField
               label="New password"
               type="password"
+              name="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required

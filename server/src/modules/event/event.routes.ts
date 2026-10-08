@@ -18,6 +18,7 @@ export function createEventRouter(prisma: PrismaClient, env: Env): Router {
         venue: availability.event.venue,
         registrationOpen: availability.isOpen,
         nonAcharyanRegistrationOpen: availability.nonAcharyanOpen,
+        registrationDeadline: availability.event.registrationDeadline,
         capacity: availability.event.capacity,
         remainingCapacity: availability.remainingCapacity,
         priceInPaise: availability.event.priceInPaise,

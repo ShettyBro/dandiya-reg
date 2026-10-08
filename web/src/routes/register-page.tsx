@@ -8,9 +8,8 @@ import { apiRequest } from "../lib/api.js";
 import { useEventConfig } from "../lib/hooks/useEventConfig.js";
 import { ProgressIndicator } from "./register/ProgressIndicator.js";
 import { AreYouAcharyanStep } from "./register/AreYouAcharyanStep.js";
-import { PersonalDetailsStep } from "./register/PersonalDetailsStep.js";
-import { PhotoUploadStep } from "./register/PhotoUploadStep.js";
-import { IdentityUploadStep } from "./register/IdentityUploadStep.js";
+import { DetailsAndUploadStep } from "./register/DetailsAndUploadStep.js";
+import { PaymentInstructionsModal } from "./register/PaymentInstructionsModal.js";
 import { PaymentStep } from "./register/PaymentStep.js";
 import { SuccessStep } from "./register/SuccessStep.js";
 import { clearRegistrationProgress, loadRegistrationProgress, saveRegistrationProgress } from "./register/registrationProgress.js";
@@ -30,40 +29,27 @@ export function RegisterPage() {
   const [registrationType, setRegistrationType] = useState<RegistrationType | null>(restored?.registrationType ?? null);
   const [registrationId, setRegistrationId] = useState<string | null>(restored?.registrationId ?? null);
   const [publicCode, setPublicCode] = useState<string | null>(restored?.publicCode ?? null);
-  const [paymentProceeded, setPaymentProceeded] = useState(restored?.paymentProceeded ?? false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [verifying, setVerifying] = useState(Boolean(restored?.registrationId));
   const checkingAvailability = step === 0 && configLoading;
   const closedForNewRegistrations = step === 0 && !configLoading && config !== null && !config.registrationOpen;
-  const needsIdentityStep = registrationType === "NON_ACHARYAN_STUDENT" || registrationType === "ACHARYA_ALUMNI";
 
   useEffect(() => {
     // A locally-persisted step number is never trusted on its own to decide what to render —
     // resuming a paused registration (e.g. after the ERP payment redirect) always re-checks with
-    // the server which uploads/submissions actually exist, so a stale or desynced step can never
-    // skip a mandatory step like identity verification.
+    // the server which uploads/submissions actually exist.
     const resumeId = restored?.registrationId;
     if (!resumeId) return;
     let cancelled = false;
 
-    apiRequest<{
-      registrationType: RegistrationType;
-      publicCode: string;
-      hasPhoto: boolean;
-      hasIdentityProof: boolean;
-      paymentSubmitted: boolean;
-    }>(`/registrations/${resumeId}/wizard-state`)
+    apiRequest<{ registrationType: RegistrationType; publicCode: string; step: number }>(
+      `/registrations/${resumeId}/wizard-state`
+    )
       .then((state) => {
         if (cancelled) return;
-        const needsIdentity = state.registrationType === "NON_ACHARYAN_STUDENT" || state.registrationType === "ACHARYA_ALUMNI";
-        let correctStep: number;
-        if (!state.hasPhoto) correctStep = 2;
-        else if (needsIdentity && !state.hasIdentityProof) correctStep = 3;
-        else if (!state.paymentSubmitted) correctStep = 4;
-        else correctStep = 5;
-
         setRegistrationType(state.registrationType);
         setPublicCode(state.publicCode);
-        setStep(correctStep);
+        setStep(state.step);
       })
       .catch(() => {
         // Registration no longer exists or is unreachable — don't trust the stale local step,
@@ -87,13 +73,13 @@ export function RegisterPage() {
       // never got past the category picker.
       return;
     }
-    if (step >= 5) {
+    if (step >= 3) {
       // Registration finished — clear so the next visit (same device, another registration) starts clean.
       clearRegistrationProgress();
       return;
     }
-    saveRegistrationProgress({ idempotencyKey, step, registrationType, registrationId, publicCode, paymentProceeded });
-  }, [idempotencyKey, step, registrationType, registrationId, publicCode, paymentProceeded]);
+    saveRegistrationProgress({ idempotencyKey, step, registrationType, registrationId, publicCode });
+  }, [idempotencyKey, step, registrationType, registrationId, publicCode]);
 
   function resetForNewRegistration() {
     clearRegistrationProgress();
@@ -101,7 +87,7 @@ export function RegisterPage() {
     setRegistrationType(null);
     setRegistrationId(null);
     setPublicCode(null);
-    setPaymentProceeded(false);
+    setPaymentModalOpen(false);
     setStep(0);
   }
 
@@ -114,7 +100,7 @@ export function RegisterPage() {
           <h1 className="mb-2 font-display text-2xl font-semibold text-white sm:text-3xl">Register</h1>
           <p className="mb-8 text-sm text-white/60">Mobile-friendly, takes about two minutes.</p>
 
-          {step > 0 && <ProgressIndicator current={step} showIdentity={needsIdentityStep} />}
+          {step > 0 && <ProgressIndicator current={step} />}
 
           {verifying && (
             <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
@@ -146,63 +132,44 @@ export function RegisterPage() {
           )}
 
           {!verifying && step === 1 && registrationType && (
-            <PersonalDetailsStep
+            <DetailsAndUploadStep
               registrationType={registrationType}
               idempotencyKey={idempotencyKey}
               onBack={() => setStep(0)}
               onComplete={(response) => {
                 setRegistrationId(response.registrationId);
                 setPublicCode(response.publicCode);
-                setStep(2);
+                setPaymentModalOpen(true);
               }}
             />
           )}
 
-          {!verifying && step === 2 && registrationId && (
-            <PhotoUploadStep
-              registrationId={registrationId}
-              onBack={() => setStep(1)}
-              onComplete={() => setStep(needsIdentityStep ? 3 : 4)}
-            />
-          )}
-
-          {!verifying && step === 3 && registrationId && registrationType && needsIdentityStep && (
-            <IdentityUploadStep
-              registrationId={registrationId}
-              registrationType={registrationType}
-              onBack={() => setStep(2)}
-              onComplete={() => setStep(4)}
-            />
-          )}
-
-          {!verifying && step === 4 && registrationId && registrationType && (
+          {!verifying && step === 2 && registrationId && registrationType && (
             <PaymentStep
               registrationId={registrationId}
               registrationType={registrationType}
-              proceeded={paymentProceeded}
-              onProceed={() => {
-                // Written synchronously (not left to the save effect) because the caller may
-                // navigate the same tab away immediately after this returns — a same-tab
-                // fallback when the payment popup is blocked — which would otherwise race the
-                // effect and lose this flag.
-                saveRegistrationProgress({
-                  idempotencyKey,
-                  step,
-                  registrationType,
-                  registrationId,
-                  publicCode,
-                  paymentProceeded: true
-                });
-                setPaymentProceeded(true);
-              }}
-              onUnproceed={() => setPaymentProceeded(false)}
-              onBack={() => setStep(needsIdentityStep ? 3 : 2)}
-              onComplete={() => setStep(5)}
+              onComplete={() => setStep(3)}
             />
           )}
 
-          {!verifying && step === 5 && publicCode && (
+          {!verifying && step === 3 && publicCode && (
             <SuccessStep publicCode={publicCode} onRegisterAnother={resetForNewRegistration} />
+          )}
+
+          {registrationType && (
+            <PaymentInstructionsModal
+              open={paymentModalOpen}
+              onClose={() => setPaymentModalOpen(false)}
+              registrationType={registrationType}
+              priceInPaise={config?.priceInPaise}
+              erpPaymentUrl={config?.erpPaymentUrl}
+              onPaid={() => {
+                // The ERP never calls back — the moment the tab opens, this site moves straight
+                // to transaction-ID + proof entry rather than waiting on anything from the ERP.
+                setPaymentModalOpen(false);
+                setStep(2);
+              }}
+            />
           )}
         </Container>
       </main>

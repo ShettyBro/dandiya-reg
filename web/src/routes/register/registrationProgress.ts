@@ -14,16 +14,12 @@ const STORAGE_KEY = "dandiya-registration-progress";
 
 export interface RegistrationProgress {
   idempotencyKey: string;
+  // 1 = details + uploads, 2 = transaction ID + proof (shown as soon as the ERP tab is opened —
+  // the ERP itself never calls back, so this step is reached immediately, not on return), 3 = done.
   step: number;
   registrationType: RegistrationType | null;
   registrationId: string | null;
   publicCode: string | null;
-  // Whether the person has already clicked through to the external ERP payment page. Without
-  // persisting this, a reload on return from the ERP (very common — many mobile browsers and
-  // in-app browsers discard backgrounded tabs) correctly restored the step number but always
-  // re-showed the payment *instructions* screen instead of the transaction-ID entry form, which
-  // reads to the user as "it lost my progress" even though the registration itself was intact.
-  paymentProceeded: boolean;
   savedAt: number;
 }
 

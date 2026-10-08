@@ -93,7 +93,11 @@ export function App() {
       <AuthProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register1" element={<RegisterPage />} />
+        {/* The registration wizard was rebuilt from scratch — anyone with the old link (bookmark,
+            shared chat link, stale cached tab) is bounced to the homepage to pick up the new one,
+            rather than silently rendering a wizard that no longer matches the current backend. */}
+        <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/registration/status" element={<StatusPage />} />
         <Route path="/registration/pass" element={<PassPage />} />
         <Route path="/terms" element={<TermsPage />} />

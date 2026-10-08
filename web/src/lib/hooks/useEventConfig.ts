@@ -8,6 +8,7 @@ export interface EventConfig {
   venue: string;
   registrationOpen: boolean;
   nonAcharyanRegistrationOpen: boolean;
+  registrationDeadline: string | null;
   capacity: number;
   remainingCapacity: number;
   priceInPaise: number;
@@ -67,4 +68,8 @@ export function formatEventDate(iso: string): string {
     month: "long",
     year: "numeric"
   });
+}
+
+export function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }

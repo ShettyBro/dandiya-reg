@@ -277,12 +277,22 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
       return;
     }
 
+    const needsPhoto = registration.registrationType !== "ACHARYA_FACULTY";
+    const needsIdentity = registration.registrationType === "NON_ACHARYAN_STUDENT" || registration.registrationType === "ACHARYA_ALUMNI";
+    const hasPhoto = Boolean(registration.photoObjectKey);
+    const hasIdentityProof = Boolean(registration.collegeIdImageObjectKey || registration.acharyanProofObjectKey);
+    const detailsComplete = (!needsPhoto || hasPhoto) && (!needsIdentity || hasIdentityProof);
+    const paymentSubmitted = registration.payment ? registration.payment.status !== "PENDING" : false;
+
+    // Two-step wizard: 1 = details + uploads, 2 = transaction ID + proof (also covers "already
+    // submitted, waiting on verification" — there's nothing left to fill in, so resuming here is
+    // correct either way), 3 = nothing more to do, show the success screen.
+    const step = !detailsComplete ? 1 : paymentSubmitted ? 3 : 2;
+
     res.status(200).json({
       registrationType: registration.registrationType,
       publicCode: registration.publicCode,
-      hasPhoto: Boolean(registration.photoObjectKey),
-      hasIdentityProof: Boolean(registration.collegeIdImageObjectKey || registration.acharyanProofObjectKey),
-      paymentSubmitted: registration.payment ? registration.payment.status !== "PENDING" : false
+      step
     });
   });
 

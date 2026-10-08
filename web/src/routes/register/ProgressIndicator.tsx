@@ -1,14 +1,11 @@
 import { cn } from "../../lib/cn.js";
 
-const BASE_STEPS = ["Details", "Photo", "Payment", "Done"];
-const WITH_IDENTITY_STEPS = ["Details", "Photo", "Identity", "Payment", "Done"];
+const STEPS = ["Details", "Payment", "Done"];
 
-export function ProgressIndicator({ current, showIdentity }: { current: number; showIdentity: boolean }) {
-  const steps = showIdentity ? WITH_IDENTITY_STEPS : BASE_STEPS;
-
+export function ProgressIndicator({ current }: { current: number }) {
   return (
     <ol className="mb-8 flex items-center gap-2">
-      {steps.map((label, index) => {
+      {STEPS.map((label, index) => {
         const stepNumber = index + 1;
         const active = stepNumber === current;
         const complete = stepNumber < current;
@@ -25,15 +22,10 @@ export function ProgressIndicator({ current, showIdentity }: { current: number; 
             >
               {stepNumber}
             </div>
-            <span
-              className={cn(
-                "hidden text-xs sm:block",
-                active || complete ? "text-white/85" : "text-white/40"
-              )}
-            >
+            <span className={cn("hidden text-xs sm:block", active || complete ? "text-white/85" : "text-white/40")}>
               {label}
             </span>
-            {stepNumber < steps.length && <div className="h-px flex-1 bg-white/10" />}
+            {stepNumber < STEPS.length && <div className="h-px flex-1 bg-white/10" />}
           </li>
         );
       })}

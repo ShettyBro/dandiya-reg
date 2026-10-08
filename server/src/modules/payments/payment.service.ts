@@ -64,7 +64,8 @@ export async function submitPaymentProof(
   const registrationForPhotoCheck = await prisma.registration.findUniqueOrThrow({
     where: { id: input.registrationId }
   });
-  if (!registrationForPhotoCheck.photoObjectKey) {
+  // Acharya Faculty don't collect a photo at all — everyone else still needs one.
+  if (registrationForPhotoCheck.registrationType !== "ACHARYA_FACULTY" && !registrationForPhotoCheck.photoObjectKey) {
     throw new PhotoRequiredError();
   }
   if (registrationForPhotoCheck.registrationType === "NON_ACHARYAN_STUDENT" && !registrationForPhotoCheck.collegeIdImageObjectKey) {
@@ -143,7 +144,9 @@ export async function approvePayment(
   });
   if (preCheck?.status === "PROOF_SUBMITTED") {
     try {
-      await assertDocumentExists(env, preCheck.registration.photoObjectKey);
+      if (preCheck.registration.registrationType !== "ACHARYA_FACULTY") {
+        await assertDocumentExists(env, preCheck.registration.photoObjectKey);
+      }
       await assertDocumentExists(env, preCheck.proofObjectKey);
     } catch (error) {
       if (!(error instanceof R2NotConfiguredError)) {

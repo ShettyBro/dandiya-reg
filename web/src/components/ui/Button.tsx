@@ -56,8 +56,27 @@ export function LinkButton({
   to,
   variant = "primary",
   className,
-  children
-}: CommonProps & { to: string }) {
+  children,
+  disabled = false
+}: CommonProps & { to: string; disabled?: boolean }) {
+  if (disabled) {
+    // A disabled <Link> isn't a real thing in the DOM — render a plain span so it's neither
+    // clickable nor keyboard-focusable/navigable, instead of just styling a still-live Link.
+    return (
+      <span
+        aria-disabled="true"
+        className={cn(
+          BASE_CLASSES,
+          VARIANT_CLASSES[variant],
+          "pointer-events-none cursor-not-allowed opacity-40 grayscale shadow-none",
+          className
+        )}
+      >
+        {children}
+      </span>
+    );
+  }
+
   return (
     <MotionLink
       to={to}

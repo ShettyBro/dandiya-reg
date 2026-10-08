@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ArrowSquareOut } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
@@ -13,8 +12,6 @@ interface PresignResponse {
   objectKey: string;
 }
 
-// What to enter in the ERP's free-text "any other info" field — kept specific per category so
-// finance can actually match the payment back to the right registration during verification.
 const REFERENCE_INFO_LABEL: Record<RegistrationType, string> = {
   ACHARYA_STUDENT: "AUID",
   ACHARYA_FACULTY: "EMP / Employee ID",
@@ -29,74 +26,21 @@ const REFERENCE_INFO_HINT: Record<RegistrationType, string> = {
   ACHARYA_ALUMNI: "Enter your college name with branch name, etc. — anything that helps us match your payment."
 };
 
-function PaymentInstructions({
-  registrationType,
-  priceInPaise
-}: {
-  registrationType: RegistrationType;
-  priceInPaise: number | undefined;
-}) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
-      <p className="mb-1 font-semibold text-white">Dandiya Celebration Kit</p>
-      <p className="mb-3 text-xs text-white/55">
-        The Dandiya Celebration Kit will be provided at the event venue after successful payment
-        verification and confirmation.
-      </p>
-      <p className="mb-3 font-semibold text-white">When the ERP payment form asks for:</p>
-      <dl className="flex flex-col gap-2 text-xs">
-        <div>
-          <dt className="font-semibold text-festival-gold">Name *</dt>
-          <dd>Use the same name you entered during registration.</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-festival-gold">Email *</dt>
-          <dd>Use the same email you entered during registration.</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-festival-gold">Mobile *</dt>
-          <dd>Use the same phone number you entered during registration.</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-festival-gold">{REFERENCE_INFO_LABEL[registrationType]} *</dt>
-          <dd>{REFERENCE_INFO_HINT[registrationType]}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-festival-gold">Amount *</dt>
-          <dd>{priceInPaise !== undefined ? formatPriceInPaise(priceInPaise) : "₹151"}</dd>
-        </div>
-      </dl>
-    </div>
-  );
-}
-
 export function PaymentStep({
   registrationId,
   registrationType,
-  proceeded,
-  onProceed,
-  onUnproceed,
-  onBack,
   onComplete
 }: {
   registrationId: string;
   registrationType: RegistrationType;
-  proceeded: boolean;
-  onProceed: () => void;
-  onUnproceed: () => void;
-  onBack: () => void;
   onComplete: () => void;
 }) {
   const { config } = useEventConfig();
-  const [ackInstructions, setAckInstructions] = useState(false);
-  const [ackNoRefund, setAckNoRefund] = useState(false);
   const [transactionId, setTransactionId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [photoRequired, setPhotoRequired] = useState(false);
-
-  const bothAcknowledged = ackInstructions && ackNoRefund;
 
   function handleFileChange(selected: File | null) {
     setError(null);
@@ -161,122 +105,68 @@ export function PaymentStep({
 
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
-      <button
-        type="button"
-        onClick={() => (proceeded ? onUnproceed() : onBack())}
-        className="mb-3 block text-xs text-white/40 underline"
-      >
-        {proceeded ? <>&larr; Back to instructions</> : <>&larr; Change upload</>}
-      </button>
       <h2 className="font-display text-xl font-semibold text-white">Dandiya Celebration Kit</h2>
       <p className="mt-1 text-sm text-white/60">
         Dandiya Celebration Kit — {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}
       </p>
-      <p className="mt-0.5 text-xs text-white/45">
-        Receive your Dandiya Celebration Kit at the event venue.
-      </p>
+      <p className="mt-0.5 text-xs text-white/45">Receive your Dandiya Celebration Kit at the event venue.</p>
 
-      {!proceeded ? (
-        <div className="mt-6 flex flex-col gap-4">
-          <PaymentInstructions registrationType={registrationType} priceInPaise={config?.priceInPaise} />
+      <div className="mt-6 flex flex-col gap-5">
+        <p className="text-xs text-white/50">
+          You already completed payment in the ERP. Enter your transaction reference below and attach a
+          screenshot of the confirmation to finish.
+        </p>
 
-          <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-xs text-amber-200">
-            No-refund policy: all payments made for this event are final and non-refundable under any
-            circumstances.
-          </div>
-
-          <label className="flex items-start gap-3 text-xs text-white/70">
-            <input
-              type="checkbox"
-              checked={ackInstructions}
-              onChange={(e) => setAckInstructions(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5 accent-festival-gold"
-            />
-            I have read and understood the above payment instructions.
-          </label>
-          <label className="flex items-start gap-3 text-xs text-white/70">
-            <input
-              type="checkbox"
-              checked={ackNoRefund}
-              onChange={(e) => setAckNoRefund(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/5 accent-festival-gold"
-            />
-            I agree to the no-refund policy.
-          </label>
-
-          {config && !config.erpPaymentUrl && (
-            <p className="text-sm text-amber-300">
-              The payment link isn't set up yet. Please contact the organizers before proceeding.
-            </p>
-          )}
-
-          <Button
-            type="button"
-            className="w-full"
-            disabled={!bothAcknowledged || !config?.erpPaymentUrl}
-            onClick={() => {
-              if (!config?.erpPaymentUrl) return;
-              // Mobile browsers and in-app browsers (WhatsApp/Instagram, common for a shared
-              // event link) frequently block window.open silently — it returns null/undefined
-              // instead of throwing. Without this fallback, the person was left on the
-              // transaction-ID entry screen having never actually reached the payment page.
-              const opened = window.open(config.erpPaymentUrl, "_blank", "noopener,noreferrer");
-              if (!opened) {
-                window.location.href = config.erpPaymentUrl;
-              }
-              onProceed();
-            }}
-          >
-            Continue to Payment <ArrowSquareOut size={16} />
-          </Button>
-        </div>
-      ) : (
-        <div className="mt-6 flex flex-col gap-5">
-          <p className="text-xs text-white/50">
-            Opening the payment page does not confirm payment — enter your transaction reference below once
-            you've completed the payment.
-          </p>
-
-          <PaymentInstructions registrationType={registrationType} priceInPaise={config?.priceInPaise} />
-
-          <FormField
-            label="Transaction / reference ID"
-            value={transactionId}
-            onChange={(e) => setTransactionId(e.target.value)}
-            required
-          />
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-white/85">Payment screenshot</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-white/70 file:mr-4 file:rounded-pill file:border-0 file:bg-festival-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-midnight-950"
-            />
-            <p className="mt-1 text-xs text-white/40">JPG/PNG, max 2MB.</p>
-          </div>
-
-          {error && <p className="text-sm text-red-300">{error}</p>}
-
-          {photoRequired && (
-            <div className="rounded-xl border border-red-400/30 bg-red-400/8 p-4 text-sm text-white/80">
-              <p className="text-red-300">A required upload from an earlier step is missing.</p>
-              <button
-                type="button"
-                onClick={onBack}
-                className="mt-2 font-semibold text-festival-gold hover:underline"
-              >
-                Go back and upload it now
-              </button>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+          <p className="mb-3 font-semibold text-white">Reminder — what you used in the ERP form:</p>
+          <dl className="flex flex-col gap-2 text-xs">
+            <div>
+              <dt className="font-semibold text-festival-gold">{REFERENCE_INFO_LABEL[registrationType]}</dt>
+              <dd>{REFERENCE_INFO_HINT[registrationType]}</dd>
             </div>
-          )}
-
-          <Button type="button" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? "Submitting..." : "Submit payment proof"}
-          </Button>
+            <div>
+              <dt className="font-semibold text-festival-gold">Amount</dt>
+              <dd>{config ? formatPriceInPaise(config.priceInPaise) : "₹151"}</dd>
+            </div>
+          </dl>
         </div>
-      )}
+
+        <div className="rounded-xl border border-festival-gold/40 bg-festival-gold/10 p-4 text-xs font-medium text-festival-gold">
+          After paying, note down your transaction ID and take a screenshot of the payment confirmation — then
+          upload it below.
+        </div>
+
+        <FormField
+          label="Transaction / reference ID"
+          value={transactionId}
+          onChange={(e) => setTransactionId(e.target.value)}
+          required
+        />
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-white/85">Payment screenshot</label>
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-white/70 file:mr-4 file:rounded-pill file:border-0 file:bg-festival-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-midnight-950"
+          />
+          <p className="mt-1 text-xs text-white/40">JPG/PNG, max 2MB.</p>
+          {file && <p className="mt-1 text-xs text-white/50">{file.name}</p>}
+        </div>
+
+        {error && <p className="text-sm text-red-300">{error}</p>}
+
+        {photoRequired && (
+          <div className="rounded-xl border border-red-400/30 bg-red-400/8 p-4 text-sm text-white/80">
+            <p className="text-red-300">A required upload from an earlier step is missing.</p>
+          </div>
+        )}
+
+        <Button type="button" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? "Submitting..." : "Submit payment proof"}
+        </Button>
+      </div>
     </GlassPanel>
   );
 }

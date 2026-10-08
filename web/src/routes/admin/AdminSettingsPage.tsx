@@ -4,6 +4,8 @@ import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 interface EventSettings {
   name: string;
   venue: string;
@@ -152,6 +154,54 @@ export function AdminSettingsPage() {
         </p>
       </GlassPanel>
 
+      <GlassPanel className="flex flex-col gap-3 p-5">
+        <div>
+          <label className="text-sm font-medium text-white/85">Registration deadline</label>
+          <p className="mt-1 text-xs text-white/45">
+            Once this date/time passes, registration automatically closes everywhere on the site — the
+            "Join the Celebration" buttons grey out and switch to "Registration Closed", no manual toggle
+            needed. Leave empty for no fixed deadline. You can move this later to extend registration.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <FormField
+              label="Closes at"
+              type="datetime-local"
+              value={toDatetimeLocal(settings.registrationDeadline)}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  registrationDeadline: e.target.value ? new Date(e.target.value).toISOString() : null
+                })
+              }
+            />
+          </div>
+          {settings.registrationDeadline && (
+            <button
+              type="button"
+              onClick={() => setSettings({ ...settings, registrationDeadline: null })}
+              className="mb-0.5 text-xs text-white/40 underline hover:text-white/70"
+            >
+              Clear deadline
+            </button>
+          )}
+        </div>
+        {settings.registrationDeadline &&
+          (() => {
+            const msLeft = new Date(settings.registrationDeadline).getTime() - Date.now();
+            const passed = msLeft <= 0;
+            const daysLeft = Math.max(1, Math.ceil(msLeft / MS_PER_DAY));
+            return (
+              <p className={`text-xs font-medium ${passed ? "text-red-300" : "text-emerald-300"}`}>
+                {passed
+                  ? "This deadline has passed — registration currently shows as closed on the public site."
+                  : `Currently shows "${daysLeft} day${daysLeft === 1 ? "" : "s"} left" on the public site.`}
+              </p>
+            );
+          })()}
+      </GlassPanel>
+
       <GlassPanel className="flex flex-col gap-4 p-5">
         <FormField
           label="Event name"
@@ -168,17 +218,6 @@ export function AdminSettingsPage() {
           type="datetime-local"
           value={toDatetimeLocal(settings.eventDate)}
           onChange={(e) => setSettings({ ...settings, eventDate: new Date(e.target.value).toISOString() })}
-        />
-        <FormField
-          label="Registration deadline"
-          type="datetime-local"
-          value={toDatetimeLocal(settings.registrationDeadline)}
-          onChange={(e) =>
-            setSettings({
-              ...settings,
-              registrationDeadline: e.target.value ? new Date(e.target.value).toISOString() : null
-            })
-          }
         />
         <FormField
           label="Capacity (planning estimate only — not enforced, registration is unlimited)"

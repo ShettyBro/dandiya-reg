@@ -5,6 +5,7 @@ import { LinkButton } from "../../components/ui/Button.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { formatEventDate, useEventConfig } from "../../lib/hooks/useEventConfig.js";
 import { Countdown } from "../../components/Countdown.js";
+import { RegistrationDeadlineBadge } from "../../components/RegistrationDeadlineBadge.js";
 
 const FALLBACK_EVENT_DATE_ISO = "2026-10-15T09:30:00.000Z";
 const FALLBACK_VENUE = "Acharya Stadium";
@@ -13,6 +14,7 @@ export function Hero() {
   const { config } = useEventConfig();
   const eventDateIso = config?.eventDate ?? FALLBACK_EVENT_DATE_ISO;
   const venue = config?.venue ?? FALLBACK_VENUE;
+  const closed = config ? !config.registrationOpen : false;
 
   return (
     <section className="relative flex items-center py-20 pt-24 sm:min-h-[100dvh] sm:py-0 sm:pt-16">
@@ -41,12 +43,16 @@ export function Hero() {
             </div>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <LinkButton to="/register" className="w-full sm:w-auto">
-                Join the Celebration
+              <LinkButton to="/register1" disabled={closed} className="w-full sm:w-auto">
+                {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <LinkButton to="/registration/status" variant="secondary" className="w-full sm:w-auto">
                 Check Status
               </LinkButton>
+            </div>
+
+            <div className="mt-4 flex justify-center">
+              <RegistrationDeadlineBadge />
             </div>
           </GlassPanel>
         </motion.div>
