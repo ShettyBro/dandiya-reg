@@ -4,6 +4,7 @@ import { ArrowSquareOut } from "@phosphor-icons/react";
 import { Modal } from "../../components/ui/Modal.js";
 import { Button } from "../../components/ui/Button.js";
 import { formatPriceInPaise } from "../../lib/hooks/useEventConfig.js";
+import { openErpPaymentPage } from "../../lib/erpPayment.js";
 import type { RegistrationType } from "./registrationTypes.js";
 
 const REFERENCE_INFO_LABEL: Record<RegistrationType, string> = {
@@ -41,22 +42,10 @@ export function PaymentInstructionsModal({
 
   function handlePay() {
     if (!erpPaymentUrl) return;
-    // The ERP itself never calls back to this site — there's nothing to "wait for". Mobile
-    // browsers and in-app browsers (WhatsApp/Instagram) frequently block window.open silently,
-    // so fall back to a same-tab navigation rather than leaving the person stuck.
-    //
-    // Deliberately NOT passing "noopener"/"noreferrer" as window.open flags: browsers return
-    // null from window.open whenever those flags sever the opener relationship, even when the
-    // tab opened successfully — so the block-detection below would always read "blocked" and
-    // fire the same-tab fallback on top of the tab that already opened. Instead, get the real
-    // window reference and sever the opener relationship manually, which achieves the same
-    // security property (the ERP tab can't reach back into this tab via window.opener).
-    const openedWindow = window.open(erpPaymentUrl, "_blank");
-    if (openedWindow) {
-      openedWindow.opener = null;
-    } else {
-      window.location.href = erpPaymentUrl;
-    }
+    // The ERP itself never calls back to this site — there's nothing to "wait for". This site
+    // moves on immediately regardless of whether the tab visibly opened; the proof-upload step
+    // also offers its own "Open payment page" button as a manual backstop for when it didn't.
+    openErpPaymentPage(erpPaymentUrl);
     onPaid();
   }
 

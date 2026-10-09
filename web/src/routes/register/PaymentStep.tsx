@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { FormField } from "../../components/ui/FormField.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE } from "../../lib/api.js";
 import { PAYMENT_PROOF_MAX_BYTES, putFileToPresignedUrl, validateImageFile } from "../../lib/upload.js";
 import { formatPriceInPaise, useEventConfig } from "../../lib/hooks/useEventConfig.js";
+import { openErpPaymentPage } from "../../lib/erpPayment.js";
 import type { RegistrationType } from "./registrationTypes.js";
 
 interface PresignResponse {
@@ -29,10 +31,12 @@ const REFERENCE_INFO_HINT: Record<RegistrationType, string> = {
 export function PaymentStep({
   registrationId,
   registrationType,
+  erpPaymentUrl,
   onComplete
 }: {
   registrationId: string;
   registrationType: RegistrationType;
+  erpPaymentUrl: string | undefined;
   onComplete: () => void;
 }) {
   const { config } = useEventConfig();
@@ -105,16 +109,30 @@ export function PaymentStep({
 
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
-      <h2 className="font-display text-xl font-semibold text-white">Dandiya Celebration Kit</h2>
-      <p className="mt-1 text-sm text-white/60">
-        Dandiya Celebration Kit — {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-semibold text-white">Dandiya Celebration Kit</h2>
+          <p className="mt-1 text-sm text-white/60">
+            Dandiya Celebration Kit — {config ? formatPriceInPaise(config.priceInPaise) : "₹151"}
+          </p>
+        </div>
+        {erpPaymentUrl && (
+          <button
+            type="button"
+            onClick={() => openErpPaymentPage(erpPaymentUrl)}
+            className="flex items-center gap-1.5 rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-3 py-1.5 text-xs font-semibold text-festival-gold hover:bg-festival-gold/20"
+          >
+            Open payment page <ArrowSquareOut size={14} />
+          </button>
+        )}
+      </div>
       <p className="mt-0.5 text-xs text-white/45">Receive your Dandiya Celebration Kit at the event venue.</p>
 
       <div className="mt-6 flex flex-col gap-5">
         <p className="text-xs text-white/50">
-          You already completed payment in the ERP. Enter your transaction reference below and attach a
-          screenshot of the confirmation to finish.
+          Already paid in the ERP? Enter your transaction reference below and attach a screenshot of the
+          confirmation to finish. Haven't paid yet, or the payment page didn't open? Use the "Open payment
+          page" button above.
         </p>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">

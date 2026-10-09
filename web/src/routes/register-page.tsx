@@ -148,6 +148,7 @@ export function RegisterPage() {
             <PaymentStep
               registrationId={registrationId}
               registrationType={registrationType}
+              erpPaymentUrl={config?.erpPaymentUrl}
               onComplete={() => setStep(3)}
             />
           )}
