@@ -32,19 +32,22 @@ function toDatetimeLocal(iso: string | null): string {
 function Toggle({
   label,
   checked,
-  onChange
+  onChange,
+  disabled = false
 }: {
   label: string;
   checked: boolean;
   onChange: (value: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-left"
+      className="flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-left disabled:opacity-50"
     >
       <span className="text-sm text-white/85">{label}</span>
       <span
@@ -68,6 +71,11 @@ export function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [savingDeadline, setSavingDeadline] = useState(false);
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
+  const [deadlineSaved, setDeadlineSaved] = useState(false);
+  const [pendingToggleField, setPendingToggleField] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<{ field: string; message: string } | null>(null);
 
   useEffect(() => {
     apiRequest<EventSettings>("/admin/settings")
@@ -120,6 +128,62 @@ export function AdminSettingsPage() {
     }
   }
 
+  // Toggles apply instantly on click rather than waiting for the big "Save settings" button at
+  // the bottom of the page — a switch that silently doesn't take effect until a separate,
+  // easy-to-miss save action is confusing and dangerous for something as operationally important
+  // as closing registration. Optimistically flips the switch, then rolls it back if the save fails.
+  async function updateToggleField(
+    key: "registrationOpen" | "nonAcharyanRegistrationOpen" | "attendanceEnabled" | "paymentsEnabled" | "maintenanceMode",
+    value: boolean
+  ) {
+    if (!settings) return;
+    const previous = settings[key];
+    setToggleError(null);
+    setPendingToggleField(key);
+    setSettings({ ...settings, [key]: value });
+    try {
+      const updated = await apiRequest<EventSettings>("/admin/settings", {
+        method: "POST",
+        body: { [key]: value }
+      });
+      setSettings(updated);
+    } catch (saveError) {
+      setSettings((current) => (current ? { ...current, [key]: previous } : current));
+      setToggleError({
+        field: key,
+        message:
+          saveError instanceof ApiError && saveError.code === SERVER_UNREACHABLE_CODE
+            ? saveError.message
+            : "Could not save — change reverted."
+      });
+    } finally {
+      setPendingToggleField(null);
+    }
+  }
+
+  async function handleSaveDeadline() {
+    if (!settings) return;
+    setSavingDeadline(true);
+    setDeadlineError(null);
+    setDeadlineSaved(false);
+    try {
+      const updated = await apiRequest<EventSettings>("/admin/settings", {
+        method: "POST",
+        body: { registrationDeadline: settings.registrationDeadline }
+      });
+      setSettings(updated);
+      setDeadlineSaved(true);
+    } catch (saveError) {
+      setDeadlineError(
+        saveError instanceof ApiError && saveError.code === SERVER_UNREACHABLE_CODE
+          ? saveError.message
+          : "Could not save the deadline."
+      );
+    } finally {
+      setSavingDeadline(false);
+    }
+  }
+
   if (loading) {
     return <p className="text-sm text-white/50">Loading settings...</p>;
   }
@@ -134,8 +198,12 @@ export function AdminSettingsPage() {
         <Toggle
           label={settings.registrationOpen ? "Registration is OPEN" : "Registration is CLOSED"}
           checked={settings.registrationOpen}
-          onChange={(value) => setSettings({ ...settings, registrationOpen: value })}
+          disabled={pendingToggleField === "registrationOpen"}
+          onChange={(value) => updateToggleField("registrationOpen", value)}
         />
+        {toggleError?.field === "registrationOpen" && (
+          <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+        )}
       </GlassPanel>
 
       <GlassPanel className="p-5">
@@ -146,12 +214,16 @@ export function AdminSettingsPage() {
               : "Non-Acharyan student registration is CLOSED"
           }
           checked={settings.nonAcharyanRegistrationOpen}
-          onChange={(value) => setSettings({ ...settings, nonAcharyanRegistrationOpen: value })}
+          disabled={pendingToggleField === "nonAcharyanRegistrationOpen"}
+          onChange={(value) => updateToggleField("nonAcharyanRegistrationOpen", value)}
         />
         <p className="mt-2 text-xs text-white/40">
           Acharya Student, Acharya Faculty, and Acharya Alumni registration are controlled separately by the
           main registration toggle above and are unaffected by this.
         </p>
+        {toggleError?.field === "nonAcharyanRegistrationOpen" && (
+          <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+        )}
       </GlassPanel>
 
       <GlassPanel className="flex flex-col gap-3 p-5">
@@ -169,24 +241,33 @@ export function AdminSettingsPage() {
               label="Closes at"
               type="datetime-local"
               value={toDatetimeLocal(settings.registrationDeadline)}
-              onChange={(e) =>
+              onChange={(e) => {
+                setDeadlineSaved(false);
                 setSettings({
                   ...settings,
                   registrationDeadline: e.target.value ? new Date(e.target.value).toISOString() : null
-                })
-              }
+                });
+              }}
             />
           </div>
           {settings.registrationDeadline && (
             <button
               type="button"
-              onClick={() => setSettings({ ...settings, registrationDeadline: null })}
+              onClick={() => {
+                setDeadlineSaved(false);
+                setSettings({ ...settings, registrationDeadline: null });
+              }}
               className="mb-0.5 text-xs text-white/40 underline hover:text-white/70"
             >
               Clear deadline
             </button>
           )}
+          <Button type="button" onClick={handleSaveDeadline} disabled={savingDeadline} className="px-5 py-2.5 text-sm">
+            {savingDeadline ? "Saving..." : "Save deadline"}
+          </Button>
         </div>
+        {deadlineError && <p className="text-xs text-red-300">{deadlineError}</p>}
+        {deadlineSaved && !deadlineError && <p className="text-xs text-emerald-300">Deadline saved.</p>}
         {settings.registrationDeadline &&
           (() => {
             const msLeft = new Date(settings.registrationDeadline).getTime() - Date.now();
@@ -251,18 +332,26 @@ export function AdminSettingsPage() {
         <Toggle
           label="Attendance scanning enabled"
           checked={settings.attendanceEnabled}
-          onChange={(value) => setSettings({ ...settings, attendanceEnabled: value })}
+          disabled={pendingToggleField === "attendanceEnabled"}
+          onChange={(value) => updateToggleField("attendanceEnabled", value)}
         />
         <Toggle
           label="Payment submissions enabled"
           checked={settings.paymentsEnabled}
-          onChange={(value) => setSettings({ ...settings, paymentsEnabled: value })}
+          disabled={pendingToggleField === "paymentsEnabled"}
+          onChange={(value) => updateToggleField("paymentsEnabled", value)}
         />
         <Toggle
           label="Maintenance mode"
           checked={settings.maintenanceMode}
-          onChange={(value) => setSettings({ ...settings, maintenanceMode: value })}
+          disabled={pendingToggleField === "maintenanceMode"}
+          onChange={(value) => updateToggleField("maintenanceMode", value)}
         />
+        {(toggleError?.field === "attendanceEnabled" ||
+          toggleError?.field === "paymentsEnabled" ||
+          toggleError?.field === "maintenanceMode") && (
+          <p className="text-xs text-red-300">{toggleError.message}</p>
+        )}
       </GlassPanel>
 
       {error && <p className="text-sm text-red-300">{error}</p>}
