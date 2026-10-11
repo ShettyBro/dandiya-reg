@@ -29,7 +29,7 @@ export function FinalCta() {
                 ? "Registration has closed. Follow the college channels for any last updates."
                 : "Register before it's too late — Dandiya Night 2026 is just around the corner."}
             </p>
-            <LinkButton to="/register1" disabled={closed}>
+            <LinkButton to="/register2" disabled={closed}>
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </GlassPanel>

@@ -22,7 +22,10 @@ function createIdempotencyKey(): string {
 }
 
 export function RegisterPage() {
-  const { config, loading: configLoading } = useEventConfig();
+  // Deliberately does not gate on config.registrationOpen -- unlike the main landing page CTAs,
+  // this page stays reachable even after registration closes there, since someone who already
+  // paid in the ERP but didn't finish submitting their proof still needs a way back in.
+  const { config } = useEventConfig();
   const restored = useState(loadRegistrationProgress)[0];
   const [idempotencyKey, setIdempotencyKey] = useState(() => restored?.idempotencyKey ?? createIdempotencyKey());
   const [step, setStep] = useState(restored?.step ?? 0);
@@ -31,8 +34,6 @@ export function RegisterPage() {
   const [publicCode, setPublicCode] = useState<string | null>(restored?.publicCode ?? null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [verifying, setVerifying] = useState(Boolean(restored?.registrationId));
-  const checkingAvailability = step === 0 && configLoading;
-  const closedForNewRegistrations = step === 0 && !configLoading && config !== null && !config.registrationOpen;
 
   useEffect(() => {
     // A locally-persisted step number is never trusted on its own to decide what to render —
@@ -108,20 +109,7 @@ export function RegisterPage() {
             </GlassPanel>
           )}
 
-          {!verifying && checkingAvailability && (
-            <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-              <p className="text-sm text-white/60">Checking registration availability...</p>
-            </GlassPanel>
-          )}
-
-          {!verifying && closedForNewRegistrations && (
-            <GlassPanel variant="solid" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-              <p className="font-display text-lg font-semibold text-white">Registration is currently closed</p>
-              <p className="text-sm text-white/60">Follow the college channels for any updates.</p>
-            </GlassPanel>
-          )}
-
-          {!verifying && !checkingAvailability && !closedForNewRegistrations && step === 0 && (
+          {!verifying && step === 0 && (
             <AreYouAcharyanStep
               nonAcharyanOpen={config?.nonAcharyanRegistrationOpen ?? true}
               onSelect={(type) => {

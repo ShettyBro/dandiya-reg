@@ -79,7 +79,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 </a>
               )
             )}
-            <LinkButton to="/register1" disabled={closed} className="px-5 py-2 text-sm">
+            <LinkButton to="/register2" disabled={closed} className="px-5 py-2 text-sm">
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </nav>
@@ -147,7 +147,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 <InstagramLogo size={18} weight="fill" />
                 @acharya_sahitya
               </a>
-              <LinkButton to="/register1" disabled={closed} className="w-full">
+              <LinkButton to="/register2" disabled={closed} className="w-full">
                 {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <RegistrationDeadlineBadge className="justify-center" />

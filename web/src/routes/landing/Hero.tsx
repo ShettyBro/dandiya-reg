@@ -43,7 +43,7 @@ export function Hero() {
             </div>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <LinkButton to="/register1" disabled={closed} className="w-full sm:w-auto">
+              <LinkButton to="/register2" disabled={closed} className="w-full sm:w-auto">
                 {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <LinkButton to="/registration/status" variant="secondary" className="w-full sm:w-auto">

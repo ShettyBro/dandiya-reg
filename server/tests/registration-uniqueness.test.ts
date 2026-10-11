@@ -14,6 +14,7 @@ const prisma = new PrismaClient();
 
 let openEventId: string;
 let closedEventId: string;
+let maintenanceEventId: string;
 
 function randomPhone(): string {
   return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
@@ -54,6 +55,9 @@ beforeAll(async () => {
   });
   openEventId = openEvent.id;
 
+  // registrationOpen: false -- deliberately NOT expected to block creation. The /register2 direct
+  // link must keep accepting registrations regardless of the public "closed" toggle/deadline; only
+  // maintenanceMode (genuine system-down protection, tested separately below) still blocks.
   const closedEvent = await prisma.event.create({
     data: {
       name: "Closed Uniqueness Test Event",
@@ -67,10 +71,25 @@ beforeAll(async () => {
     }
   });
   closedEventId = closedEvent.id;
+
+  const maintenanceEvent = await prisma.event.create({
+    data: {
+      name: "Maintenance Mode Test Event",
+      eventDate: new Date("2026-11-01T18:00:00.000Z"),
+      venue: "Test Venue",
+      registrationOpen: true,
+      maintenanceMode: true,
+      capacity: 100,
+      priceInPaise: 15100,
+      erpPaymentUrl: "https://erp.example.edu/pay",
+      paymentInstructions: "Test instructions"
+    }
+  });
+  maintenanceEventId = maintenanceEvent.id;
 });
 
 afterAll(async () => {
-  for (const eventId of [openEventId, closedEventId]) {
+  for (const eventId of [openEventId, closedEventId, maintenanceEventId]) {
     const registrations = await prisma.registration.findMany({ where: { eventId } });
     const ids = registrations.map((r) => r.id);
     await prisma.attendance.deleteMany({ where: { registrationId: { in: ids } } });
@@ -82,8 +101,13 @@ afterAll(async () => {
 });
 
 describe("registration closed", () => {
-  it("rejects registration when the event is closed", async () => {
-    await expect(register(closedEventId, studentInput())).rejects.toBeInstanceOf(RegistrationClosedError);
+  it("still accepts registration when the public registrationOpen toggle is off (the /register2 direct-link path)", async () => {
+    const result = await register(closedEventId, studentInput());
+    expect(result.id).toBeTruthy();
+  });
+
+  it("rejects registration when the event is in maintenance mode", async () => {
+    await expect(register(maintenanceEventId, studentInput())).rejects.toBeInstanceOf(RegistrationClosedError);
   });
 });
 

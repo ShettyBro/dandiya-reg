@@ -57,11 +57,14 @@ export async function createRegistration(
       return await prisma.$transaction(async (tx) => {
         const event = await tx.event.findUniqueOrThrow({ where: { id: eventId } });
 
-        const deadlinePassed = event.registrationDeadline
-          ? event.registrationDeadline.getTime() < Date.now()
-          : false;
-
-        if (!event.registrationOpen || event.maintenanceMode || deadlinePassed) {
+        // Deliberately does NOT check event.registrationOpen or the registrationDeadline here.
+        // The public landing page closes visually (greyed-out CTA) on its own schedule, but the
+        // direct /register2 link is meant to keep accepting registrations regardless -- it exists
+        // specifically for people who already paid in the ERP but never finished registering, who
+        // must still be able to go through this link after the main page shows "closed". Actual
+        // system-down protection still applies: maintenanceMode is a different, operational
+        // concept (the backend/storage genuinely isn't safe to write to) and still blocks here.
+        if (event.maintenanceMode) {
           throw new RegistrationClosedError();
         }
 
