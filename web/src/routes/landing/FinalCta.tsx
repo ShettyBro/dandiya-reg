@@ -2,11 +2,11 @@ import { motion } from "motion/react";
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { LinkButton } from "../../components/ui/Button.js";
-import { useEventConfig } from "../../lib/hooks/useEventConfig.js";
 
 export function FinalCta() {
-  const { config } = useEventConfig();
-  const closed = config ? !config.registrationOpen : false;
+  // Hardcoded, not derived from live config: registration is permanently closed on the public
+  // site. The only way to still register is the hidden /reg link, shared directly by the admin.
+  const closed = true;
 
   return (
     <section className="py-20 sm:py-28">
@@ -29,7 +29,7 @@ export function FinalCta() {
                 ? "Registration has closed. Follow the college channels for any last updates."
                 : "Register before it's too late — Dandiya Night 2026 is just around the corner."}
             </p>
-            <LinkButton to="/register2" disabled={closed}>
+            <LinkButton to="/register" disabled={closed}>
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </GlassPanel>

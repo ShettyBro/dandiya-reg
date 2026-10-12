@@ -93,12 +93,14 @@ export function App() {
       <AuthProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register2" element={<RegisterPage />} />
-        {/* The registration wizard was rebuilt from scratch — anyone with an old link (bookmark,
-            shared chat link, stale cached tab) is bounced to the homepage to pick up the current
-            one, rather than silently rendering a wizard that no longer matches the current backend. */}
+        {/* Deliberately hidden: registration is closed to the public, but a handful of people who
+            already paid in the ERP still need a way to finish. This path is shared one-on-one by
+            the admin, directly — it must never be referenced anywhere in the public bundle/DOM
+            (no nav link, no button, no redirect target), or it stops being hidden. */}
+        <Route path="/reg" element={<RegisterPage />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/register1" element={<Navigate to="/" replace />} />
+        <Route path="/register2" element={<Navigate to="/" replace />} />
         <Route path="/registration/status" element={<StatusPage />} />
         <Route path="/registration/pass" element={<PassPage />} />
         <Route path="/terms" element={<TermsPage />} />

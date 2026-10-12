@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { Container } from "../ui/Container.js";
 import { LinkButton } from "../ui/Button.js";
 import { RegistrationDeadlineBadge } from "../RegistrationDeadlineBadge.js";
-import { useEventConfig } from "../../lib/hooks/useEventConfig.js";
 
 const NAV_LINKS = [
   { label: "Event", href: "#highlights" },
@@ -16,8 +15,9 @@ const NAV_LINKS = [
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
-  const { config } = useEventConfig();
-  const closed = config ? !config.registrationOpen : false;
+  // Hardcoded, not derived from live config: registration is permanently closed on the public
+  // site. The only way to still register is the hidden /reg link, shared directly by the admin.
+  const closed = true;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -79,7 +79,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 </a>
               )
             )}
-            <LinkButton to="/register2" disabled={closed} className="px-5 py-2 text-sm">
+            <LinkButton to="/register" disabled={closed} className="px-5 py-2 text-sm">
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </nav>
@@ -147,7 +147,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 <InstagramLogo size={18} weight="fill" />
                 @acharya_sahitya
               </a>
-              <LinkButton to="/register2" disabled={closed} className="w-full">
+              <LinkButton to="/register" disabled={closed} className="w-full">
                 {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <RegistrationDeadlineBadge className="justify-center" />

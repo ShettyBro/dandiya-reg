@@ -17,6 +17,11 @@ export interface EventConfig {
 }
 
 const RETRY_INTERVAL_MS = 20000;
+// A tab left open across an admin flipping registration open/closed must catch up within a
+// reasonable time on its own -- this used to fetch exactly once per page load with no recheck,
+// so an already-open landing page kept showing "Join the Celebration" indefinitely after an
+// admin closed registration elsewhere, until the visitor happened to reload.
+const REFRESH_INTERVAL_MS = 30000;
 
 export function useEventConfig() {
   const [config, setConfig] = useState<EventConfig | null>(null);
@@ -25,7 +30,7 @@ export function useEventConfig() {
 
   useEffect(() => {
     let cancelled = false;
-    let retryTimer: number | undefined;
+    let timer: number | undefined;
 
     function load() {
       apiRequest<EventConfig>("/event/config")
@@ -33,11 +38,12 @@ export function useEventConfig() {
           if (cancelled) return;
           setConfig(data);
           setError(null);
+          timer = window.setTimeout(load, REFRESH_INTERVAL_MS);
         })
         .catch(() => {
           if (cancelled) return;
           setError("Could not load event details right now.");
-          retryTimer = window.setTimeout(load, RETRY_INTERVAL_MS);
+          timer = window.setTimeout(load, RETRY_INTERVAL_MS);
         })
         .finally(() => {
           if (!cancelled) {
@@ -50,7 +56,7 @@ export function useEventConfig() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(retryTimer);
+      window.clearTimeout(timer);
     };
   }, []);
 
