@@ -14,8 +14,8 @@ export function Hero() {
   const { config } = useEventConfig();
   const eventDateIso = config?.eventDate ?? FALLBACK_EVENT_DATE_ISO;
   const venue = config?.venue ?? FALLBACK_VENUE;
-  // Registration is open — shows "Join the Celebration" and links to /reg.
-  const closed = false;
+  // Registration is closed on the public site. /reg1 is the hidden path shared by admin only.
+  const closed = true;
 
   return (
     <section className="relative flex items-center py-20 pt-24 sm:min-h-[100dvh] sm:py-0 sm:pt-16">
@@ -44,7 +44,7 @@ export function Hero() {
             </div>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <LinkButton to="/reg" disabled={closed} className="w-full sm:w-auto">
+              <LinkButton to="/" disabled={closed} className="w-full sm:w-auto">
                 {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <LinkButton to="/registration/status" variant="secondary" className="w-full sm:w-auto">

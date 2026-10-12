@@ -4,8 +4,8 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { LinkButton } from "../../components/ui/Button.js";
 
 export function FinalCta() {
-  // Registration is open — shows "Join the Celebration" and links to /reg.
-  const closed = false;
+  // Registration is closed on the public site. /reg1 is the hidden path shared by admin only.
+  const closed = true;
 
   return (
     <section className="py-20 sm:py-28">
@@ -28,7 +28,7 @@ export function FinalCta() {
                 ? "Registration has closed. Follow the college channels for any last updates."
                 : "Register before it's too late — Dandiya Night 2026 is just around the corner."}
             </p>
-            <LinkButton to="/reg" disabled={closed}>
+            <LinkButton to="/" disabled={closed}>
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </GlassPanel>

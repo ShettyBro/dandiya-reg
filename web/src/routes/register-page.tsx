@@ -111,7 +111,7 @@ export function RegisterPage() {
 
           {!verifying && step === 0 && (
             <AreYouAcharyanStep
-              nonAcharyanOpen={config?.nonAcharyanRegistrationOpen ?? true}
+              nonAcharyanOpen={true} {/* /reg1: Non-Acharyan registration is always open here */}
               onSelect={(type) => {
                 setRegistrationType(type);
                 setStep(1);

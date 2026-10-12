@@ -93,11 +93,11 @@ export function App() {
       <AuthProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        {/* Deliberately hidden: registration is closed to the public, but a handful of people who
-            already paid in the ERP still need a way to finish. This path is shared one-on-one by
-            the admin, directly — it must never be referenced anywhere in the public bundle/DOM
-            (no nav link, no button, no redirect target), or it stops being hidden. */}
-        <Route path="/reg" element={<RegisterPage />} />
+        {/* /reg1 is the hidden registration path — shared one-on-one by the admin only.
+            It is never linked from any nav, button, or public page. /reg and /register
+            are all redirected to / so old links are dead. */}
+        <Route path="/reg1" element={<RegisterPage />} />
+        <Route path="/reg" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/register1" element={<Navigate to="/" replace />} />
         <Route path="/register2" element={<Navigate to="/" replace />} />

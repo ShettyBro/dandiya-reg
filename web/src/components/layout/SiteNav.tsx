@@ -15,8 +15,8 @@ const NAV_LINKS = [
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
-  // Registration is open — button shows "Join the Celebration" and links to /reg.
-  const closed = false;
+  // Registration is closed on the public site. /reg1 is the hidden path shared by admin only.
+  const closed = true;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -80,7 +80,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 </a>
               )
             )}
-            <LinkButton to="/reg" disabled={closed} className="px-5 py-2 text-sm">
+            <LinkButton to="/" disabled={closed} className="px-5 py-2 text-sm">
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </nav>
@@ -148,7 +148,7 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
                 <InstagramLogo size={18} weight="fill" />
                 @acharya_sahitya
               </a>
-              <LinkButton to="/reg" disabled={closed} className="w-full">
+              <LinkButton to="/" disabled={closed} className="w-full">
                 {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <RegistrationDeadlineBadge className="justify-center" />
