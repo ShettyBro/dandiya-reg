@@ -70,6 +70,7 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
           { phone: { contains: search } },
           { publicCode: { contains: search, mode: "insensitive" } },
           { eightDigitCode: { contains: search } },
+          { auid: { contains: search, mode: "insensitive" } },
           { payment: { transactionId: { contains: search, mode: "insensitive" } } }
         ];
       }

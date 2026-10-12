@@ -191,7 +191,7 @@ export function AdminRegistrationsPage() {
           <div className="min-w-[220px] flex-1">
             <FormField
               label="Search"
-              placeholder="Name, email, phone, code, or transaction ID"
+              placeholder="Name, email, phone, code, AUID, or transaction ID"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
