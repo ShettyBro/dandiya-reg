@@ -12,7 +12,7 @@ const NAV_LINKS = [
   { label: "Check Status", to: "/registration/status" }
 ];
 
-// /close reg
+// registration closed — v2
 
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
