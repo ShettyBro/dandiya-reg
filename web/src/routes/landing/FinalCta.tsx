@@ -4,9 +4,8 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { LinkButton } from "../../components/ui/Button.js";
 
 export function FinalCta() {
-  // Hardcoded, not derived from live config: registration is permanently closed on the public
-  // site. The only way to still register is the hidden /reg link, shared directly by the admin.
-  const closed = true;
+  // Registration is open — shows "Join the Celebration" and links to /reg.
+  const closed = false;
 
   return (
     <section className="py-20 sm:py-28">
@@ -29,7 +28,7 @@ export function FinalCta() {
                 ? "Registration has closed. Follow the college channels for any last updates."
                 : "Register before it's too late — Dandiya Night 2026 is just around the corner."}
             </p>
-            <LinkButton to="/register" disabled={closed}>
+            <LinkButton to="/reg" disabled={closed}>
               {closed ? "Registration Closed" : "Join the Celebration"}
             </LinkButton>
           </GlassPanel>

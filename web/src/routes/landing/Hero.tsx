@@ -14,9 +14,8 @@ export function Hero() {
   const { config } = useEventConfig();
   const eventDateIso = config?.eventDate ?? FALLBACK_EVENT_DATE_ISO;
   const venue = config?.venue ?? FALLBACK_VENUE;
-  // Hardcoded, not derived from live config: registration is permanently closed on the public
-  // site. The only way to still register is the hidden /reg link, shared directly by the admin.
-  const closed = true;
+  // Registration is open — shows "Join the Celebration" and links to /reg.
+  const closed = false;
 
   return (
     <section className="relative flex items-center py-20 pt-24 sm:min-h-[100dvh] sm:py-0 sm:pt-16">
@@ -45,7 +44,7 @@ export function Hero() {
             </div>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <LinkButton to="/register" disabled={closed} className="w-full sm:w-auto">
+              <LinkButton to="/reg" disabled={closed} className="w-full sm:w-auto">
                 {closed ? "Registration Closed" : "Join the Celebration"}
               </LinkButton>
               <LinkButton to="/registration/status" variant="secondary" className="w-full sm:w-auto">
