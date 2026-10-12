@@ -12,6 +12,8 @@ const NAV_LINKS = [
   { label: "Check Status", to: "/registration/status" }
 ];
 
+// /close reg
+
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
