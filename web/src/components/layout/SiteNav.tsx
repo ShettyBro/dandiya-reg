@@ -20,6 +20,8 @@ export function SiteNav({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // reg open ver pickup
+
   useEffect(() => {
     function onScroll() {
       setScrolled(window.scrollY > 10);
