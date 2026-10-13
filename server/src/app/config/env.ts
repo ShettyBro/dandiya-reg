@@ -40,6 +40,12 @@ const envSchema = z.object({
   BREVO_SENDER_EMAIL: optionalEmail(),
   BREVO_SENDER_NAME: z.string().min(1).default("Dandiya Night"),
 
+  GMAIL_CLIENT_ID: optionalNonEmpty(),
+  GMAIL_CLIENT_SECRET: optionalNonEmpty(),
+  GMAIL_REFRESH_TOKEN: optionalNonEmpty(),
+  GMAIL_SENDER: optionalEmail(),
+  GMAIL_SENDER_NAME: z.string().min(1).default("Dandiya Night"),
+
   EVENT_ID: z.string().min(1),
   ERP_PAYMENT_URL: optionalUrl(),
 
@@ -51,7 +57,11 @@ const envSchema = z.object({
   QR_DOWNLOAD_SECRET: z.string().min(32),
 
   EMAIL_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(10),
-  EMAIL_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(15000)
+  EMAIL_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
+  // Deliberate pacing between individual sends within a batch -- protects a freshly created
+  // sending identity (no history) from looking like a spam burst during a large wave of approvals.
+  // 0 disables pacing entirely (e.g. for an established provider where this doesn't matter).
+  EMAIL_SEND_THROTTLE_MS: z.coerce.number().int().nonnegative().default(1500)
 });
 
 export type Env = z.infer<typeof envSchema>;

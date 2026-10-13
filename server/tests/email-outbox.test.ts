@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
-import { BrevoPermanentError, BrevoTransientError } from "../src/lib/brevo/client.js";
+import { EmailPermanentError, EmailTransientError } from "../src/lib/email/errors.js";
 import {
   claimDueEmailJobs,
   computeBackoffMs
@@ -110,7 +110,7 @@ describe("processEmailJob", () => {
     const job = await createJob();
 
     const outcome = await processEmailJob(prisma, env, job, async () => {
-      throw new BrevoTransientError("Brevo transient error: HTTP 503");
+      throw new EmailTransientError("Brevo transient error: HTTP 503");
     });
 
     expect(outcome).toBe("retry");
@@ -125,7 +125,7 @@ describe("processEmailJob", () => {
     const job = await createJob();
 
     const outcome = await processEmailJob(prisma, env, job, async () => {
-      throw new BrevoPermanentError("Brevo rejected the request: HTTP 400 invalid recipient");
+      throw new EmailPermanentError("rejected the request: HTTP 400 invalid recipient");
     });
 
     expect(outcome).toBe("failed");
@@ -137,7 +137,7 @@ describe("processEmailJob", () => {
     let job = await createJob({ attempts: 7 });
 
     const outcome = await processEmailJob(prisma, env, job, async () => {
-      throw new BrevoTransientError("still failing");
+      throw new EmailTransientError("still failing");
     });
 
     expect(outcome).toBe("failed");

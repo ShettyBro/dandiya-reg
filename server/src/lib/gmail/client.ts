@@ -1,0 +1,82 @@
+import { google } from "googleapis";
+import type { Env } from "../../app/config/env.js";
+import {
+  EmailNotConfiguredError,
+  EmailPermanentError,
+  EmailTransientError,
+  type EmailSender,
+  type SendEmailInput,
+  type SendEmailResult
+} from "../email/errors.js";
+
+const GMAIL_REQUEST_TIMEOUT_MS = 20000;
+
+function encodeRfc2047(text: string): string {
+  // Subject lines go through the raw RFC822 message, not a JSON field like Brevo's API body --
+  // non-ASCII characters (the ₹ symbol, names with diacritics) must be MIME-encoded or Gmail's
+  // API will reject or mangle the raw message.
+  return `=?UTF-8?B?${Buffer.from(text, "utf-8").toString("base64")}?=`;
+}
+
+function buildRawMessage(from: string, input: SendEmailInput): string {
+  const message = [
+    `From: ${from}`,
+    `To: ${input.to}`,
+    `Subject: ${encodeRfc2047(input.subject)}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    input.html
+  ].join("\r\n");
+
+  return Buffer.from(message, "utf-8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export function createGmailSender(env: Env): EmailSender {
+  if (!env.GMAIL_CLIENT_ID || !env.GMAIL_CLIENT_SECRET || !env.GMAIL_REFRESH_TOKEN || !env.GMAIL_SENDER) {
+    return async () => {
+      throw new EmailNotConfiguredError(
+        "GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN / GMAIL_SENDER are not configured"
+      );
+    };
+  }
+
+  const oAuth2Client = new google.auth.OAuth2(env.GMAIL_CLIENT_ID, env.GMAIL_CLIENT_SECRET);
+  oAuth2Client.setCredentials({ refresh_token: env.GMAIL_REFRESH_TOKEN });
+  const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+
+  const from = env.GMAIL_SENDER_NAME ? `${env.GMAIL_SENDER_NAME} <${env.GMAIL_SENDER}>` : env.GMAIL_SENDER;
+
+  return async (input: SendEmailInput): Promise<SendEmailResult> => {
+    const raw = buildRawMessage(from, input);
+
+    try {
+      const response = await gmail.users.messages.send(
+        { userId: "me", requestBody: { raw } },
+        { timeout: GMAIL_REQUEST_TIMEOUT_MS }
+      );
+      return { providerMessageId: response.data.id ?? "unknown" };
+    } catch (error) {
+      const status = (error as { code?: number; response?: { status?: number } })?.code
+        ?? (error as { response?: { status?: number } })?.response?.status;
+      const message = error instanceof Error ? error.message : "Unknown Gmail API error";
+
+      // Gmail API auth failures (expired/revoked refresh token, misconfigured OAuth client) and
+      // rate limiting both deserve a retry rather than instantly failing the job -- a token can be
+      // re-authorized without losing queued mail, and quota resets on its own. Only a clear
+      // client-side rejection (invalid recipient, malformed message) is permanent.
+      if (status === 429 || status === 401 || status === 403 || (status !== undefined && status >= 500)) {
+        throw new EmailTransientError(`Gmail transient error${status ? ` (HTTP ${status})` : ""}: ${message}`);
+      }
+      if (status !== undefined && status >= 400) {
+        throw new EmailPermanentError(`Gmail rejected the request (HTTP ${status}): ${message}`);
+      }
+      throw new EmailTransientError(`Gmail API error: ${message}`);
+    }
+  };
+}

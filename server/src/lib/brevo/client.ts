@@ -1,33 +1,21 @@
 import type { Env } from "../../app/config/env.js";
+import {
+  EmailNotConfiguredError,
+  EmailPermanentError,
+  EmailTransientError,
+  type EmailSender,
+  type SendEmailInput,
+  type SendEmailResult
+} from "../email/errors.js";
 
-export class BrevoNotConfiguredError extends Error {
-  constructor() {
-    super("BREVO_API_KEY / BREVO_SENDER_EMAIL are not configured");
-    this.name = "BrevoNotConfiguredError";
-  }
-}
-
-export class BrevoPermanentError extends Error {}
-export class BrevoTransientError extends Error {}
-
-export interface SendEmailInput {
-  to: string;
-  subject: string;
-  html: string;
-}
-
-export interface SendEmailResult {
-  providerMessageId: string;
-}
-
-export type EmailSender = (input: SendEmailInput) => Promise<SendEmailResult>;
+export type { SendEmailInput, SendEmailResult, EmailSender };
 
 const BREVO_REQUEST_TIMEOUT_MS = 20000;
 
 export function createBrevoSender(env: Env): EmailSender {
   return async (input: SendEmailInput): Promise<SendEmailResult> => {
     if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
-      throw new BrevoNotConfiguredError();
+      throw new EmailNotConfiguredError("BREVO_API_KEY / BREVO_SENDER_EMAIL are not configured");
     }
 
     // Plain fetch() has no default timeout -- a stalled connection (no response, not even an
@@ -56,18 +44,18 @@ export function createBrevoSender(env: Env): EmailSender {
         signal: controller.signal
       });
     } catch (error) {
-      throw new BrevoTransientError(error instanceof Error ? error.message : "Network error calling Brevo");
+      throw new EmailTransientError(error instanceof Error ? error.message : "Network error calling Brevo");
     } finally {
       clearTimeout(timeoutId);
     }
 
     if (response.status === 429 || response.status >= 500) {
-      throw new BrevoTransientError(`Brevo transient error: HTTP ${response.status}`);
+      throw new EmailTransientError(`Brevo transient error: HTTP ${response.status}`);
     }
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      throw new BrevoPermanentError(`Brevo rejected the request: HTTP ${response.status} ${body}`);
+      throw new EmailPermanentError(`Brevo rejected the request: HTTP ${response.status} ${body}`);
     }
 
     const data = (await response.json()) as { messageId?: string };

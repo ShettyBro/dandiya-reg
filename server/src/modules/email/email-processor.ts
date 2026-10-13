@@ -1,6 +1,5 @@
 import type { EmailJob, PrismaClient } from "@prisma/client";
-import type { EmailSender } from "../../lib/brevo/client.js";
-import { BrevoPermanentError } from "../../lib/brevo/client.js";
+import { EmailPermanentError, type EmailSender } from "../../lib/email/errors.js";
 import { renderEmailTemplate, type EmailAssets } from "./templates.js";
 import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
 import {
@@ -70,7 +69,7 @@ export async function processEmailJob(
   } catch (error) {
     const attempts = job.attempts + 1;
     const message = error instanceof Error ? error.message : String(error);
-    const isPermanent = error instanceof BrevoPermanentError;
+    const isPermanent = error instanceof EmailPermanentError;
 
     if (isPermanent || attempts >= MAX_ATTEMPTS) {
       await markEmailJobFailed(prisma, job.id, attempts, message);
