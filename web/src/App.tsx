@@ -7,6 +7,7 @@ import { RegisterPage } from "./routes/register-page.js";
 import { StatusPage } from "./routes/status-page.js";
 import { PassPage } from "./routes/pass-page.js";
 import { TermsPage } from "./routes/terms-page.js";
+import { MyPeoplePage } from "./routes/my-people-page.js";
 
 const QrDownloadPage = lazy(() =>
   import("./routes/qr-download-page.js").then((m) => ({ default: m.QrDownloadPage }))
@@ -57,6 +58,9 @@ const AdminLogsPage = lazy(() =>
 const AdminIdentityPage = lazy(() =>
   import("./routes/admin/AdminIdentityPage.js").then((m) => ({ default: m.AdminIdentityPage }))
 );
+const AdminMyPeoplePage = lazy(() =>
+  import("./routes/admin/AdminMyPeoplePage.js").then((m) => ({ default: m.AdminMyPeoplePage }))
+);
 
 const FinanceLoginPage = lazy(() =>
   import("./routes/finance/FinanceLoginPage.js").then((m) => ({ default: m.FinanceLoginPage }))
@@ -104,6 +108,9 @@ export function App() {
         <Route path="/registration/status" element={<StatusPage />} />
         <Route path="/registration/pass" element={<PassPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        {/* /my is a separate, invite-only registration path for volunteer/organizer-managed
+            people — shared directly by the admin, never linked from any public nav. */}
+        <Route path="/my" element={<MyPeoplePage />} />
         <Route
           path="/qr"
           element={
@@ -153,6 +160,7 @@ export function App() {
         >
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
+          <Route path="/admin/my-people" element={<AdminMyPeoplePage />} />
           <Route path="/admin/volunteers" element={<AdminVolunteersPage />} />
           <Route path="/admin/payments" element={<AdminPaymentsPage />} />
           <Route path="/admin/identity" element={<AdminIdentityPage />} />

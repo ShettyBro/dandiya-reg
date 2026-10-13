@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { PrismaClient } from "@prisma/client";
 import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 import { requireActiveUser } from "../auth/require-active-user.middleware.js";
+import { MY_PEOPLE_TYPES } from "../registration/my-people.service.js";
 import type { Env } from "../../app/config/env.js";
 
 export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
@@ -25,15 +26,19 @@ export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
         overrideCount,
         event
       ] = await Promise.all([
-        prisma.registration.count(),
+        prisma.registration.count({ where: { registrationType: { notIn: MY_PEOPLE_TYPES } } }),
         prisma.payment.count({ where: { status: "PENDING" } }),
         prisma.payment.count({ where: { status: "PROOF_SUBMITTED" } }),
         prisma.payment.count({ where: { status: "APPROVED" } }),
         prisma.payment.count({ where: { status: "REJECTED" } }),
         prisma.payment.aggregate({ where: { status: "APPROVED" }, _sum: { amountInPaise: true } }),
-        prisma.attendance.count({ where: { collegeGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } } }),
-        prisma.attendance.count({ where: { eventGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] } } }),
-        prisma.attendanceOverride.count(),
+        prisma.attendance.count({
+          where: { collegeGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] }, registration: { registrationType: { notIn: MY_PEOPLE_TYPES } } }
+        }),
+        prisma.attendance.count({
+          where: { eventGateState: { in: ["ENTERED", "OVERRIDE_ENTRY"] }, registration: { registrationType: { notIn: MY_PEOPLE_TYPES } } }
+        }),
+        prisma.attendanceOverride.count({ where: { registration: { registrationType: { notIn: MY_PEOPLE_TYPES } } } }),
         prisma.event.findUnique({ where: { id: env.EVENT_ID } })
       ]);
 

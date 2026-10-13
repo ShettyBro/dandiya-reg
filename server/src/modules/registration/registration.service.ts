@@ -122,21 +122,31 @@ export async function createRegistration(
                       identityDocumentType: "ACHARYAN_PROOF" as const,
                       identityStatus: "PENDING" as const
                     }
-                  : {
-                      collegeName: data.collegeName,
-                      identityDocumentType: "COLLEGE_ID" as const,
-                      identityStatus: "PENDING" as const
-                    })
+                  : data.registrationType === "NON_ACHARYAN_STUDENT"
+                    ? {
+                        collegeName: data.collegeName,
+                        identityDocumentType: "COLLEGE_ID" as const,
+                        identityStatus: "PENDING" as const
+                      }
+                    : {})
           }
         });
 
-        await tx.payment.create({
-          data: {
-            registrationId: registration.id,
-            amountInPaise: event.priceInPaise,
-            status: "PENDING"
-          }
-        });
+        // My People registrations are free (no ERP payment involved at all) -- no Payment row is
+        // created, so they're automatically excluded from every payment-based admin view (the
+        // Payments queue, dashboard payment counts) by construction, not by a filter that could
+        // drift out of sync. Approval instead happens directly on the registration status via
+        // my-people.service.ts.
+        const isMyPeople = data.registrationType === "MY_PEOPLE_ADMIN" || data.registrationType === "MY_PEOPLE_REGULAR";
+        if (!isMyPeople) {
+          await tx.payment.create({
+            data: {
+              registrationId: registration.id,
+              amountInPaise: event.priceInPaise,
+              status: "PENDING"
+            }
+          });
+        }
 
         await tx.attendance.create({
           data: {

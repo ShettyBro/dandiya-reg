@@ -83,11 +83,32 @@ export const acharyaAlumniSchema = z.object({
   phone: phoneSchema
 });
 
+// "My People" -- an invite-only, no-payment registration category shared one-on-one via the
+// hidden /my link (volunteers' friends, people the admin personally manages). No AUID/institution/
+// identity doc, just the basics plus a photo. ADMIN gets an unrestricted (STAFF_GUEST_ADMIN-style)
+// credential on approval; REGULAR gets a normal single-entry PARTICIPANT credential -- see
+// my-people.service.ts.
+export const myPeopleAdminSchema = z.object({
+  registrationType: z.literal("MY_PEOPLE_ADMIN"),
+  name: nameSchema,
+  email: z.string().trim().toLowerCase().email(),
+  phone: phoneSchema
+});
+
+export const myPeopleRegularSchema = z.object({
+  registrationType: z.literal("MY_PEOPLE_REGULAR"),
+  name: nameSchema,
+  email: z.string().trim().toLowerCase().email(),
+  phone: phoneSchema
+});
+
 export const registrationSchema = z.discriminatedUnion("registrationType", [
   acharyaStudentSchema,
   acharyaFacultySchema,
   acharyaAlumniSchema,
-  nonAcharyanStudentSchema
+  nonAcharyanStudentSchema,
+  myPeopleAdminSchema,
+  myPeopleRegularSchema
 ]);
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -95,3 +116,5 @@ export type AcharyaStudentInput = z.infer<typeof acharyaStudentSchema>;
 export type AcharyaFacultyInput = z.infer<typeof acharyaFacultySchema>;
 export type AcharyaAlumniInput = z.infer<typeof acharyaAlumniSchema>;
 export type NonAcharyanStudentInput = z.infer<typeof nonAcharyanStudentSchema>;
+export type MyPeopleAdminInput = z.infer<typeof myPeopleAdminSchema>;
+export type MyPeopleRegularInput = z.infer<typeof myPeopleRegularSchema>;

@@ -26,6 +26,8 @@ enum RegistrationType {
   ACHARYA_FACULTY
   ACHARYA_ALUMNI
   NON_ACHARYAN_STUDENT
+  MY_PEOPLE_ADMIN
+  MY_PEOPLE_REGULAR
 }
 
 enum IdentityDocumentType {

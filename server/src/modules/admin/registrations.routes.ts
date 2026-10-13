@@ -13,6 +13,7 @@ import {
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
 import { presignGetUrl } from "../../lib/r2/presign.js";
 import { buildVerifiedRegistrationsWorkbook } from "./registrations-export.service.js";
+import { MY_PEOPLE_TYPES } from "../registration/my-people.service.js";
 import type { Env } from "../../app/config/env.js";
 
 async function presignIfPresent(env: Env, objectKey: string | null): Promise<string | null> {
@@ -61,7 +62,10 @@ export function createAdminRegistrationsRouter(prisma: PrismaClient, env: Env): 
       }
 
       const { search, filter, page, pageSize } = parsed.data;
-      const where: Prisma.RegistrationWhereInput = {};
+      // My People registrations are a fully separate, invite-only category managed only from the
+      // dedicated My People tab -- never shown in the general registrations list, search, filters,
+      // or export, regardless of what else is filtered for.
+      const where: Prisma.RegistrationWhereInput = { registrationType: { notIn: MY_PEOPLE_TYPES } };
 
       if (search) {
         where.OR = [

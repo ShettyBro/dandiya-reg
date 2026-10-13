@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
-import { CameraRotate, Flashlight, QrCode, Warning } from "@phosphor-icons/react";
+import { CameraRotate, Flashlight, QrCode, ShieldCheck, Warning } from "@phosphor-icons/react";
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
@@ -36,7 +36,7 @@ interface ScanLookupResult {
 
 type ResultState =
   | { kind: "lookup"; data: ScanLookupResult }
-  | { kind: "allowed"; label: string }
+  | { kind: "allowed"; label: string; isStaffAdmin: boolean }
   | { kind: "overridden"; label: string }
   | { kind: "blocked"; message: string }
   | { kind: "not-found" }
@@ -144,7 +144,11 @@ export function VolunteerScanPage() {
         method: "POST",
         body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
       });
-      setResult({ kind: "allowed", label: response.name ?? response.label ?? "Done" });
+      setResult({
+        kind: "allowed",
+        label: response.name ?? response.label ?? "Done",
+        isStaffAdmin: response.type === "STAFF_GUEST_ADMIN"
+      });
     } catch (error) {
       handleAllowError(error);
     } finally {
@@ -393,6 +397,7 @@ function ScanResultPanel({
   }
 
   if (result.kind === "allowed" || result.kind === "overridden") {
+    const showAdminBadge = result.kind === "allowed" && result.isStaffAdmin;
     return (
       <GlassPanel className="flex flex-col items-center gap-4 border-emerald-400/40 p-8 text-center">
         <p className="text-xs uppercase tracking-[0.12em] text-emerald-300">
@@ -402,6 +407,12 @@ function ScanResultPanel({
               ? "Entered"
               : "Kit given"}
         </p>
+        {showAdminBadge && (
+          <span className="flex items-center gap-1.5 rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-3 py-1 text-xs font-semibold text-festival-gold">
+            <ShieldCheck size={14} weight="fill" />
+            Admin
+          </span>
+        )}
         <p className="font-display text-xl font-semibold text-white">{result.label}</p>
         <Button type="button" onClick={onNext} className="w-full">
           Scan next
@@ -420,6 +431,12 @@ function ScanResultPanel({
           alt={data.name ?? ""}
           className="h-24 w-24 rounded-full border-2 border-white/20 object-cover"
         />
+      )}
+      {data.credentialType === "STAFF_GUEST_ADMIN" && (
+        <span className="flex items-center gap-1.5 rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-3 py-1 text-xs font-semibold text-festival-gold">
+          <ShieldCheck size={14} weight="fill" />
+          Admin
+        </span>
       )}
       <p className="font-display text-xl font-semibold text-white">
         {data.name ?? "Staff / Guest"}
