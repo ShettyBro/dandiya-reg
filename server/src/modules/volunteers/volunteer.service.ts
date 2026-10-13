@@ -7,6 +7,9 @@ import { generateStaffPublicCode } from "../../lib/security/codes.js";
 import type { Env } from "../../app/config/env.js";
 
 export class VolunteerNotFoundError extends Error {}
+// Override authority only ever makes sense at the Event Entry gate -- Dandiya kit distribution is
+// plain-volunteer-only by design, so a Team Leader can never be assigned there.
+export class InvalidTeamLeaderGateError extends Error {}
 
 const STAFF_CODE_MAX_ATTEMPTS = 5;
 
@@ -74,6 +77,10 @@ export async function createVolunteer(
   env: Env,
   input: CreateVolunteerInput
 ): Promise<CreatedVolunteer> {
+  if (input.role === "TEAM_LEADER" && input.assignedGate === "COLLEGE_GATE") {
+    throw new InvalidTeamLeaderGateError();
+  }
+
   const temporaryPassword = randomBytes(12).toString("base64url");
   const passwordHash = await hashPassword(temporaryPassword);
 
@@ -176,6 +183,21 @@ export async function updateVolunteer(
   userId: string,
   input: UpdateVolunteerInput
 ): Promise<void> {
+  if (input.role !== undefined || input.assignedGate !== undefined) {
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { volunteerProfile: true }
+    });
+    if (!current) {
+      throw new VolunteerNotFoundError();
+    }
+    const effectiveRole = input.role ?? current.role;
+    const effectiveGate = input.assignedGate !== undefined ? input.assignedGate : current.volunteerProfile?.assignedGate;
+    if (effectiveRole === "TEAM_LEADER" && effectiveGate === "COLLEGE_GATE") {
+      throw new InvalidTeamLeaderGateError();
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     if (input.role || input.status) {
       await tx.user.update({

@@ -12,9 +12,13 @@ const SCANNER_ELEMENT_ID = "volunteer-qr-reader";
 
 type Gate = "COLLEGE_GATE" | "EVENT_GATE";
 
+// COLLEGE_GATE/EVENT_GATE are the original DB enum names (kept as-is to avoid a migration this
+// close to the event) but now mean something more specific: COLLEGE_GATE is Dandiya kit
+// distribution, EVENT_GATE is event entry. The two are fully independent -- separate attendance
+// state, separate counts, neither depends on the other.
 const GATE_LABELS: Record<Gate, string> = {
-  COLLEGE_GATE: "College Gate",
-  EVENT_GATE: "Event Entry Gate"
+  COLLEGE_GATE: "Dandiya Kit Distribution",
+  EVENT_GATE: "Event Entry"
 };
 
 interface ScanLookupResult {
@@ -41,7 +45,12 @@ export function VolunteerScanPage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const navigate = useNavigate();
   const isTeamLeader = user.role === "TEAM_LEADER";
-  const [selectedGate, setSelectedGate] = useState<Gate>(user.profile?.assignedGate ?? "COLLEGE_GATE");
+  // Team Leaders are now only ever assigned the Event Entry gate (enforced server-side on
+  // create/update), so there's no gate picker anymore -- everyone just scans at their own
+  // admin-assigned gate.
+  const effectiveGate: Gate | null = user.profile?.assignedGate ?? null;
+  const isEntryGate = effectiveGate === "EVENT_GATE";
+
   const [starting, setStarting] = useState(false);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -53,10 +62,6 @@ export function VolunteerScanPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const pendingTokenRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
-
-  // A plain volunteer's scanner is locked to their own admin-assigned gate — never client-editable.
-  // A Team Leader may switch gates (override authority exists at both regardless of their own assignment).
-  const effectiveGate: Gate | null = isTeamLeader ? selectedGate : user.profile?.assignedGate ?? null;
 
   useEffect(() => {
     return () => {
@@ -115,6 +120,36 @@ export function VolunteerScanPage() {
     }
   }
 
+  function handleAllowError(error: unknown) {
+    if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
+      setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
+    } else if (error instanceof ApiError && error.status === 401) {
+      setResult({ kind: "session-expired" });
+    } else if (error instanceof ApiError && error.code === "ALREADY_ENTERED") {
+      setResult({ kind: "blocked", message: "Someone already scanned this a moment ago." });
+    } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
+      setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
+    } else if (error instanceof ApiError && error.code === "OUTSIDE_ENTRY_WINDOW") {
+      setResult({ kind: "blocked", message: error.message });
+    } else {
+      setResult({ kind: "blocked", message: "Could not allow entry. Try again." });
+    }
+  }
+
+  async function performAllow(token: string) {
+    try {
+      const response = await apiRequest<{ type: string; name?: string; label?: string }>("/scan/allow", {
+        method: "POST",
+        body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
+      });
+      setResult({ kind: "allowed", label: response.name ?? response.label ?? "Done" });
+    } catch (error) {
+      handleAllowError(error);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   async function handleDecoded(token: string) {
     if (inFlightRef.current) {
       return;
@@ -130,7 +165,19 @@ export function VolunteerScanPage() {
         method: "POST",
         body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
       });
-      setResult({ kind: "lookup", data: lookup });
+
+      // Event Entry is high-throughput (thousands of people) and has nothing for a human to
+      // visually verify (no photo shown here anymore) -- a valid, eligible scan marks entry
+      // immediately with no extra tap. Dandiya kit distribution always needs a deliberate tap:
+      // the photo is shown specifically so a human can glance at it before handing over a kit.
+      const shouldAutoAllow = isEntryGate && (lookup.credentialType === "STAFF_GUEST_ADMIN" || lookup.eligibleForAllow);
+
+      if (shouldAutoAllow) {
+        await performAllow(token);
+      } else {
+        setResult({ kind: "lookup", data: lookup });
+        setProcessing(false);
+      }
     } catch (error) {
       if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
         setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
@@ -143,7 +190,6 @@ export function VolunteerScanPage() {
       } else {
         setResult({ kind: "blocked", message: "Could not check this code. Try again." });
       }
-    } finally {
       setProcessing(false);
     }
   }
@@ -154,29 +200,7 @@ export function VolunteerScanPage() {
       return;
     }
     setProcessing(true);
-    try {
-      const response = await apiRequest<{ type: string; name?: string; label?: string }>("/scan/allow", {
-        method: "POST",
-        body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
-      });
-      setResult({ kind: "allowed", label: response.name ?? response.label ?? "Entry allowed" });
-    } catch (error) {
-      if (error instanceof ApiError && error.code === SERVER_UNREACHABLE_CODE) {
-        setResult({ kind: "blocked", message: SERVER_UNREACHABLE_MESSAGE });
-      } else if (error instanceof ApiError && error.status === 401) {
-        setResult({ kind: "session-expired" });
-      } else if (error instanceof ApiError && error.code === "ALREADY_ENTERED") {
-        setResult({ kind: "blocked", message: "Someone already scanned this a moment ago." });
-      } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
-        setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
-      } else if (error instanceof ApiError && error.code === "OUTSIDE_ENTRY_WINDOW") {
-        setResult({ kind: "blocked", message: error.message });
-      } else {
-        setResult({ kind: "blocked", message: "Could not allow entry. Try again." });
-      }
-    } finally {
-      setProcessing(false);
-    }
+    await performAllow(token);
   }
 
   async function handleOverride() {
@@ -213,7 +237,7 @@ export function VolunteerScanPage() {
     inFlightRef.current = false;
   }
 
-  if (!isTeamLeader && !user.profile?.assignedGate) {
+  if (!user.profile?.assignedGate) {
     return (
       <Container className="max-w-md py-10">
         <h1 className="mb-6 font-display text-2xl font-semibold text-white">Scan</h1>
@@ -227,29 +251,12 @@ export function VolunteerScanPage() {
   }
 
   return (
-    <Container className="max-w-md py-10">
+    <Container className="max-w-md py-6">
       <h1 className="mb-4 font-display text-2xl font-semibold text-white">Scan</h1>
 
-      {isTeamLeader ? (
-        <div className="mb-6 flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
-          {(["COLLEGE_GATE", "EVENT_GATE"] as Gate[]).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setSelectedGate(g)}
-              className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
-                effectiveGate === g ? "bg-festival-gold text-midnight-950 shadow" : "text-white/60 hover:text-white"
-              }`}
-            >
-              {GATE_LABELS[g]}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="mb-6 text-sm text-white/60">
-          Scanning at <span className="font-semibold text-festival-gold">{GATE_LABELS[effectiveGate as Gate]}</span>
-        </p>
-      )}
+      <p className="mb-6 text-sm text-white/60">
+        Scanning for <span className="font-semibold text-festival-gold">{GATE_LABELS[effectiveGate as Gate]}</span>
+      </p>
 
       {!starting && !cameraStarted && !result && (
         <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">
@@ -292,7 +299,8 @@ export function VolunteerScanPage() {
         <ScanResultPanel
           result={result}
           processing={processing}
-          isTeamLeader={user.role === "TEAM_LEADER"}
+          isTeamLeader={isTeamLeader}
+          isEntryGate={isEntryGate}
           overrideReason={overrideReason}
           onOverrideReasonChange={setOverrideReason}
           onAllow={handleAllow}
@@ -309,6 +317,7 @@ function ScanResultPanel({
   result,
   processing,
   isTeamLeader,
+  isEntryGate,
   overrideReason,
   onOverrideReasonChange,
   onAllow,
@@ -319,6 +328,7 @@ function ScanResultPanel({
   result: ResultState;
   processing: boolean;
   isTeamLeader: boolean;
+  isEntryGate: boolean;
   overrideReason: string;
   onOverrideReasonChange: (value: string) => void;
   onAllow: () => void;
@@ -366,10 +376,14 @@ function ScanResultPanel({
     return (
       <GlassPanel className="flex flex-col items-center gap-4 border-emerald-400/40 p-8 text-center">
         <p className="text-xs uppercase tracking-[0.12em] text-emerald-300">
-          {result.kind === "overridden" ? "Override entry granted" : "Entry allowed"}
+          {result.kind === "overridden"
+            ? "Override entry granted"
+            : isEntryGate
+              ? "Entered"
+              : "Kit given"}
         </p>
         <p className="font-display text-xl font-semibold text-white">{result.label}</p>
-        <Button type="button" onClick={onNext}>
+        <Button type="button" onClick={onNext} className="w-full">
           Scan next
         </Button>
       </GlassPanel>
@@ -380,7 +394,7 @@ function ScanResultPanel({
 
   return (
     <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">
-      {data.photoUrl && (
+      {!isEntryGate && data.photoUrl && (
         <img
           src={data.photoUrl}
           alt={data.name ?? ""}
@@ -395,24 +409,24 @@ function ScanResultPanel({
       {data.credentialType === "STAFF_GUEST_ADMIN" && (
         <>
           <p className="text-sm text-indigo-300">Unrestricted staff credential</p>
-          <Button type="button" onClick={onAllow} disabled={processing}>
-            {processing ? "Working..." : "Allow entry"}
+          <Button type="button" onClick={onAllow} disabled={processing} className="w-full">
+            {processing ? "Working..." : isEntryGate ? "Allow entry" : "Give kit"}
           </Button>
         </>
       )}
 
       {data.credentialType === "PARTICIPANT" && data.eligibleForAllow && (
         <>
-          <p className="text-sm text-emerald-300">Ready to enter</p>
-          <Button type="button" onClick={onAllow} disabled={processing}>
-            {processing ? "Working..." : "Allow entry"}
+          <p className="text-sm text-emerald-300">{isEntryGate ? "Ready to enter" : "Ready — kit not yet given"}</p>
+          <Button type="button" onClick={onAllow} disabled={processing} className="w-full">
+            {processing ? "Working..." : isEntryGate ? "Allow entry" : "Give kit"}
           </Button>
         </>
       )}
 
       {data.credentialType === "PARTICIPANT" && !data.eligibleForAllow && (
         <>
-          <p className="text-sm text-amber-300">Already entered</p>
+          <p className="text-sm text-amber-300">{isEntryGate ? "Already entered" : "Already received a kit"}</p>
           {isTeamLeader ? (
             <div className="flex w-full flex-col gap-3">
               <textarea
@@ -426,13 +440,14 @@ function ScanResultPanel({
                 type="button"
                 onClick={onOverride}
                 disabled={processing || overrideReason.trim().length < 5}
+                className="w-full"
               >
                 {processing ? "Working..." : "Override and allow"}
               </Button>
             </div>
-          ) : (
+          ) : isEntryGate ? (
             <p className="text-xs text-white/50">Ask a Team Leader if this needs an override.</p>
-          )}
+          ) : null}
         </>
       )}
 

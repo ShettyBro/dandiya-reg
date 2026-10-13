@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { BottomNav } from "../../components/volunteer/BottomNav.js";
+import { TopNav } from "../../components/volunteer/TopNav.js";
 import { useAuth } from "../../lib/hooks/useAuth.js";
 
 export function VolunteerLayout() {
@@ -23,9 +23,9 @@ export function VolunteerLayout() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-midnight-950 pb-20">
+    <div className="min-h-[100dvh] bg-midnight-950 pt-[calc(4rem+env(safe-area-inset-top))]">
+      <TopNav />
       <Outlet context={{ user }} />
-      <BottomNav />
     </div>
   );
 }

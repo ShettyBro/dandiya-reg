@@ -35,9 +35,19 @@ function CopyButton({ value }: { value: string }) {
 type AssignedGate = "COLLEGE_GATE" | "EVENT_GATE";
 
 const GATE_LABELS: Record<AssignedGate, string> = {
-  COLLEGE_GATE: "College Gate",
-  EVENT_GATE: "Event Entry Gate"
+  COLLEGE_GATE: "Dandiya Kit Distribution",
+  EVENT_GATE: "Event Entry"
 };
+
+// Override authority only exists at Event Entry -- Dandiya kit distribution is plain-volunteer-only
+// by design (server-enforced too), so Team Leader never offers Kit Distribution as a gate option.
+function gateOptionsFor(role: "VOLUNTEER" | "TEAM_LEADER") {
+  const options = [
+    { value: "EVENT_GATE", label: GATE_LABELS.EVENT_GATE },
+    { value: "COLLEGE_GATE", label: GATE_LABELS.COLLEGE_GATE }
+  ];
+  return role === "TEAM_LEADER" ? options.filter((o) => o.value !== "COLLEGE_GATE") : options;
+}
 
 interface VolunteerProfile {
   name: string;
@@ -134,6 +144,8 @@ export function AdminVolunteersPage() {
         setFormError(createError.message);
       } else if (createError instanceof ApiError && createError.code === "EMAIL_ALREADY_EXISTS") {
         setFormError("A user with this email already exists.");
+      } else if (createError instanceof ApiError && createError.code === "INVALID_TEAM_LEADER_GATE") {
+        setFormError("Team Leaders can only be assigned to Event Entry.");
       } else {
         setFormError("Could not create volunteer.");
       }
@@ -171,11 +183,13 @@ export function AdminVolunteersPage() {
       });
       fetchVolunteers();
     } catch (gateError) {
-      setError(
-        gateError instanceof ApiError && gateError.code === SERVER_UNREACHABLE_CODE
-          ? gateError.message
-          : "Could not update gate assignment."
-      );
+      if (gateError instanceof ApiError && gateError.code === SERVER_UNREACHABLE_CODE) {
+        setError(gateError.message);
+      } else if (gateError instanceof ApiError && gateError.code === "INVALID_TEAM_LEADER_GATE") {
+        setError("Team Leaders can only be assigned to Event Entry.");
+      } else {
+        setError("Could not update volunteer type.");
+      }
     } finally {
       setGateBusyId(null);
     }
@@ -254,21 +268,26 @@ export function AdminVolunteersPage() {
             <CustomSelect
               label="Role"
               value={role}
-              onChange={(value) => setRole(value as "VOLUNTEER" | "TEAM_LEADER")}
+              onChange={(value) => {
+                const nextRole = value as "VOLUNTEER" | "TEAM_LEADER";
+                setRole(nextRole);
+                // Team Leaders can only work Event Entry -- drop an existing Kit Distribution
+                // selection rather than silently submitting an invalid combination.
+                if (nextRole === "TEAM_LEADER" && assignedGate === "COLLEGE_GATE") {
+                  setAssignedGate("");
+                }
+              }}
               options={[
                 { value: "VOLUNTEER", label: "Volunteer" },
                 { value: "TEAM_LEADER", label: "Team Leader" }
               ]}
             />
             <CustomSelect
-              label="Gate assignment"
+              label="Volunteer type"
               value={assignedGate}
               onChange={(value) => setAssignedGate(value as AssignedGate)}
               placeholder="Not assigned yet"
-              options={[
-                { value: "COLLEGE_GATE", label: "College Gate" },
-                { value: "EVENT_GATE", label: "Event Entry Gate" }
-              ]}
+              options={gateOptionsFor(role)}
             />
             <FormField label="Gate label (optional)" value={gate} onChange={(e) => setGate(e.target.value)} />
             <FormField label="Zone (optional)" value={zone} onChange={(e) => setZone(e.target.value)} />
@@ -304,16 +323,13 @@ export function AdminVolunteersPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-40">
+                <div className="w-48">
                   <CustomSelect
-                    label="Gate"
+                    label="Type"
                     value={volunteer.volunteerProfile?.assignedGate ?? ""}
                     onChange={(value) => changeAssignedGate(volunteer, value as AssignedGate)}
-                    placeholder="Assign gate"
-                    options={[
-                      { value: "COLLEGE_GATE", label: "College Gate" },
-                      { value: "EVENT_GATE", label: "Event Entry Gate" }
-                    ]}
+                    placeholder="Assign type"
+                    options={gateOptionsFor(volunteer.role)}
                   />
                 </div>
                 {gateBusyId === volunteer.id && <span className="text-xs text-white/40">Saving...</span>}

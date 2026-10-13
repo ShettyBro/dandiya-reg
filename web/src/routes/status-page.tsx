@@ -104,7 +104,7 @@ export function StatusPage() {
                     </p>
                     <p className="mt-3 text-center text-sm text-white/50">
                       Didn't receive the email with your QR code?{" "}
-                      <Link to="/qr-down" className="text-festival-gold underline underline-offset-2">
+                      <Link to="/qr" className="text-festival-gold underline underline-offset-2">
                         Click here
                       </Link>
                     </p>

@@ -7,7 +7,6 @@ import { loadEnv, resetEnvCacheForTests } from "../src/app/config/env.js";
 import { hashPassword } from "../src/lib/security/password.js";
 import { getR2Client } from "../src/lib/r2/client.js";
 import { submitPaymentProof } from "../src/modules/payments/payment.service.js";
-import { getCurrentAccessCode } from "../src/lib/qr-download/access-code.js";
 
 const prisma = new PrismaClient();
 
@@ -48,7 +47,8 @@ function randomPhone(): string {
   return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
 }
 
-async function createApprovedRegistration(suffix: string, phone: string) {
+async function createApprovedRegistration(suffix: string, phone: string, auid?: string) {
+  const email = `qrdl-test-${suffix}-${Date.now()}@acharya.ac.in`;
   const created = await request(app)
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `qrdl-test-${suffix}-${Date.now()}`)
@@ -56,8 +56,8 @@ async function createApprovedRegistration(suffix: string, phone: string) {
       registrationType: "ACHARYA_STUDENT",
       name: "QR Download Test User",
       phone,
-      email: `qrdl-test-${suffix}-${Date.now()}@acharya.ac.in`,
-      auid: `qrdl-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      email,
+      auid: auid ?? `qrdl-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       institution: "acharya institute of technology",
       year: 2
     });
@@ -96,7 +96,7 @@ async function createApprovedRegistration(suffix: string, phone: string) {
     .set("Cookie", financeCookies)
     .set("X-CSRF-Token", financeCsrfToken);
 
-  return created.body as { registrationId: string; publicCode: string };
+  return { ...(created.body as { registrationId: string; publicCode: string }), email };
 }
 
 beforeAll(async () => {
@@ -126,104 +126,18 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe("GET /api/v1/admin/qr-download/current-code", () => {
-  it("requires authentication", async () => {
-    const response = await request(app).get("/api/v1/admin/qr-download/current-code");
-    expect(response.status).toBe(401);
-  });
-
-  it("returns a 6-digit code for an authenticated admin", async () => {
-    const adminEmail = `test-qrdl-admin-${Date.now()}@acharya.ac.in`;
-    const passwordHash = await hashPassword(PASSWORD);
-    const admin = await prisma.user.create({
-      data: { email: adminEmail, passwordHash, role: "ADMIN", status: "ACTIVE" }
-    });
-    const login = await request(app).post("/api/v1/auth/login").send({ email: adminEmail, password: PASSWORD });
-    const cookies = login.headers["set-cookie"] as unknown as string[];
-
-    const response = await request(app).get("/api/v1/admin/qr-download/current-code").set("Cookie", cookies);
-    expect(response.status).toBe(200);
-    expect(response.body.code).toMatch(/^\d{6}$/);
-    expect(response.body.secondsRemaining).toBeGreaterThan(0);
-
-    await prisma.refreshToken.deleteMany({ where: { userId: admin.id } });
-    await prisma.user.delete({ where: { id: admin.id } });
-  });
-
-  it("returns a 6-digit code for an authenticated team leader", async () => {
-    const teamLeaderEmail = `test-qrdl-teamleader-${Date.now()}@acharya.ac.in`;
-    const passwordHash = await hashPassword(PASSWORD);
-    const teamLeader = await prisma.user.create({
-      data: { email: teamLeaderEmail, passwordHash, role: "TEAM_LEADER", status: "ACTIVE" }
-    });
-    const login = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: teamLeaderEmail, password: PASSWORD });
-    const cookies = login.headers["set-cookie"] as unknown as string[];
-
-    const response = await request(app).get("/api/v1/admin/qr-download/current-code").set("Cookie", cookies);
-    expect(response.status).toBe(200);
-    expect(response.body.code).toMatch(/^\d{6}$/);
-
-    await prisma.refreshToken.deleteMany({ where: { userId: teamLeader.id } });
-    await prisma.user.delete({ where: { id: teamLeader.id } });
-  });
-
-  it("forbids a plain volunteer (non-team-leader)", async () => {
-    const volunteerEmail = `test-qrdl-volunteer-${Date.now()}@acharya.ac.in`;
-    const passwordHash = await hashPassword(PASSWORD);
-    const volunteer = await prisma.user.create({
-      data: { email: volunteerEmail, passwordHash, role: "VOLUNTEER", status: "ACTIVE" }
-    });
-    const login = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: volunteerEmail, password: PASSWORD });
-    const cookies = login.headers["set-cookie"] as unknown as string[];
-
-    const response = await request(app).get("/api/v1/admin/qr-download/current-code").set("Cookie", cookies);
-    expect(response.status).toBe(403);
-
-    await prisma.refreshToken.deleteMany({ where: { userId: volunteer.id } });
-    await prisma.user.delete({ where: { id: volunteer.id } });
-  });
-});
-
-describe("POST /api/v1/qr-download/unlock", () => {
-  it("rejects a wrong code", async () => {
-    const response = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: "000000" });
-    expect(response.status).toBe(401);
-  });
-
-  it("accepts the current valid code and issues a session token", async () => {
-    const { code } = getCurrentAccessCode(env.QR_DOWNLOAD_SECRET);
-    const response = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: code });
-    expect(response.status).toBe(200);
-    expect(typeof response.body.sessionToken).toBe("string");
-    expect(response.body.expiresInSeconds).toBe(300);
-  });
-});
-
 describe("POST /api/v1/qr-download/lookup", () => {
-  it("rejects an invalid session token", async () => {
-    const response = await request(app)
-      .post("/api/v1/qr-download/lookup")
-      .send({ sessionToken: "garbage", phone: "9999999999" });
-    expect(response.status).toBe(401);
-  });
-
-  it("returns 404 for a phone number with no registration", async () => {
-    const { code } = getCurrentAccessCode(env.QR_DOWNLOAD_SECRET);
-    const unlock = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: code });
-
-    const response = await request(app)
-      .post("/api/v1/qr-download/lookup")
-      .send({ sessionToken: unlock.body.sessionToken, phone: "9000000001" });
+  it("returns 404 for an identifier with no registration", async () => {
+    const response = await request(app).post("/api/v1/qr-download/lookup").send({ identifier: "9000000001" });
     expect(response.status).toBe(404);
   });
 
+  it("rejects a too-short identifier", async () => {
+    const response = await request(app).post("/api/v1/qr-download/lookup").send({ identifier: "ab" });
+    expect(response.status).toBe(400);
+  });
+
   it("reports not-ready for a registration that is not yet approved", async () => {
-    const { code } = getCurrentAccessCode(env.QR_DOWNLOAD_SECRET);
-    const unlock = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: code });
     const phone = randomPhone();
     const created = await request(app)
       .post("/api/v1/registrations")
@@ -237,46 +151,65 @@ describe("POST /api/v1/qr-download/lookup", () => {
       });
     createdRegistrationIds.push(created.body.registrationId);
 
-    const response = await request(app)
-      .post("/api/v1/qr-download/lookup")
-      .send({ sessionToken: unlock.body.sessionToken, phone });
+    const response = await request(app).post("/api/v1/qr-download/lookup").send({ identifier: phone });
     expect(response.status).toBe(200);
     expect(response.body.ready).toBe(false);
   });
 
-  it("returns ready + name for an approved registration", async () => {
-    const { code } = getCurrentAccessCode(env.QR_DOWNLOAD_SECRET);
-    const unlock = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: code });
+  it("finds an approved registration by phone", async () => {
     const phone = randomPhone();
-    const registration = await createApprovedRegistration("lookup-ready", phone);
+    const registration = await createApprovedRegistration("lookup-phone", phone);
 
-    const response = await request(app)
-      .post("/api/v1/qr-download/lookup")
-      .send({ sessionToken: unlock.body.sessionToken, phone });
+    const response = await request(app).post("/api/v1/qr-download/lookup").send({ identifier: phone });
     expect(response.status).toBe(200);
     expect(response.body.ready).toBe(true);
     expect(response.body.name).toBe("qr download test user");
     expect(response.body.publicCode).toBe(registration.publicCode);
   });
+
+  it("finds an approved registration by email (case-insensitive)", async () => {
+    const phone = randomPhone();
+    const registration = await createApprovedRegistration("lookup-email", phone);
+
+    const response = await request(app)
+      .post("/api/v1/qr-download/lookup")
+      .send({ identifier: registration.email.toUpperCase() });
+    expect(response.status).toBe(200);
+    expect(response.body.ready).toBe(true);
+    expect(response.body.publicCode).toBe(registration.publicCode);
+  });
+
+  it("finds an approved registration by public registration code", async () => {
+    const phone = randomPhone();
+    const registration = await createApprovedRegistration("lookup-code", phone);
+
+    const response = await request(app)
+      .post("/api/v1/qr-download/lookup")
+      .send({ identifier: registration.publicCode });
+    expect(response.status).toBe(200);
+    expect(response.body.ready).toBe(true);
+  });
+
+  it("finds an approved registration by AUID", async () => {
+    const phone = randomPhone();
+    const auid = `qrdl-auid-${Date.now()}`;
+    const registration = await createApprovedRegistration("lookup-auid", phone, auid);
+
+    const response = await request(app).post("/api/v1/qr-download/lookup").send({ identifier: auid });
+    expect(response.status).toBe(200);
+    expect(response.body.ready).toBe(true);
+    expect(response.body.publicCode).toBe(registration.publicCode);
+  });
 });
 
 describe("GET /api/v1/qr-download/pdf", () => {
-  it("rejects an expired/invalid session token", async () => {
-    const response = await request(app)
-      .get("/api/v1/qr-download/pdf")
-      .query({ sessionToken: "garbage", phone: "9999999999" });
-    expect(response.status).toBe(401);
-  });
-
-  it("streams a real PDF for an approved registration", async () => {
-    const { code } = getCurrentAccessCode(env.QR_DOWNLOAD_SECRET);
-    const unlock = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: code });
+  it("streams a real PDF for an approved registration found by phone", async () => {
     const phone = randomPhone();
     await createApprovedRegistration("pdf", phone);
 
     const response = await request(app)
       .get("/api/v1/qr-download/pdf")
-      .query({ sessionToken: unlock.body.sessionToken, phone })
+      .query({ identifier: phone })
       .buffer(true)
       .parse((res, callback) => {
         const chunks: Buffer[] = [];
@@ -290,13 +223,8 @@ describe("GET /api/v1/qr-download/pdf", () => {
     expect(body.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   });
 
-  it("returns 404 for a phone number with no approved registration", async () => {
-    const { code } = getCurrentAccessCode(env.QR_DOWNLOAD_SECRET);
-    const unlock = await request(app).post("/api/v1/qr-download/unlock").send({ accessCode: code });
-
-    const response = await request(app)
-      .get("/api/v1/qr-download/pdf")
-      .query({ sessionToken: unlock.body.sessionToken, phone: "9000000002" });
+  it("returns 404 for an identifier with no approved registration", async () => {
+    const response = await request(app).get("/api/v1/qr-download/pdf").query({ identifier: "9000000002" });
     expect(response.status).toBe(404);
   });
 });

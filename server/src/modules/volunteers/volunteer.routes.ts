@@ -9,7 +9,13 @@ import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 import { requireActiveUser } from "../auth/require-active-user.middleware.js";
 import { recordAuditLog } from "../audit/audit.service.js";
 import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
-import { createVolunteer, resetVolunteerPassword, updateVolunteer, VolunteerNotFoundError } from "./volunteer.service.js";
+import {
+  createVolunteer,
+  resetVolunteerPassword,
+  updateVolunteer,
+  InvalidTeamLeaderGateError,
+  VolunteerNotFoundError
+} from "./volunteer.service.js";
 import type { Env } from "../../app/config/env.js";
 
 const assignedGateSchema = z.enum(["COLLEGE_GATE", "EVENT_GATE"]);
@@ -120,6 +126,16 @@ export function createVolunteerRouter(prisma: PrismaClient, env: Env): Router {
           sendError(req, res, 409, "EMAIL_ALREADY_EXISTS", "A user with this email already exists");
           return;
         }
+        if (error instanceof InvalidTeamLeaderGateError) {
+          sendError(
+            req,
+            res,
+            400,
+            "INVALID_TEAM_LEADER_GATE",
+            "Team Leaders can only be assigned to the Event Entry gate"
+          );
+          return;
+        }
         throw error;
       }
     }
@@ -138,7 +154,25 @@ export function createVolunteerRouter(prisma: PrismaClient, env: Env): Router {
         return;
       }
 
-      await updateVolunteer(prisma, userId, parsed.data);
+      try {
+        await updateVolunteer(prisma, userId, parsed.data);
+      } catch (error) {
+        if (error instanceof InvalidTeamLeaderGateError) {
+          sendError(
+            req,
+            res,
+            400,
+            "INVALID_TEAM_LEADER_GATE",
+            "Team Leaders can only be assigned to the Event Entry gate"
+          );
+          return;
+        }
+        if (error instanceof VolunteerNotFoundError) {
+          sendError(req, res, 404, "NOT_FOUND", "Volunteer not found");
+          return;
+        }
+        throw error;
+      }
 
       await recordAuditLog(prisma, {
         actorUserId: req.authUser.id,

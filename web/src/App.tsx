@@ -94,8 +94,8 @@ export function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         {/* /reg1 is the hidden registration path — shared one-on-one by the admin only.
-            It is never linked from any nav, button, or public page. /reg and /register
-            are all redirected to / so old links are dead. */}
+            It is never linked from any nav, button, or public page. All old paths
+            (/reg, /register, /register1, /register2) redirect to / so old links are dead. */}
         <Route path="/reg1" element={<RegisterPage />} />
         <Route path="/reg" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
@@ -105,13 +105,14 @@ export function App() {
         <Route path="/registration/pass" element={<PassPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route
-          path="/qr-down"
+          path="/qr"
           element={
             <Suspense fallback={<VolunteerFallback />}>
               <QrDownloadPage />
             </Suspense>
           }
         />
+        <Route path="/qr-down" element={<Navigate to="/qr" replace />} />
 
         <Route
           path="/vol-login"
