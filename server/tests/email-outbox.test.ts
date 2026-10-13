@@ -1,9 +1,10 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
-import { EmailPermanentError, EmailTransientError } from "../src/lib/email/errors.js";
+import { EmailPermanentError, EmailQuotaExceededError, EmailTransientError } from "../src/lib/email/errors.js";
 import {
   claimDueEmailJobs,
-  computeBackoffMs
+  computeBackoffMs,
+  MAX_ATTEMPTS
 } from "../src/modules/email/email-outbox.service.js";
 import { processEmailJob } from "../src/modules/email/email-processor.js";
 import { loadEnv } from "../src/app/config/env.js";
@@ -144,5 +145,35 @@ describe("processEmailJob", () => {
     job = await prisma.emailJob.findUniqueOrThrow({ where: { id: job.id } });
     expect(job.status).toBe("FAILED");
     expect(job.attempts).toBe(8);
+  });
+
+  it("reschedules ~12 hours out on a daily-quota error, without touching attempts", async () => {
+    const job = await createJob({ attempts: 5 });
+
+    const outcome = await processEmailJob(prisma, env, job, async () => {
+      throw new EmailQuotaExceededError("Gmail daily sending quota exceeded: 550 5.4.5 Daily user sending limit exceeded");
+    });
+
+    expect(outcome).toBe("quota-retry");
+    const dbJob = await prisma.emailJob.findUniqueOrThrow({ where: { id: job.id } });
+    expect(dbJob.status).toBe("RETRY");
+    // attempts must be untouched -- a quota hit can never count toward MAX_ATTEMPTS
+    expect(dbJob.attempts).toBe(5);
+    const hoursOut = (dbJob.nextAttemptAt.getTime() - Date.now()) / (60 * 60 * 1000);
+    expect(hoursOut).toBeGreaterThan(11.9);
+    expect(hoursOut).toBeLessThan(12.1);
+  });
+
+  it("never lands a job in FAILED no matter how many quota errors it hits in a row", async () => {
+    let job = await createJob({ attempts: MAX_ATTEMPTS + 10 });
+
+    const outcome = await processEmailJob(prisma, env, job, async () => {
+      throw new EmailQuotaExceededError("429 User-rate limit exceeded (Mail sending)");
+    });
+
+    expect(outcome).toBe("quota-retry");
+    job = await prisma.emailJob.findUniqueOrThrow({ where: { id: job.id } });
+    expect(job.status).toBe("RETRY");
+    expect(job.status).not.toBe("FAILED");
   });
 });

@@ -5,11 +5,21 @@ import { htmlToPlainText } from "../email/html-to-text.js";
 import {
   EmailNotConfiguredError,
   EmailPermanentError,
+  EmailQuotaExceededError,
   EmailTransientError,
   type EmailSender,
   type SendEmailInput,
   type SendEmailResult
 } from "../email/errors.js";
+
+// Gmail's own documented signatures for "the mailbox's daily sending cap is exhausted" --
+// distinct from userRateLimitExceeded/rateLimitExceeded (a short per-minute burst limit that
+// resolves on its own within seconds to minutes) and from dailyLimitExceeded (a GCP *project*
+// API-quota concept, unrelated to the mailbox's send cap). Matched case-insensitively against
+// the raw error message since the googleapis client doesn't expose a stable machine-readable
+// reason code for this specific condition.
+export const DAILY_SEND_QUOTA_PATTERN =
+  /daily user sending (limit|quota)|user-rate limit exceeded \(mail sending\)|550[ -]5\.4\.5/i;
 
 const GMAIL_REQUEST_TIMEOUT_MS = 20000;
 
@@ -88,6 +98,10 @@ export function createGmailSender(env: Env): EmailSender {
       const status = (error as { code?: number; response?: { status?: number } })?.code
         ?? (error as { response?: { status?: number } })?.response?.status;
       const message = error instanceof Error ? error.message : "Unknown Gmail API error";
+
+      if (DAILY_SEND_QUOTA_PATTERN.test(message)) {
+        throw new EmailQuotaExceededError(`Gmail daily sending quota exceeded: ${message}`);
+      }
 
       // Gmail API auth failures (expired/revoked refresh token, misconfigured OAuth client) and
       // rate limiting both deserve a retry rather than instantly failing the job -- a token can be

@@ -1,10 +1,11 @@
 import type { EmailJob, PrismaClient } from "@prisma/client";
-import { EmailPermanentError, type EmailSender } from "../../lib/email/errors.js";
+import { EmailPermanentError, EmailQuotaExceededError, type EmailSender } from "../../lib/email/errors.js";
 import { renderEmailTemplate, type EmailAssets } from "./templates.js";
 import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
 import {
   MAX_ATTEMPTS,
   markEmailJobFailed,
+  markEmailJobQuotaRetry,
   markEmailJobRetry,
   markEmailJobSent
 } from "./email-outbox.service.js";
@@ -64,7 +65,7 @@ export async function processEmailJob(
   env: Env,
   job: EmailJob,
   sender: EmailSender
-): Promise<"sent" | "retry" | "failed"> {
+): Promise<"sent" | "retry" | "quota-retry" | "failed"> {
   const assets = await buildAssets(prisma, env, job);
   const { subject, html } = renderEmailTemplate(job.type, job.payloadJson as Record<string, unknown>, assets);
 
@@ -73,8 +74,17 @@ export async function processEmailJob(
     await markEmailJobSent(prisma, job.id, result.providerMessageId);
     return "sent";
   } catch (error) {
-    const attempts = job.attempts + 1;
     const message = error instanceof Error ? error.message : String(error);
+
+    // Checked before the normal retry/fail path entirely -- a quota hit must never count toward
+    // MAX_ATTEMPTS or be able to land the job in FAILED, and uses its own much longer, indefinite
+    // retry cadence (see markEmailJobQuotaRetry) instead of the short exponential backoff below.
+    if (error instanceof EmailQuotaExceededError) {
+      await markEmailJobQuotaRetry(prisma, job.id, message);
+      return "quota-retry";
+    }
+
+    const attempts = job.attempts + 1;
     const isPermanent = error instanceof EmailPermanentError;
 
     if (isPermanent || attempts >= MAX_ATTEMPTS) {

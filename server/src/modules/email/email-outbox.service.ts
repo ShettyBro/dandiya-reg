@@ -4,6 +4,10 @@ const LEASE_MS = 2 * 60 * 1000;
 const MAX_ATTEMPTS = 8;
 const BASE_BACKOFF_MS = 30 * 1000;
 const MAX_BACKOFF_MS = 15 * 60 * 1000;
+// Google documents the daily sending cap as a rolling window with no fixed reset time (not
+// "resets at midnight") -- so there's no reliable moment to schedule a single retry for. Instead,
+// just keep checking back on a fixed cadence indefinitely.
+const QUOTA_RETRY_MS = 12 * 60 * 60 * 1000;
 
 export async function claimDueEmailJobs(prisma: PrismaClient, batchSize: number): Promise<EmailJob[]> {
   return prisma.$queryRaw<EmailJob[]>`
@@ -50,6 +54,22 @@ export async function markEmailJobRetry(
       status: "RETRY",
       attempts,
       nextAttemptAt: new Date(Date.now() + computeBackoffMs(attempts)),
+      lastError,
+      lockedUntil: null
+    }
+  });
+}
+
+// Deliberately does NOT take or increment `attempts` -- a quota-exceeded hit must never count
+// toward MAX_ATTEMPTS and must never be able to land the job in FAILED. It just keeps getting
+// re-queued 12 hours out, indefinitely, until a send actually succeeds (or some other, unrelated
+// error eventually occurs and goes through the normal retry/fail path instead).
+export async function markEmailJobQuotaRetry(prisma: PrismaClient, jobId: string, lastError: string): Promise<void> {
+  await prisma.emailJob.update({
+    where: { id: jobId },
+    data: {
+      status: "RETRY",
+      nextAttemptAt: new Date(Date.now() + QUOTA_RETRY_MS),
       lastError,
       lockedUntil: null
     }
