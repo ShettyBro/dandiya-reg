@@ -6,6 +6,7 @@ import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
 import { apiRequest, ApiError, SERVER_UNREACHABLE_CODE, SERVER_UNREACHABLE_MESSAGE } from "../../lib/api.js";
+import { useEventConfig } from "../../lib/hooks/useEventConfig.js";
 import type { AuthUser } from "../../lib/hooks/useAuth.js";
 
 const SCANNER_ELEMENT_ID = "volunteer-qr-reader";
@@ -44,6 +45,7 @@ type ResultState =
 export function VolunteerScanPage() {
   const { user } = useOutletContext<{ user: AuthUser }>();
   const navigate = useNavigate();
+  const { config, loading: configLoading } = useEventConfig();
   const isTeamLeader = user.role === "TEAM_LEADER";
   // Team Leaders are now only ever assigned the Event Entry gate (enforced server-side on
   // create/update), so there's no gate picker anymore -- everyone just scans at their own
@@ -129,7 +131,7 @@ export function VolunteerScanPage() {
       setResult({ kind: "blocked", message: "Someone already scanned this a moment ago." });
     } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
       setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
-    } else if (error instanceof ApiError && error.code === "OUTSIDE_ENTRY_WINDOW") {
+    } else if (error instanceof ApiError && error.code === "ATTENDANCE_DISABLED") {
       setResult({ kind: "blocked", message: error.message });
     } else {
       setResult({ kind: "blocked", message: "Could not allow entry. Try again." });
@@ -222,6 +224,8 @@ export function VolunteerScanPage() {
         setResult({ kind: "session-expired" });
       } else if (error instanceof ApiError && error.code === "GATE_NOT_ASSIGNED") {
         setResult({ kind: "blocked", message: "No gate has been assigned to your account yet. Contact the admin." });
+      } else if (error instanceof ApiError && error.code === "ATTENDANCE_DISABLED") {
+        setResult({ kind: "blocked", message: error.message });
       } else {
         setResult({ kind: "blocked", message: "Override failed. Try again." });
       }
@@ -245,6 +249,22 @@ export function VolunteerScanPage() {
           <Warning size={32} className="text-amber-300" />
           <p className="font-display text-lg font-semibold text-amber-300">No gate assigned yet</p>
           <p className="text-sm text-white/60">Contact the admin to get a gate assignment before you can scan.</p>
+        </GlassPanel>
+      </Container>
+    );
+  }
+
+  // Checked up front, before the camera ever starts -- both Event Entry and Kit Distribution are
+  // gated by this one admin-controlled switch, same flag the backend already enforces on allow/
+  // override, so this is purely a faster/clearer "don't even bother" message, not a second gate.
+  if (!configLoading && config && !config.attendanceEnabled) {
+    return (
+      <Container className="max-w-md py-10">
+        <h1 className="mb-6 font-display text-2xl font-semibold text-white">Scan</h1>
+        <GlassPanel className="flex flex-col items-center gap-3 border-amber-400/40 p-8 text-center">
+          <Warning size={32} className="text-amber-300" />
+          <p className="font-display text-lg font-semibold text-amber-300">Scanning is not enabled</p>
+          <p className="text-sm text-white/60">Contact the admin to turn on attendance scanning.</p>
         </GlassPanel>
       </Container>
     );

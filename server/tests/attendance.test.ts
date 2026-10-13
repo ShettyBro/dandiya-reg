@@ -443,10 +443,12 @@ describe("gate assignment enforcement", () => {
   });
 });
 
-describe("entry window", () => {
-  it("blocks normal entry before the event's entry window opens", async () => {
-    const participant = await createParticipantWithCredential("before-window");
-    vi.setSystemTime(new Date("2026-10-15T09:00:00.000Z"));
+describe("no fixed entry window", () => {
+  it("allows normal entry regardless of system time relative to the event date (no time gating)", async () => {
+    const participant = await createParticipantWithCredential("far-before-event");
+    // Deliberately a date long before the configured event date -- entry must still work, since
+    // early/late arrivals are expected and entry is no longer bound to any clock window.
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
     try {
       const response = await request(app)
         .post("/api/v1/scan/allow")
@@ -454,56 +456,51 @@ describe("entry window", () => {
         .set("X-CSRF-Token", volunteerCsrf)
         .send({ token: participant.token });
 
-      expect(response.status).toBe(409);
-      expect(response.body.code).toBe("OUTSIDE_ENTRY_WINDOW");
-    } finally {
-      vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
-    }
-  });
-
-  it("blocks normal entry after the gate has closed", async () => {
-    const participant = await createParticipantWithCredential("after-window");
-    vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"));
-    try {
-      const freshLogin = await request(app)
-        .post("/api/v1/auth/login")
-        .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
-      const freshCookies = freshLogin.headers["set-cookie"] as unknown as string[];
-      const freshCsrf = extractCookie(freshCookies, "csrf_token") ?? "";
-
-      const response = await request(app)
-        .post("/api/v1/scan/allow")
-        .set("Cookie", freshCookies)
-        .set("X-CSRF-Token", freshCsrf)
-        .send({ token: participant.token });
-
-      expect(response.status).toBe(409);
-      expect(response.body.code).toBe("OUTSIDE_ENTRY_WINDOW");
-    } finally {
-      vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
-    }
-  });
-
-  it("does not time-gate STAFF_GUEST_ADMIN unrestricted entry outside the window", async () => {
-    const staff = await createStaffCredential();
-    vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"));
-    try {
-      const freshLogin = await request(app)
-        .post("/api/v1/auth/login")
-        .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
-      const freshCookies = freshLogin.headers["set-cookie"] as unknown as string[];
-      const freshCsrf = extractCookie(freshCookies, "csrf_token") ?? "";
-
-      const response = await request(app)
-        .post("/api/v1/scan/allow")
-        .set("Cookie", freshCookies)
-        .set("X-CSRF-Token", freshCsrf)
-        .send({ token: staff.token });
-
       expect(response.status).toBe(200);
     } finally {
       vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"));
     }
+  });
+});
+
+describe("attendanceEnabled toggle", () => {
+  async function withAttendanceDisabled<T>(run: () => Promise<T>): Promise<T> {
+    const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
+    const original = event.attendanceEnabled;
+    await prisma.event.update({ where: { id: env.EVENT_ID }, data: { attendanceEnabled: false } });
+    try {
+      return await run();
+    } finally {
+      await prisma.event.update({ where: { id: env.EVENT_ID }, data: { attendanceEnabled: original } });
+    }
+  }
+
+  it("blocks normal entry when attendance scanning is disabled", async () => {
+    const participant = await createParticipantWithCredential("attendance-disabled");
+    await withAttendanceDisabled(async () => {
+      const response = await request(app)
+        .post("/api/v1/scan/allow")
+        .set("Cookie", volunteerCookies)
+        .set("X-CSRF-Token", volunteerCsrf)
+        .send({ token: participant.token });
+
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe("ATTENDANCE_DISABLED");
+    });
+  });
+
+  it("blocks override when attendance scanning is disabled", async () => {
+    const participant = await createParticipantWithCredential("attendance-disabled-override");
+    await withAttendanceDisabled(async () => {
+      const response = await request(app)
+        .post("/api/v1/scan/override")
+        .set("Cookie", teamLeaderCookies)
+        .set("X-CSRF-Token", teamLeaderCsrf)
+        .send({ token: participant.token, reason: "testing disabled attendance" });
+
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe("ATTENDANCE_DISABLED");
+    });
   });
 });
 

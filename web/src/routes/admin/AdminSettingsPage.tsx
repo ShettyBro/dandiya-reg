@@ -13,7 +13,6 @@ interface EventSettings {
   registrationOpen: boolean;
   nonAcharyanRegistrationOpen: boolean;
   registrationDeadline: string | null;
-  capacity: number;
   priceInPaise: number;
   erpPaymentUrl: string;
   paymentInstructions: string;
@@ -106,7 +105,6 @@ export function AdminSettingsPage() {
           registrationOpen: settings.registrationOpen,
           nonAcharyanRegistrationOpen: settings.nonAcharyanRegistrationOpen,
           registrationDeadline: settings.registrationDeadline,
-          capacity: settings.capacity,
           priceInPaise: settings.priceInPaise,
           erpPaymentUrl: settings.erpPaymentUrl,
           paymentInstructions: settings.paymentInstructions,
@@ -226,6 +224,23 @@ export function AdminSettingsPage() {
         )}
       </GlassPanel>
 
+      <GlassPanel className="p-5">
+        <Toggle
+          label={settings.attendanceEnabled ? "Attendance scanning is ON" : "Attendance scanning is OFF"}
+          checked={settings.attendanceEnabled}
+          disabled={pendingToggleField === "attendanceEnabled"}
+          onChange={(value) => updateToggleField("attendanceEnabled", value)}
+        />
+        <p className="mt-2 text-xs text-white/40">
+          Controls both Event Entry and Dandiya Kit Distribution scanning — not tied to the event
+          date/time, so you can turn it on for early arrivals or off for a pause, independent of
+          schedule. A volunteer sees "Scanning is not enabled" on their Scan tab while this is off.
+        </p>
+        {toggleError?.field === "attendanceEnabled" && (
+          <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+        )}
+      </GlassPanel>
+
       <GlassPanel className="flex flex-col gap-3 p-5">
         <div>
           <label className="text-sm font-medium text-white/85">Registration deadline</label>
@@ -301,12 +316,6 @@ export function AdminSettingsPage() {
           onChange={(e) => setSettings({ ...settings, eventDate: new Date(e.target.value).toISOString() })}
         />
         <FormField
-          label="Capacity (planning estimate only — not enforced, registration is unlimited)"
-          type="number"
-          value={String(settings.capacity)}
-          onChange={(e) => setSettings({ ...settings, capacity: Number(e.target.value) })}
-        />
-        <FormField
           label="Price (in paise)"
           type="number"
           value={String(settings.priceInPaise)}
@@ -330,12 +339,6 @@ export function AdminSettingsPage() {
 
       <GlassPanel className="flex flex-col gap-3 p-5">
         <Toggle
-          label="Attendance scanning enabled"
-          checked={settings.attendanceEnabled}
-          disabled={pendingToggleField === "attendanceEnabled"}
-          onChange={(value) => updateToggleField("attendanceEnabled", value)}
-        />
-        <Toggle
           label="Payment submissions enabled"
           checked={settings.paymentsEnabled}
           disabled={pendingToggleField === "paymentsEnabled"}
@@ -347,9 +350,7 @@ export function AdminSettingsPage() {
           disabled={pendingToggleField === "maintenanceMode"}
           onChange={(value) => updateToggleField("maintenanceMode", value)}
         />
-        {(toggleError?.field === "attendanceEnabled" ||
-          toggleError?.field === "paymentsEnabled" ||
-          toggleError?.field === "maintenanceMode") && (
+        {(toggleError?.field === "paymentsEnabled" || toggleError?.field === "maintenanceMode") && (
           <p className="text-xs text-red-300">{toggleError.message}</p>
         )}
       </GlassPanel>

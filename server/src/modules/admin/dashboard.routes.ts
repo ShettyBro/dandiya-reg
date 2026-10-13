@@ -46,7 +46,6 @@ export function createDashboardRouter(prisma: PrismaClient, env: Env): Router {
         totalCollectionInPaise: collectionAgg._sum.amountInPaise ?? 0,
         collegeGateEntered,
         eventGateEntered,
-        remainingCapacity: event ? Math.max(event.capacity - totalRegistrations, 0) : null,
         overrideCount,
         registrationOpen: event?.registrationOpen ?? null,
         maintenanceMode: event?.maintenanceMode ?? null

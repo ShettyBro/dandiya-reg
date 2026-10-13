@@ -15,7 +15,6 @@ const settingsSchema = z
     registrationOpen: z.boolean(),
     nonAcharyanRegistrationOpen: z.boolean(),
     registrationDeadline: z.coerce.date().nullable(),
-    capacity: z.number().int().positive(),
     priceInPaise: z.number().int().nonnegative(),
     erpPaymentUrl: z.string().url(),
     paymentInstructions: z.string().trim().min(1).max(2000),

@@ -9,11 +9,10 @@ export interface EventConfig {
   registrationOpen: boolean;
   nonAcharyanRegistrationOpen: boolean;
   registrationDeadline: string | null;
-  capacity: number;
-  remainingCapacity: number;
   priceInPaise: number;
   erpPaymentUrl: string;
   paymentInstructions: string;
+  attendanceEnabled: boolean;
 }
 
 const RETRY_INTERVAL_MS = 20000;

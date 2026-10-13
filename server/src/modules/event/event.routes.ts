@@ -19,11 +19,10 @@ export function createEventRouter(prisma: PrismaClient, env: Env): Router {
         registrationOpen: availability.isOpen,
         nonAcharyanRegistrationOpen: availability.nonAcharyanOpen,
         registrationDeadline: availability.event.registrationDeadline,
-        capacity: availability.event.capacity,
-        remainingCapacity: availability.remainingCapacity,
         priceInPaise: availability.event.priceInPaise,
         erpPaymentUrl: availability.event.erpPaymentUrl,
-        paymentInstructions: availability.event.paymentInstructions
+        paymentInstructions: availability.event.paymentInstructions,
+        attendanceEnabled: availability.event.attendanceEnabled
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {

@@ -10,36 +10,17 @@ import { presignGetUrl } from "../../lib/r2/presign.js";
 import {
   AlreadyEnteredError,
   allowEntry,
+  AttendanceDisabledError,
   CredentialNotFoundError,
   GateNotAssignedError,
   lookupCredential,
   NotYetEnteredError,
-  OutsideEntryWindowError,
   overrideEntry,
   resolveEffectiveGate
 } from "./attendance.service.js";
 import type { Env } from "../../app/config/env.js";
 
 const gateSchema = z.enum(["COLLEGE_GATE", "EVENT_GATE"]);
-
-function formatIstTime(date: Date): string {
-  return date
-    .toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })
-    .replace(/am|pm/i, (match) => match.toUpperCase());
-}
-
-function outsideEntryWindowMessage(error: OutsideEntryWindowError): string {
-  const now = Date.now();
-  if (now < error.entryOpensAt.getTime()) {
-    const opensAt = formatIstTime(error.entryOpensAt);
-    const closesText = error.entryClosesAt ? ` and closes at ${formatIstTime(error.entryClosesAt)}` : "";
-    return `Entry hasn't opened yet. Normal entry opens at ${opensAt}${closesText} — please scan again during that window.`;
-  }
-  if (error.entryClosesAt && now > error.entryClosesAt.getTime()) {
-    return `The entry window has closed (it ended at ${formatIstTime(error.entryClosesAt)}). Normal entry is no longer allowed.`;
-  }
-  return "Normal entry is only allowed during the event's entry window.";
-}
 
 const tokenSchema = z.object({
   token: z.string().min(1),
@@ -135,8 +116,8 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
           sendError(req, res, 409, "ALREADY_ENTERED", "This participant has already entered through this gate");
           return;
         }
-        if (error instanceof OutsideEntryWindowError) {
-          sendError(req, res, 409, "OUTSIDE_ENTRY_WINDOW", outsideEntryWindowMessage(error));
+        if (error instanceof AttendanceDisabledError) {
+          sendError(req, res, 409, "ATTENDANCE_DISABLED", "Attendance scanning is currently disabled by the admin.");
           return;
         }
         if (error instanceof GateNotAssignedError) {
@@ -163,7 +144,7 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
 
       try {
         const gate = await resolveEffectiveGate(prisma, req.authUser.id, req.authUser.role, parsed.data.gate);
-        const result = await overrideEntry(prisma, {
+        const result = await overrideEntry(prisma, env, {
           rawToken: parsed.data.token,
           teamLeaderUserId: req.authUser.id,
           reasonText: parsed.data.reason,
@@ -178,6 +159,10 @@ export function createAttendanceRouter(prisma: PrismaClient, env: Env): Router {
         }
         if (error instanceof NotYetEnteredError) {
           sendError(req, res, 409, "NOT_YET_ENTERED", "This participant has not entered through this gate yet; use normal allow-entry instead");
+          return;
+        }
+        if (error instanceof AttendanceDisabledError) {
+          sendError(req, res, 409, "ATTENDANCE_DISABLED", "Attendance scanning is currently disabled by the admin.");
           return;
         }
         if (error instanceof GateNotAssignedError) {

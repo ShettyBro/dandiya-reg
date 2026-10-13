@@ -12,7 +12,6 @@ interface DashboardMetrics {
   totalCollectionInPaise: number;
   collegeGateEntered: number;
   eventGateEntered: number;
-  remainingCapacity: number | null;
   overrideCount: number;
   registrationOpen: boolean | null;
   maintenanceMode: boolean | null;
@@ -72,10 +71,6 @@ export function AdminDashboardPage() {
         <StatCard label="Total collected" value={formatPriceInPaise(metrics.totalCollectionInPaise)} accent="emerald" />
         <StatCard label="Dandiya kits given" value={String(metrics.collegeGateEntered)} />
         <StatCard label="Event entries" value={String(metrics.eventGateEntered)} />
-        <StatCard
-          label="Vs. planning capacity (not a cap)"
-          value={metrics.remainingCapacity === null ? "—" : String(metrics.remainingCapacity)}
-        />
         <StatCard label="Team Leader overrides" value={String(metrics.overrideCount)} accent="red" />
       </div>
 

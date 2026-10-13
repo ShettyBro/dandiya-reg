@@ -6,14 +6,11 @@ import type { Env } from "../../app/config/env.js";
 export class CredentialNotFoundError extends Error {}
 export class AlreadyEnteredError extends Error {}
 export class NotYetEnteredError extends Error {}
-export class OutsideEntryWindowError extends Error {
-  constructor(
-    public readonly entryOpensAt: Date,
-    public readonly entryClosesAt: Date | null
-  ) {
-    super("Outside entry window");
-  }
-}
+// Entry is no longer bound to any fixed clock window -- early/late arrivals are expected and
+// entry needs to keep working regardless of the scheduled event time. The admin's existing
+// "Attendance scanning enabled" toggle (previously stored but never actually checked anywhere)
+// is now the real, manual on/off switch instead.
+export class AttendanceDisabledError extends Error {}
 export class GateNotAssignedError extends Error {}
 
 type SingleGateState = "NOT_ENTERED" | "ENTERED" | "OVERRIDE_ENTRY";
@@ -148,11 +145,8 @@ export async function allowEntry(
   }
 
   const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
-  const now = Date.now();
-  const entryStarted = now >= event.eventDate.getTime();
-  const gateStillOpen = !event.gateClosesAt || now <= event.gateClosesAt.getTime();
-  if (!entryStarted || !gateStillOpen) {
-    throw new OutsideEntryWindowError(event.eventDate, event.gateClosesAt);
+  if (!event.attendanceEnabled) {
+    throw new AttendanceDisabledError();
   }
 
   const now2 = new Date();
@@ -196,8 +190,14 @@ export interface OverrideEntryParams {
 
 export async function overrideEntry(
   prisma: PrismaClient,
+  env: Env,
   params: OverrideEntryParams
 ): Promise<{ registrationId: string; name: string }> {
+  const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
+  if (!event.attendanceEnabled) {
+    throw new AttendanceDisabledError();
+  }
+
   const tokenHash = hashCredentialToken(params.rawToken);
   const credential = await prisma.passCredential.findUnique({
     where: { opaqueTokenHash: tokenHash },
