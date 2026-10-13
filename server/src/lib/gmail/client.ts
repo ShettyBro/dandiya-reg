@@ -1,5 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { google } from "googleapis";
 import type { Env } from "../../app/config/env.js";
+import { htmlToPlainText } from "../email/html-to-text.js";
 import {
   EmailNotConfiguredError,
   EmailPermanentError,
@@ -19,15 +21,36 @@ function encodeRfc2047(text: string): string {
 }
 
 function buildRawMessage(from: string, input: SendEmailInput): string {
+  // A text/plain alternative alongside the HTML is a well-known deliverability signal -- an
+  // HTML-only message (no multipart/alternative at all) is a pattern spam filters specifically
+  // weight against, and it matters more for a newer sending domain with no reputation yet.
+  const boundary = `dandiya-${randomBytes(16).toString("hex")}`;
+  const text = htmlToPlainText(input.html);
+
   const message = [
     `From: ${from}`,
     `To: ${input.to}`,
     `Subject: ${encodeRfc2047(input.subject)}`,
     "MIME-Version: 1.0",
-    "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: 7bit",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
-    input.html
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    // 8bit, not 7bit: the plain-text part can contain real multi-byte UTF-8 (decoded em-dashes,
+    // the rupee sign) and names aren't restricted to ASCII -- declaring 7bit while the body
+    // isn't is an encoding mismatch that's itself a spam signal. Gmail's API handles 8bit bodies
+    // natively, no further encoding needed.
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    text,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    input.html,
+    "",
+    `--${boundary}--`
   ].join("\r\n");
 
   return Buffer.from(message, "utf-8")

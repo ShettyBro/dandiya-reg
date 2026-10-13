@@ -1,4 +1,5 @@
 import type { Env } from "../../app/config/env.js";
+import { htmlToPlainText } from "../email/html-to-text.js";
 import {
   EmailNotConfiguredError,
   EmailPermanentError,
@@ -39,7 +40,8 @@ export function createBrevoSender(env: Env): EmailSender {
           sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
           to: [{ email: input.to }],
           subject: input.subject,
-          htmlContent: input.html
+          htmlContent: input.html,
+          textContent: htmlToPlainText(input.html)
         }),
         signal: controller.signal
       });
