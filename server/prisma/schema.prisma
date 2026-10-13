@@ -106,6 +106,9 @@ model Event {
   venue              String
   registrationOpen   Boolean  @default(true)
   nonAcharyanRegistrationOpen Boolean @default(true)
+  acharyaStudentRegistrationOpen Boolean @default(true)
+  acharyaFacultyRegistrationOpen Boolean @default(true)
+  acharyaAlumniRegistrationOpen  Boolean @default(true)
   registrationDeadline DateTime?
   capacity           Int
   gateClosesAt       DateTime?

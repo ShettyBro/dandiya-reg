@@ -72,15 +72,17 @@ export async function createRegistration(
           throw new NonAcharyanRegistrationClosedError();
         }
 
-        // Acharya Student and Acharya Alumni follow the main registrationOpen toggle, same as the
-        // admin settings page already describes. Acharya Faculty is deliberately exempt -- it can
-        // be opened independently of the other three categories (e.g. only Faculty open "for now",
-        // Student/Alumni/Non-Acharyan closed until later), the same way Non-Acharyan already has
-        // its own independent toggle above.
-        if (
-          (data.registrationType === "ACHARYA_STUDENT" || data.registrationType === "ACHARYA_ALUMNI") &&
-          !event.registrationOpen
-        ) {
+        // Each of the four public categories has its own independent admin toggle -- none of them
+        // depend on the other, and none depend on the top-level registrationOpen field (that one
+        // is purely informational now: the landing page's overall "Registration OPEN/CLOSED"
+        // headline and dashboard summary, with no link to /reg1 for it to actually gate anymore).
+        if (data.registrationType === "ACHARYA_STUDENT" && !event.acharyaStudentRegistrationOpen) {
+          throw new RegistrationClosedError();
+        }
+        if (data.registrationType === "ACHARYA_FACULTY" && !event.acharyaFacultyRegistrationOpen) {
+          throw new RegistrationClosedError();
+        }
+        if (data.registrationType === "ACHARYA_ALUMNI" && !event.acharyaAlumniRegistrationOpen) {
           throw new RegistrationClosedError();
         }
 

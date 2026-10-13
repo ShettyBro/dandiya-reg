@@ -8,6 +8,9 @@ export interface EventConfig {
   venue: string;
   registrationOpen: boolean;
   nonAcharyanRegistrationOpen: boolean;
+  acharyaStudentRegistrationOpen: boolean;
+  acharyaFacultyRegistrationOpen: boolean;
+  acharyaAlumniRegistrationOpen: boolean;
   registrationDeadline: string | null;
   priceInPaise: number;
   erpPaymentUrl: string;

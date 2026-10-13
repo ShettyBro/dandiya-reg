@@ -13,21 +13,24 @@ const app = createApp(env, prisma);
 const createdRegistrationIds: string[] = [];
 
 // This file exercises Student/Alumni creation over HTTP, which registration.service.ts gates on
-// event.registrationOpen (Faculty is exempt). Save/restore scoped to this file only, using the
-// env.EVENT_ID already captured above -- no other file touches registrationOpen.
+// their own independent toggles (acharyaStudentRegistrationOpen/acharyaAlumniRegistrationOpen).
+// Save/restore scoped to this file only -- no other file touches either field.
 //
 // nonAcharyanRegistrationOpen is different: non-acharyan-flow.test.ts also needs it true for its
 // entire (longer-running) file. To avoid two files racing to restore the same field mid-run, this
 // file only ever sets it true if needed and never restores it -- non-acharyan-flow.test.ts owns
 // the restore-to-original for that one field.
-let originalRegistrationOpen: boolean | undefined;
+let originalAcharyaStudentRegistrationOpen: boolean | undefined;
+let originalAcharyaAlumniRegistrationOpen: boolean | undefined;
 
 beforeAll(async () => {
   const event = await prisma.event.findUnique({ where: { id: env.EVENT_ID } });
   if (event) {
-    originalRegistrationOpen = event.registrationOpen;
-    const data: { registrationOpen?: true; nonAcharyanRegistrationOpen?: true } = {};
-    if (!event.registrationOpen) data.registrationOpen = true;
+    originalAcharyaStudentRegistrationOpen = event.acharyaStudentRegistrationOpen;
+    originalAcharyaAlumniRegistrationOpen = event.acharyaAlumniRegistrationOpen;
+    const data: { acharyaStudentRegistrationOpen?: true; acharyaAlumniRegistrationOpen?: true; nonAcharyanRegistrationOpen?: true } = {};
+    if (!event.acharyaStudentRegistrationOpen) data.acharyaStudentRegistrationOpen = true;
+    if (!event.acharyaAlumniRegistrationOpen) data.acharyaAlumniRegistrationOpen = true;
     if (!event.nonAcharyanRegistrationOpen) data.nonAcharyanRegistrationOpen = true;
     if (Object.keys(data).length > 0) {
       await prisma.event.update({ where: { id: env.EVENT_ID }, data });
@@ -36,8 +39,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (originalRegistrationOpen !== undefined) {
-    await prisma.event.update({ where: { id: env.EVENT_ID }, data: { registrationOpen: originalRegistrationOpen } });
+  if (originalAcharyaStudentRegistrationOpen !== undefined && originalAcharyaAlumniRegistrationOpen !== undefined) {
+    await prisma.event.update({
+      where: { id: env.EVENT_ID },
+      data: {
+        acharyaStudentRegistrationOpen: originalAcharyaStudentRegistrationOpen,
+        acharyaAlumniRegistrationOpen: originalAcharyaAlumniRegistrationOpen
+      }
+    });
   }
   await prisma.attendance.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.uploadIntent.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });

@@ -114,7 +114,9 @@ export function RegisterPage() {
               // Fail closed while config hasn't loaded yet rather than briefly flashing every
               // category open -- the server enforces this independently either way.
               nonAcharyanOpen={Boolean(config?.nonAcharyanRegistrationOpen)}
-              studentAlumniOpen={Boolean(config?.registrationOpen)}
+              studentOpen={Boolean(config?.acharyaStudentRegistrationOpen)}
+              facultyOpen={Boolean(config?.acharyaFacultyRegistrationOpen)}
+              alumniOpen={Boolean(config?.acharyaAlumniRegistrationOpen)}
               onSelect={(type) => {
                 setRegistrationType(type);
                 setStep(1);

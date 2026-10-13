@@ -12,6 +12,9 @@ interface EventSettings {
   eventDate: string;
   registrationOpen: boolean;
   nonAcharyanRegistrationOpen: boolean;
+  acharyaStudentRegistrationOpen: boolean;
+  acharyaFacultyRegistrationOpen: boolean;
+  acharyaAlumniRegistrationOpen: boolean;
   registrationDeadline: string | null;
   priceInPaise: number;
   erpPaymentUrl: string;
@@ -104,6 +107,9 @@ export function AdminSettingsPage() {
           eventDate: settings.eventDate,
           registrationOpen: settings.registrationOpen,
           nonAcharyanRegistrationOpen: settings.nonAcharyanRegistrationOpen,
+          acharyaStudentRegistrationOpen: settings.acharyaStudentRegistrationOpen,
+          acharyaFacultyRegistrationOpen: settings.acharyaFacultyRegistrationOpen,
+          acharyaAlumniRegistrationOpen: settings.acharyaAlumniRegistrationOpen,
           registrationDeadline: settings.registrationDeadline,
           priceInPaise: settings.priceInPaise,
           erpPaymentUrl: settings.erpPaymentUrl,
@@ -131,7 +137,15 @@ export function AdminSettingsPage() {
   // easy-to-miss save action is confusing and dangerous for something as operationally important
   // as closing registration. Optimistically flips the switch, then rolls it back if the save fails.
   async function updateToggleField(
-    key: "registrationOpen" | "nonAcharyanRegistrationOpen" | "attendanceEnabled" | "paymentsEnabled" | "maintenanceMode",
+    key:
+      | "registrationOpen"
+      | "nonAcharyanRegistrationOpen"
+      | "acharyaStudentRegistrationOpen"
+      | "acharyaFacultyRegistrationOpen"
+      | "acharyaAlumniRegistrationOpen"
+      | "attendanceEnabled"
+      | "paymentsEnabled"
+      | "maintenanceMode",
     value: boolean
   ) {
     if (!settings) return;
@@ -199,29 +213,73 @@ export function AdminSettingsPage() {
           disabled={pendingToggleField === "registrationOpen"}
           onChange={(value) => updateToggleField("registrationOpen", value)}
         />
+        <p className="mt-2 text-xs text-white/40">
+          Informational headline shown on the dashboard and public landing page only. Each registration
+          category below opens/closes independently of this — this switch doesn't gate any of them.
+        </p>
         {toggleError?.field === "registrationOpen" && (
           <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
         )}
       </GlassPanel>
 
-      <GlassPanel className="p-5">
-        <Toggle
-          label={
-            settings.nonAcharyanRegistrationOpen
-              ? "Non-Acharyan student registration is OPEN"
-              : "Non-Acharyan student registration is CLOSED"
-          }
-          checked={settings.nonAcharyanRegistrationOpen}
-          disabled={pendingToggleField === "nonAcharyanRegistrationOpen"}
-          onChange={(value) => updateToggleField("nonAcharyanRegistrationOpen", value)}
-        />
-        <p className="mt-2 text-xs text-white/40">
-          Acharya Student, Acharya Faculty, and Acharya Alumni registration are controlled separately by the
-          main registration toggle above and are unaffected by this.
-        </p>
-        {toggleError?.field === "nonAcharyanRegistrationOpen" && (
-          <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
-        )}
+      <GlassPanel className="flex flex-col gap-4 p-5">
+        <div>
+          <h2 className="text-sm font-medium text-white/85">Registration by category</h2>
+          <p className="mt-1 text-xs text-white/45">
+            Each category opens and closes independently on /reg1 — close any one without affecting the
+            others.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <Toggle
+              label={settings.acharyaStudentRegistrationOpen ? "Acharya Student — OPEN" : "Acharya Student — CLOSED"}
+              checked={settings.acharyaStudentRegistrationOpen}
+              disabled={pendingToggleField === "acharyaStudentRegistrationOpen"}
+              onChange={(value) => updateToggleField("acharyaStudentRegistrationOpen", value)}
+            />
+            {toggleError?.field === "acharyaStudentRegistrationOpen" && (
+              <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <Toggle
+              label={settings.acharyaFacultyRegistrationOpen ? "Acharya Faculty — OPEN" : "Acharya Faculty — CLOSED"}
+              checked={settings.acharyaFacultyRegistrationOpen}
+              disabled={pendingToggleField === "acharyaFacultyRegistrationOpen"}
+              onChange={(value) => updateToggleField("acharyaFacultyRegistrationOpen", value)}
+            />
+            {toggleError?.field === "acharyaFacultyRegistrationOpen" && (
+              <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <Toggle
+              label={settings.acharyaAlumniRegistrationOpen ? "Acharya Alumni — OPEN" : "Acharya Alumni — CLOSED"}
+              checked={settings.acharyaAlumniRegistrationOpen}
+              disabled={pendingToggleField === "acharyaAlumniRegistrationOpen"}
+              onChange={(value) => updateToggleField("acharyaAlumniRegistrationOpen", value)}
+            />
+            {toggleError?.field === "acharyaAlumniRegistrationOpen" && (
+              <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <Toggle
+              label={
+                settings.nonAcharyanRegistrationOpen
+                  ? "Non-Acharyan Student — OPEN"
+                  : "Non-Acharyan Student — CLOSED"
+              }
+              checked={settings.nonAcharyanRegistrationOpen}
+              disabled={pendingToggleField === "nonAcharyanRegistrationOpen"}
+              onChange={(value) => updateToggleField("nonAcharyanRegistrationOpen", value)}
+            />
+            {toggleError?.field === "nonAcharyanRegistrationOpen" && (
+              <p className="mt-2 text-xs text-red-300">{toggleError.message}</p>
+            )}
+          </div>
+        </div>
       </GlassPanel>
 
       <GlassPanel className="p-5">

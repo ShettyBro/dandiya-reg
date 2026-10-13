@@ -67,14 +67,14 @@ beforeAll(async () => {
   });
   openEventId = openEvent.id;
 
-  // registrationOpen: false -- Student/Alumni are now gated on this flag (Faculty is exempt),
-  // so creation is expected to be blocked here; tested below.
+  // Each category has its own independent toggle -- Acharya Student is closed here, Faculty is
+  // deliberately left open (its default) to prove the two don't affect each other.
   const closedEvent = await prisma.event.create({
     data: {
       name: "Closed Uniqueness Test Event",
       eventDate: new Date("2026-11-01T18:00:00.000Z"),
       venue: "Test Venue",
-      registrationOpen: false,
+      acharyaStudentRegistrationOpen: false,
       capacity: 100,
       priceInPaise: 15100,
       erpPaymentUrl: "https://erp.example.edu/pay",
@@ -112,11 +112,11 @@ afterAll(async () => {
 });
 
 describe("registration closed", () => {
-  it("blocks Acharya Student registration when the registrationOpen toggle is off", async () => {
+  it("blocks Acharya Student registration when its own toggle is off", async () => {
     await expect(register(closedEventId, studentInput())).rejects.toBeInstanceOf(RegistrationClosedError);
   });
 
-  it("still accepts Acharya Faculty registration when the registrationOpen toggle is off (exempt)", async () => {
+  it("still accepts Acharya Faculty registration when only the Student toggle is off (independent)", async () => {
     const result = await register(
       closedEventId,
       facultyInput()
