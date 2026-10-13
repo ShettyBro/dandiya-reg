@@ -31,6 +31,11 @@ export const publicLookupRateLimiter = createRateLimiter(15 * 60 * 1000, 600);
 
 export const scanRateLimiter = createRateLimiter(60 * 1000, 60);
 
+// Fetched by email clients (Gmail's own image proxy, among others) whenever a recipient opens an
+// approval email -- generous like the other public asset endpoints, since a wave of approvals
+// going out can mean many opens from a small set of proxy IPs in a short window.
+export const qrImageRateLimiter = createRateLimiter(15 * 60 * 1000, 5000);
+
 // This is now the only gate on QR download/lookup (no access code) and is meant to be scanned at
 // the entry gate itself -- many legitimate lookups in a short window from the same venue WiFi, so
 // sized generously like the other shared-WiFi endpoints above rather than the old admin-tool-sized

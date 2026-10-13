@@ -50,6 +50,11 @@ const envSchema = z.object({
   ERP_PAYMENT_URL: optionalUrl(),
 
   FRONTEND_ORIGIN: z.string().url(),
+  // This backend's own public origin (e.g. https://dandiya-api1.sudeepbro.in), used to build a
+  // first-party QR code image URL for outgoing email. Optional and falls back to the previous
+  // third-party QR renderer when unset, so deploying this before the env var is actually set in
+  // Railway is a safe no-op, not a regression.
+  API_ORIGIN: optionalUrl(),
   CORS_ORIGINS: z.string().min(1),
 
   SESSION_SECRET: z.string().min(32),
