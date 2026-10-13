@@ -43,6 +43,9 @@ describe("htmlToPlainText", () => {
       const text = htmlToPlainText(html);
       expect(text.length).toBeGreaterThan(10);
       expect(text).not.toMatch(/<[^>]+>/);
+      // Regression guard for the &middot; class of bug: a template adding a new HTML entity this
+      // converter doesn't know about must fail loudly here, not leak "&foo;" into real emails.
+      expect(text, `leftover unhandled entity in ${type}`).not.toMatch(/&[a-zA-Z#][a-zA-Z0-9]*;/);
     }
   });
 });

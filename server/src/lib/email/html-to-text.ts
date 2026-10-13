@@ -4,6 +4,7 @@ const ENTITIES: Record<string, string> = {
   "&nbsp;": " ",
   "&mdash;": "—",
   "&ndash;": "–",
+  "&middot;": "·",
   "&amp;": "&",
   "&lt;": "<",
   "&gt;": ">",
