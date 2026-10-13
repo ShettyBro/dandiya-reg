@@ -1,9 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { loadEnv } from "../app/config/env.js";
 import { getPrismaClient } from "../db/client.js";
-import { createBrevoSender } from "../lib/brevo/client.js";
 import { createGmailSender } from "../lib/gmail/client.js";
-import type { EmailSender } from "../lib/email/errors.js";
 import { claimDueEmailJobs } from "../modules/email/email-outbox.service.js";
 import { processEmailJob } from "../modules/email/email-processor.js";
 import { cleanupIncompleteRegistrations } from "../modules/registration/registration-cleanup.service.js";
@@ -11,20 +9,18 @@ import { cleanupIncompleteRegistrations } from "../modules/registration/registra
 const env = loadEnv();
 const prisma = getPrismaClient();
 
-// Gmail is the primary provider now (Google Workspace, 2000/day) -- Brevo only stays as an
-// automatic fallback for the window between deploying this code and actually adding the GMAIL_*
-// variables to this service's environment, so the worker never goes fully silent mid-switch.
-// Whichever is picked, the durable EmailJob queue in Neon is untouched by this choice -- nothing
-// already queued is lost or needs replaying, it just gets picked up by whichever sender is live.
-let sender: EmailSender;
-let providerName: string;
-if (env.GMAIL_CLIENT_ID && env.GMAIL_CLIENT_SECRET && env.GMAIL_REFRESH_TOKEN && env.GMAIL_SENDER) {
-  sender = createGmailSender(env);
-  providerName = "gmail";
-} else {
-  sender = createBrevoSender(env);
-  providerName = "brevo (GMAIL_* not configured yet)";
+// Gmail (Google Workspace) is the sole email provider -- a deliberate decision, not a fallback
+// arrangement. Previously this silently fell back to Brevo whenever GMAIL_* wasn't configured,
+// which meant a misconfiguration could switch providers without anyone noticing. Fail loudly
+// instead: a broken Gmail config should surface immediately, not quietly reroute through a
+// different provider with its own separate deliverability history.
+if (!env.GMAIL_CLIENT_ID || !env.GMAIL_CLIENT_SECRET || !env.GMAIL_REFRESH_TOKEN || !env.GMAIL_SENDER) {
+  throw new Error(
+    "GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN / GMAIL_SENDER must all be configured -- Gmail is the only email provider now, there is no fallback."
+  );
 }
+const sender = createGmailSender(env);
+const providerName = "gmail";
 
 const HEARTBEAT_PATH = process.env.WORKER_HEARTBEAT_PATH ?? "/tmp/dandiya-worker-heartbeat";
 
