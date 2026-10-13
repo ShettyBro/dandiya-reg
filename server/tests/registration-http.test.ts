@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
 import { createApp } from "../src/app/create-app.js";
@@ -12,7 +12,33 @@ const app = createApp(env, prisma);
 
 const createdRegistrationIds: string[] = [];
 
+// This file exercises Student/Alumni creation over HTTP, which registration.service.ts gates on
+// event.registrationOpen (Faculty is exempt). Save/restore scoped to this file only, using the
+// env.EVENT_ID already captured above -- no other file touches registrationOpen.
+//
+// nonAcharyanRegistrationOpen is different: non-acharyan-flow.test.ts also needs it true for its
+// entire (longer-running) file. To avoid two files racing to restore the same field mid-run, this
+// file only ever sets it true if needed and never restores it -- non-acharyan-flow.test.ts owns
+// the restore-to-original for that one field.
+let originalRegistrationOpen: boolean | undefined;
+
+beforeAll(async () => {
+  const event = await prisma.event.findUnique({ where: { id: env.EVENT_ID } });
+  if (event) {
+    originalRegistrationOpen = event.registrationOpen;
+    const data: { registrationOpen?: true; nonAcharyanRegistrationOpen?: true } = {};
+    if (!event.registrationOpen) data.registrationOpen = true;
+    if (!event.nonAcharyanRegistrationOpen) data.nonAcharyanRegistrationOpen = true;
+    if (Object.keys(data).length > 0) {
+      await prisma.event.update({ where: { id: env.EVENT_ID }, data });
+    }
+  }
+});
+
 afterAll(async () => {
+  if (originalRegistrationOpen !== undefined) {
+    await prisma.event.update({ where: { id: env.EVENT_ID }, data: { registrationOpen: originalRegistrationOpen } });
+  }
   await prisma.attendance.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.uploadIntent.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });
   await prisma.payment.deleteMany({ where: { registrationId: { in: createdRegistrationIds } } });

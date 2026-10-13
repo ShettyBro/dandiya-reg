@@ -49,19 +49,25 @@ function randomPhone(): string {
 
 async function createApprovedRegistration(suffix: string, phone: string, auid?: string) {
   const email = `qrdl-test-${suffix}-${Date.now()}@acharya.ac.in`;
+  // Always created as Acharya Faculty -- exempt from the registrationOpen gate, so this never
+  // depends on that admin-configurable flag. The AUID-lookup test needs an `auid` value on the
+  // row; the qr-download lookup query matches on the field alone with no registrationType
+  // restriction, so it's set directly below rather than by registering as Student/Alumni.
   const created = await request(app)
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `qrdl-test-${suffix}-${Date.now()}`)
     .send({
-      registrationType: "ACHARYA_STUDENT",
+      registrationType: "ACHARYA_FACULTY",
       name: "QR Download Test User",
       phone,
       email,
-      auid: auid ?? `qrdl-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      institution: "acharya institute of technology",
-      year: 2
+      employeeId: `qrdl-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology"
     });
   createdRegistrationIds.push(created.body.registrationId);
+  if (auid) {
+    await prisma.registration.update({ where: { id: created.body.registrationId }, data: { auid } });
+  }
 
   const photoObjectKey = `test-photo/${created.body.registrationId}.jpg`;
   await uploadRealObject(photoObjectKey);
@@ -143,11 +149,12 @@ describe("POST /api/v1/qr-download/lookup", () => {
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `qrdl-pending-${Date.now()}`)
       .send({
-        registrationType: "NON_ACHARYAN_STUDENT",
+        registrationType: "ACHARYA_FACULTY",
         name: "Pending QR Download User",
         phone,
-        email: `qrdl-pending-${Date.now()}@example.com`,
-        collegeName: "Test College"
+        email: `qrdl-pending-${Date.now()}@acharya.ac.in`,
+        employeeId: `qrdl-pending-${Date.now()}`,
+        institution: "acharya institute of technology"
       });
     createdRegistrationIds.push(created.body.registrationId);
 

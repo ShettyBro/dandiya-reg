@@ -24,13 +24,14 @@ async function createTestRegistration(suffix: string) {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `r2-live-${suffix}-${Date.now()}`)
     .send({
-      registrationType: "ACHARYA_STUDENT",
+      // Acharya Faculty is exempt from the registrationOpen gate -- this is a generic fixture,
+      // not testing Student-specific behavior.
+      registrationType: "ACHARYA_FACULTY",
       name: "R2 Live Test User",
       phone: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
       email: `r2-live-${suffix}-${Date.now()}@acharya.ac.in`,
-      auid: `r2-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      institution: "acharya institute of technology",
-      year: 3
+      employeeId: `r2-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology"
     });
   createdRegistrationIds.push(response.body.registrationId);
   return response.body as { registrationId: string };

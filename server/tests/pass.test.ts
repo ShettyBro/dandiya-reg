@@ -54,13 +54,14 @@ async function createApprovedRegistration(suffix: string) {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `pass-test-${suffix}-${Date.now()}`)
     .send({
-      registrationType: "ACHARYA_STUDENT",
+      // Acharya Faculty is exempt from the registrationOpen gate -- this is a generic fixture,
+      // not testing Student-specific behavior.
+      registrationType: "ACHARYA_FACULTY",
       name: "Pass Test User",
       phone: randomPhone(),
       email: `pass-test-${suffix}-${Date.now()}@acharya.ac.in`,
-      auid: `pass-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      institution: "acharya institute of technology",
-      year: 2
+      employeeId: `pass-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology"
     });
   createdRegistrationIds.push(created.body.registrationId);
   const photoObjectKey = `test-photo/${created.body.registrationId}.jpg`;
@@ -137,13 +138,12 @@ describe("POST /api/v1/pass/lookup", () => {
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `pass-lookup-${Date.now()}`)
       .send({
-        registrationType: "ACHARYA_STUDENT",
+        registrationType: "ACHARYA_FACULTY",
         name: "Not Approved Yet",
         phone: randomPhone(),
         email: `pass-not-approved-${Date.now()}@acharya.ac.in`,
-        auid: `pass-na-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-        institution: "acharya institute of technology",
-        year: 2
+        employeeId: `pass-na-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        institution: "acharya institute of technology"
       });
     createdRegistrationIds.push(created.body.registrationId);
 
@@ -168,13 +168,12 @@ describe("GET /api/v1/pass/:registrationId", () => {
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `pass-notapproved-${Date.now()}`)
       .send({
-        registrationType: "ACHARYA_STUDENT",
+        registrationType: "ACHARYA_FACULTY",
         name: "Still Pending",
         phone: randomPhone(),
         email: `pass-pending-${Date.now()}@acharya.ac.in`,
-        auid: `pass-sp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-        institution: "acharya institute of technology",
-        year: 2
+        employeeId: `pass-sp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        institution: "acharya institute of technology"
       });
     createdRegistrationIds.push(created.body.registrationId);
 

@@ -111,8 +111,10 @@ export function RegisterPage() {
 
           {!verifying && step === 0 && (
             <AreYouAcharyanStep
-              // /reg1: Non-Acharyan registration is always open here
-              nonAcharyanOpen={true}
+              // Fail closed while config hasn't loaded yet rather than briefly flashing every
+              // category open -- the server enforces this independently either way.
+              nonAcharyanOpen={Boolean(config?.nonAcharyanRegistrationOpen)}
+              studentAlumniOpen={Boolean(config?.registrationOpen)}
               onSelect={(type) => {
                 setRegistrationType(type);
                 setStep(1);

@@ -10,6 +10,7 @@ export const MY_PEOPLE_TYPES: RegistrationType[] = ["MY_PEOPLE_ADMIN", "MY_PEOPL
 export class MyPeopleRegistrationNotFoundError extends Error {}
 export class MyPeopleNotPendingError extends Error {}
 export class MyPeoplePhotoMissingError extends Error {}
+export class MyPeopleNotApprovedError extends Error {}
 
 export async function listMyPeopleRegistrations(prisma: PrismaClient): Promise<Registration[]> {
   return prisma.registration.findMany({
@@ -101,5 +102,41 @@ export async function approveMyPeopleRegistration(
       entityId: registration.id,
       requestId
     });
+  });
+}
+
+export async function resendMyPeopleApprovalEmail(
+  prisma: PrismaClient,
+  registrationId: string,
+  resentByUserId: string,
+  requestId: string | null
+): Promise<void> {
+  const registration = await prisma.registration.findUnique({ where: { id: registrationId } });
+  if (!registration || !MY_PEOPLE_TYPES.includes(registration.registrationType)) {
+    throw new MyPeopleRegistrationNotFoundError();
+  }
+  if (registration.status !== "PAYMENT_APPROVED") {
+    throw new MyPeopleNotApprovedError();
+  }
+
+  // The original job's uniquenessKey (payment-approved-<id>) is already taken by the first send,
+  // so a resend always queues a fresh job under its own key -- it still reuses the exact same
+  // PAYMENT_APPROVED template/QR, it just isn't deduplicated against the original.
+  await prisma.emailJob.create({
+    data: {
+      type: "PAYMENT_APPROVED",
+      recipient: registration.email,
+      registrationId: registration.id,
+      payloadJson: { publicCode: registration.publicCode, name: registration.name },
+      uniquenessKey: `payment-approved-resend-${registration.id}-${Date.now()}`
+    }
+  });
+
+  await recordAuditLog(prisma, {
+    actorUserId: resentByUserId,
+    action: "MY_PEOPLE_EMAIL_RESENT",
+    entityType: "Registration",
+    entityId: registration.id,
+    requestId
   });
 }

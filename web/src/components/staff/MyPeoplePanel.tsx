@@ -21,6 +21,7 @@ export function MyPeoplePanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [resentId, setResentId] = useState<string | null>(null);
 
   const fetchItems = useCallback(() => {
     setLoading(true);
@@ -49,6 +50,20 @@ export function MyPeoplePanel() {
       fetchItems();
     } catch (approveError) {
       setError(approveError instanceof ApiError ? approveError.message : "Could not approve registration.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleResend(id: string) {
+    setActionLoading(id);
+    setError(null);
+    setResentId(null);
+    try {
+      await apiRequest(`/admin/my-people/${id}/resend-email`, { method: "POST" });
+      setResentId(id);
+    } catch (resendError) {
+      setError(resendError instanceof ApiError ? resendError.message : "Could not resend the email.");
     } finally {
       setActionLoading(null);
     }
@@ -84,7 +99,14 @@ export function MyPeoplePanel() {
               </h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {pending.map((item) => (
-                  <MyPersonCard key={item.id} item={item} onApprove={handleApprove} actionLoading={actionLoading} />
+                  <MyPersonCard
+                    key={item.id}
+                    item={item}
+                    onApprove={handleApprove}
+                    onResend={handleResend}
+                    actionLoading={actionLoading}
+                    justResent={false}
+                  />
                 ))}
               </div>
             </div>
@@ -97,7 +119,14 @@ export function MyPeoplePanel() {
               </h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {approved.map((item) => (
-                  <MyPersonCard key={item.id} item={item} onApprove={handleApprove} actionLoading={actionLoading} />
+                  <MyPersonCard
+                    key={item.id}
+                    item={item}
+                    onApprove={handleApprove}
+                    onResend={handleResend}
+                    actionLoading={actionLoading}
+                    justResent={resentId === item.id}
+                  />
                 ))}
               </div>
             </div>
@@ -111,11 +140,15 @@ export function MyPeoplePanel() {
 function MyPersonCard({
   item,
   onApprove,
-  actionLoading
+  onResend,
+  actionLoading,
+  justResent
 }: {
   item: ListItem;
   onApprove: (id: string) => void;
+  onResend: (id: string) => void;
   actionLoading: string | null;
+  justResent: boolean;
 }) {
   const isAdmin = item.registrationType === "MY_PEOPLE_ADMIN";
   const isPending = item.status === "PAYMENT_PENDING";
@@ -160,6 +193,17 @@ function MyPersonCard({
         {isPending && (
           <Button type="button" onClick={() => onApprove(item.id)} disabled={actionLoading === item.id} className="px-4 py-1.5 text-xs">
             {actionLoading === item.id ? "Working..." : "Approve"}
+          </Button>
+        )}
+        {!isPending && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => onResend(item.id)}
+            disabled={actionLoading === item.id}
+            className="px-4 py-1.5 text-xs"
+          >
+            {actionLoading === item.id ? "Working..." : justResent ? "Email resent" : "Resend email"}
           </Button>
         )}
       </div>

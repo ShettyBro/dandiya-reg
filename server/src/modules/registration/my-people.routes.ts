@@ -9,9 +9,11 @@ import { presignGetUrl } from "../../lib/r2/presign.js";
 import {
   approveMyPeopleRegistration,
   listMyPeopleRegistrations,
+  MyPeopleNotApprovedError,
   MyPeopleNotPendingError,
   MyPeoplePhotoMissingError,
-  MyPeopleRegistrationNotFoundError
+  MyPeopleRegistrationNotFoundError,
+  resendMyPeopleApprovalEmail
 } from "./my-people.service.js";
 import type { Env } from "../../app/config/env.js";
 
@@ -90,6 +92,40 @@ export function createMyPeopleRouter(prisma: PrismaClient, env: Env): Router {
         }
         if (error instanceof MyPeoplePhotoMissingError) {
           sendError(req, res, 409, "PHOTO_MISSING", "This registration's photo is missing or unavailable");
+          return;
+        }
+        throw error;
+      }
+    }
+  );
+
+  router.post(
+    "/admin/my-people/:id/resend-email",
+    requireAuth(env),
+    requireRole("ADMIN"),
+    requireActiveUser(prisma),
+    async (req, res) => {
+      const registrationId = stringParam(req.params.id);
+      if (!registrationId || !req.authUser) {
+        sendError(req, res, 400, "VALIDATION_ERROR", "Missing registration id");
+        return;
+      }
+
+      try {
+        await resendMyPeopleApprovalEmail(
+          prisma,
+          registrationId,
+          req.authUser.id,
+          req.id !== undefined ? String(req.id) : null
+        );
+        res.status(200).json({ resent: true });
+      } catch (error) {
+        if (error instanceof MyPeopleRegistrationNotFoundError) {
+          sendError(req, res, 404, "NOT_FOUND", "My People registration not found");
+          return;
+        }
+        if (error instanceof MyPeopleNotApprovedError) {
+          sendError(req, res, 409, "NOT_APPROVED", "This registration has not been approved yet");
           return;
         }
         throw error;

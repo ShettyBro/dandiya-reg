@@ -89,6 +89,16 @@ async function createProofIntent(registrationId: string, objectKey: string) {
   });
 }
 
+// This file is the dedicated end-to-end test for the Non-Acharyan registration flow, which
+// registration.service.ts gates on event.nonAcharyanRegistrationOpen. Save/restore scoped to
+// this file only -- registration-http.test.ts also needs this flag true for one test and will
+// set it (never restore it) if needed, so this file owns the actual restore-to-original.
+// Known gap: if that file's beforeAll happens to flip it true before this beforeAll reads the
+// "original" value, this will restore to true instead of the real pre-test value. No automated
+// runner relies on this suite yet; after running the full suite, re-check this flag against the
+// live event settings before trusting it.
+let originalNonAcharyanRegistrationOpen: boolean | undefined;
+
 beforeAll(async () => {
   const passwordHash = await hashPassword(PASSWORD);
   await prisma.user.create({
@@ -104,9 +114,23 @@ beforeAll(async () => {
   const verifierLogin = await request(app).post("/api/v1/auth/login").send({ email: VERIFIER_EMAIL, password: PASSWORD });
   verifierCookies = verifierLogin.headers["set-cookie"] as unknown as string[];
   verifierCsrf = extractCookie(verifierCookies, "csrf_token") ?? "";
+
+  const event = await prisma.event.findUnique({ where: { id: env.EVENT_ID } });
+  if (event) {
+    originalNonAcharyanRegistrationOpen = event.nonAcharyanRegistrationOpen;
+    if (!event.nonAcharyanRegistrationOpen) {
+      await prisma.event.update({ where: { id: env.EVENT_ID }, data: { nonAcharyanRegistrationOpen: true } });
+    }
+  }
 });
 
 afterAll(async () => {
+  if (originalNonAcharyanRegistrationOpen !== undefined) {
+    await prisma.event.update({
+      where: { id: env.EVENT_ID },
+      data: { nonAcharyanRegistrationOpen: originalNonAcharyanRegistrationOpen }
+    });
+  }
   for (const key of createdObjectKeys) {
     await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key })).catch(() => undefined);
   }

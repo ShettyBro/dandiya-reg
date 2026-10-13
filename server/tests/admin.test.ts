@@ -56,13 +56,14 @@ beforeAll(async () => {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `admin-test-${Date.now()}`)
     .send({
-      registrationType: "ACHARYA_STUDENT",
+      // Acharya Faculty is exempt from the registrationOpen gate -- this is a generic fixture,
+      // not testing Student-specific behavior.
+      registrationType: "ACHARYA_FACULTY",
       name: "Admin Test Participant",
       phone: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
       email: `admin-participant-${Date.now()}@acharya.ac.in`,
-      auid: `admin-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      institution: "acharya institute of technology",
-      year: 3
+      employeeId: `admin-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology"
     });
   createdRegistrationIds.push(registration.body.registrationId);
 });

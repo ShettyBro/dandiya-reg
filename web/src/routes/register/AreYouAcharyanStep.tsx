@@ -37,10 +37,14 @@ const CATEGORIES: Array<{
 
 export function AreYouAcharyanStep({
   onSelect,
-  nonAcharyanOpen = true
+  nonAcharyanOpen = true,
+  studentAlumniOpen = true
 }: {
   onSelect: (type: RegistrationType) => void;
   nonAcharyanOpen?: boolean;
+  // Acharya Faculty is never gated by this -- it can be opened independently of Student/Alumni/
+  // Non-Acharyan (e.g. only Faculty open for now, the rest closed until later).
+  studentAlumniOpen?: boolean;
 }) {
   return (
     <GlassPanel variant="solid" className="p-6 sm:p-8">
@@ -50,7 +54,12 @@ export function AreYouAcharyanStep({
       <div className="mt-6 flex flex-col gap-3">
         {CATEGORIES.map((category) => {
           const Icon = category.icon;
-          const closed = category.type === "NON_ACHARYAN_STUDENT" && !nonAcharyanOpen;
+          const closed =
+            category.type === "NON_ACHARYAN_STUDENT"
+              ? !nonAcharyanOpen
+              : category.type === "ACHARYA_STUDENT" || category.type === "ACHARYA_ALUMNI"
+                ? !studentAlumniOpen
+                : false;
           return (
             <motion.button
               key={category.type}

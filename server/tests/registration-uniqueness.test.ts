@@ -33,7 +33,19 @@ function studentInput(overrides: Partial<RegistrationInput & { auid: string; pho
   };
 }
 
-async function register(eventId: string, data: ReturnType<typeof studentInput>) {
+function facultyInput(overrides: Partial<RegistrationInput & { employeeId: string; phone: string }> = {}) {
+  return {
+    registrationType: "ACHARYA_FACULTY" as const,
+    name: "test faculty",
+    phone: randomPhone(),
+    email: `faculty-${Date.now()}-${Math.random()}@acharya.ac.in`,
+    employeeId: `emp-${Date.now()}-${Math.random()}`,
+    institution: "acharya institute of technology" as const,
+    ...overrides
+  };
+}
+
+async function register(eventId: string, data: ReturnType<typeof studentInput> | ReturnType<typeof facultyInput>) {
   return createRegistration(prisma, eventId, {
     data,
     idempotencyKey: `uniq-key-${Date.now()}-${Math.random()}`
@@ -55,9 +67,8 @@ beforeAll(async () => {
   });
   openEventId = openEvent.id;
 
-  // registrationOpen: false -- deliberately NOT expected to block creation. The /register2 direct
-  // link must keep accepting registrations regardless of the public "closed" toggle/deadline; only
-  // maintenanceMode (genuine system-down protection, tested separately below) still blocks.
+  // registrationOpen: false -- Student/Alumni are now gated on this flag (Faculty is exempt),
+  // so creation is expected to be blocked here; tested below.
   const closedEvent = await prisma.event.create({
     data: {
       name: "Closed Uniqueness Test Event",
@@ -101,8 +112,15 @@ afterAll(async () => {
 });
 
 describe("registration closed", () => {
-  it("still accepts registration when the public registrationOpen toggle is off (the /register2 direct-link path)", async () => {
-    const result = await register(closedEventId, studentInput());
+  it("blocks Acharya Student registration when the registrationOpen toggle is off", async () => {
+    await expect(register(closedEventId, studentInput())).rejects.toBeInstanceOf(RegistrationClosedError);
+  });
+
+  it("still accepts Acharya Faculty registration when the registrationOpen toggle is off (exempt)", async () => {
+    const result = await register(
+      closedEventId,
+      facultyInput()
+    );
     expect(result.id).toBeTruthy();
   });
 

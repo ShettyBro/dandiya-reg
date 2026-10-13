@@ -57,19 +57,31 @@ export async function createRegistration(
       return await prisma.$transaction(async (tx) => {
         const event = await tx.event.findUniqueOrThrow({ where: { id: eventId } });
 
-        // Deliberately does NOT check event.registrationOpen or the registrationDeadline here.
-        // The public landing page closes visually (greyed-out CTA) on its own schedule, but the
-        // direct /register2 link is meant to keep accepting registrations regardless -- it exists
-        // specifically for people who already paid in the ERP but never finished registering, who
-        // must still be able to go through this link after the main page shows "closed". Actual
-        // system-down protection still applies: maintenanceMode is a different, operational
-        // concept (the backend/storage genuinely isn't safe to write to) and still blocks here.
+        // Deliberately does NOT check the registrationDeadline here. The public landing page
+        // closes visually (greyed-out CTA) on its own schedule, but the direct /reg1 link is
+        // meant to keep accepting registrations regardless -- it exists specifically for people
+        // who already paid in the ERP but never finished registering, who must still be able to
+        // go through this link after the main page shows "closed". Actual system-down protection
+        // still applies: maintenanceMode is a different, operational concept (the backend/storage
+        // genuinely isn't safe to write to) and still blocks here.
         if (event.maintenanceMode) {
           throw new RegistrationClosedError();
         }
 
         if (data.registrationType === "NON_ACHARYAN_STUDENT" && !event.nonAcharyanRegistrationOpen) {
           throw new NonAcharyanRegistrationClosedError();
+        }
+
+        // Acharya Student and Acharya Alumni follow the main registrationOpen toggle, same as the
+        // admin settings page already describes. Acharya Faculty is deliberately exempt -- it can
+        // be opened independently of the other three categories (e.g. only Faculty open "for now",
+        // Student/Alumni/Non-Acharyan closed until later), the same way Non-Acharyan already has
+        // its own independent toggle above.
+        if (
+          (data.registrationType === "ACHARYA_STUDENT" || data.registrationType === "ACHARYA_ALUMNI") &&
+          !event.registrationOpen
+        ) {
+          throw new RegistrationClosedError();
         }
 
         const phoneDuplicate = await findActiveDuplicate(tx, { phone: data.phone });

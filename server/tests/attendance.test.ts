@@ -35,13 +35,14 @@ async function createParticipantWithCredential(suffix: string) {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `att-test-${suffix}-${Date.now()}`)
     .send({
-      registrationType: "ACHARYA_STUDENT",
+      // Acharya Faculty is exempt from the registrationOpen gate -- this is a generic fixture,
+      // not testing Student-specific behavior.
+      registrationType: "ACHARYA_FACULTY",
       name: `Attendance Test ${suffix}`,
       phone: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
       email: `att-test-${suffix}-${Date.now()}@acharya.ac.in`,
-      auid: `att-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
-      institution: "acharya institute of technology",
-      year: 2
+      employeeId: `att-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+      institution: "acharya institute of technology"
     });
   const registrationId = created.body.registrationId as string;
   createdRegistrationIds.push(registrationId);

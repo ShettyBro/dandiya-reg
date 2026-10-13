@@ -62,13 +62,14 @@ async function createTestRegistration(suffix: string) {
     .post("/api/v1/registrations")
     .set("Idempotency-Key", `pay-test-${suffix}-${Date.now()}`)
     .send({
-      registrationType: "ACHARYA_STUDENT",
+      // Acharya Faculty is exempt from the registrationOpen gate -- this is a generic fixture,
+      // not testing Student-specific behavior.
+      registrationType: "ACHARYA_FACULTY",
       name: "Payment Test User",
       phone: randomPhone(),
       email: `pay-test-${suffix}-${Date.now()}@acharya.ac.in`,
-      auid: `pay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      institution: "acharya institute of technology",
-      year: 2
+      employeeId: `pay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      institution: "acharya institute of technology"
     });
   createdRegistrationIds.push(response.body.registrationId);
   const photoObjectKey = `test-photo/${response.body.registrationId}.jpg`;
@@ -183,9 +184,13 @@ describe("payment proof submission (service layer)", () => {
 
   it("rejects submission when the mandatory participant photo is missing", async () => {
     const registration = await createTestRegistration("no-photo");
+    // Acharya Faculty (the default fixture type here, chosen to stay clear of the
+    // registrationOpen gate) doesn't require a photo at all -- flip the type after creation
+    // (registrationOpen is only checked at creation, not here) so this test actually exercises
+    // the mandatory-photo rule it's named for.
     await prisma.registration.update({
       where: { id: registration.registrationId },
-      data: { photoObjectKey: null }
+      data: { photoObjectKey: null, registrationType: "ACHARYA_STUDENT" }
     });
     const objectKey = `payments/${registration.registrationId}/proof/no-photo.jpg`;
     await createProofIntent(registration.registrationId, objectKey);
