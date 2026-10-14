@@ -26,8 +26,7 @@ describe("htmlToPlainText", () => {
   it("produces non-empty, tag-free plain text for every real email template", () => {
     const assets: EmailAssets = {
       logoUrl: "https://example.test/logo.png",
-      dancersUrl: "https://example.test/dancers.png",
-      qrImageUrl: "https://example.test/qr.png"
+      dancersUrl: "https://example.test/dancers.png"
     };
     const types = [
       "REGISTRATION_RECEIVED",

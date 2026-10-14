@@ -1,7 +1,14 @@
 import type { EmailJob, PrismaClient } from "@prisma/client";
-import { EmailPermanentError, EmailQuotaExceededError, type EmailSender } from "../../lib/email/errors.js";
+import QRCode from "qrcode";
+import {
+  EmailPermanentError,
+  EmailQuotaExceededError,
+  type EmailAttachment,
+  type EmailSender
+} from "../../lib/email/errors.js";
 import { renderEmailTemplate, type EmailAssets } from "./templates.js";
 import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
+import { buildQrDownloadPdf, getStaticAsset } from "../../lib/qr-download/pdf.js";
 import {
   MAX_ATTEMPTS,
   markEmailJobFailed,
@@ -11,8 +18,13 @@ import {
 } from "./email-outbox.service.js";
 import type { Env } from "../../app/config/env.js";
 
-async function buildAssets(prisma: PrismaClient, env: Env, job: EmailJob): Promise<EmailAssets> {
-  const base: EmailAssets = {
+interface BuiltEmailContent {
+  assets: EmailAssets;
+  attachments: EmailAttachment[];
+}
+
+async function buildEmailContent(prisma: PrismaClient, env: Env, job: EmailJob): Promise<BuiltEmailContent> {
+  const assets: EmailAssets = {
     logoUrl: `${env.FRONTEND_ORIGIN}/acharya-logo.png`,
     dancersUrl: `${env.FRONTEND_ORIGIN}/dandiya-dancers.png`
   };
@@ -39,25 +51,45 @@ async function buildAssets(prisma: PrismaClient, env: Env, job: EmailJob): Promi
   }
 
   if (!credentialId) {
-    return base;
+    return { assets, attachments: [] };
   }
 
-  // A plain externally-hosted URL, not a data: URI — Brevo does not support CID-embedded images
-  // in transactional emails, and several real inboxes (confirmed: Gmail's mobile app) silently
-  // strip embedded base64 images entirely, leaving a blank box where the QR should be.
-  //
-  // Rendered by OUR OWN /qr-image.png endpoint when API_ORIGIN is configured, not the third-party
-  // api.qrserver.com service used previously — confirmed by direct A/B testing that a QR code
-  // image hosted on an unfamiliar third-party domain gets the whole email silently dropped (no
-  // bounce, not even spam) by at least one major recipient mail system, while the identical email
-  // with the QR code removed delivers fine. Falls back to the third-party service if API_ORIGIN
-  // isn't set yet, so deploying this ahead of setting that env var is a safe no-op.
-  const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
-  const qrImageUrl = env.API_ORIGIN
-    ? `${env.API_ORIGIN}/api/v1/qr-image.png?data=${encodeURIComponent(qrPayload)}`
-    : `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(qrPayload)}`;
+  // The QR code is no longer rendered inline in the HTML body at all (see templates.ts) --
+  // it's attached as a PDF instead, reusing the exact same template the /qr download page
+  // already serves. An inline <img>, even hosted on our own domain, depends entirely on the
+  // recipient's email client choosing to auto-load remote images; a PDF attachment has no such
+  // dependency, it's downloaded with the message itself. Confirmed by direct testing that
+  // people were receiving the rest of the email fine but never seeing the QR for exactly this
+  // reason.
+  const payload = job.payloadJson as Record<string, unknown>;
+  const name = typeof payload.name === "string" ? payload.name : "Participant";
+  const publicCode = typeof payload.publicCode === "string" ? payload.publicCode : "";
 
-  return { ...base, qrImageUrl };
+  const qrPayload = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
+  const [qrPngBuffer, logoImageBuffer, backgroundImageBuffer] = await Promise.all([
+    QRCode.toBuffer(qrPayload, { errorCorrectionLevel: "M", margin: 1, width: 400 }),
+    getStaticAsset(env, "/acharya-logo.png"),
+    getStaticAsset(env, "/dandiya-dancers.png")
+  ]);
+
+  const pdfBuffer = await buildQrDownloadPdf({
+    name,
+    publicCode,
+    qrPngBuffer,
+    logoImageBuffer,
+    backgroundImageBuffer
+  });
+
+  return {
+    assets,
+    attachments: [
+      {
+        filename: `dandiya-qr-${publicCode || "pass"}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf"
+      }
+    ]
+  };
 }
 
 export async function processEmailJob(
@@ -66,11 +98,11 @@ export async function processEmailJob(
   job: EmailJob,
   sender: EmailSender
 ): Promise<"sent" | "retry" | "quota-retry" | "failed"> {
-  const assets = await buildAssets(prisma, env, job);
+  const { assets, attachments } = await buildEmailContent(prisma, env, job);
   const { subject, html } = renderEmailTemplate(job.type, job.payloadJson as Record<string, unknown>, assets);
 
   try {
-    const result = await sender({ to: job.recipient, subject, html });
+    const result = await sender({ to: job.recipient, subject, html, attachments });
     await markEmailJobSent(prisma, job.id, result.providerMessageId);
     return "sent";
   } catch (error) {

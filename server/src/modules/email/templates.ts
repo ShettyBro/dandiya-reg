@@ -17,7 +17,6 @@ export interface RenderedEmail {
 export interface EmailAssets {
   logoUrl: string;
   dancersUrl: string;
-  qrImageUrl?: string;
 }
 
 const GOLD = "#e8b84b";
@@ -58,18 +57,20 @@ function shell(assets: EmailAssets, bodyHtml: string): string {
 </td></tr></table>`;
 }
 
-function passCard(name: string, publicCode: string, qrImageUrl?: string): string {
-  const qrBlock = qrImageUrl
-    ? `<div style="background:#ffffff;border-radius:16px;padding:16px;display:inline-block;margin:16px 0;">
-         <img src="${qrImageUrl}" alt="Entry QR code" width="200" height="200" style="display:block;width:200px;height:200px;" />
-       </div>`
-    : "";
-
+// The QR code itself is no longer rendered inline here -- it's attached to the email as a PDF
+// instead (see buildQrDownloadPdf / email-processor.ts). An inline <img> pointing at any
+// remote host, including our own, depends on the recipient's email client choosing to load
+// remote images at all; a surprising number don't by default, and the QR silently never
+// appears. A PDF attachment has no such dependency -- it's downloaded with the message itself.
+function passCard(name: string, publicCode: string): string {
   return `<div style="text-align:center;border-top:1px dashed rgba(232,184,75,0.4);border-bottom:1px dashed rgba(232,184,75,0.4);padding:20px 0;margin:20px 0;">
     <p style="margin:0;color:${MUTED};font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Dandiya Celebration Kit QR</p>
     <p style="margin:6px 0 0;font-size:20px;font-weight:700;color:${TEXT};text-transform:capitalize;">${name}</p>
-    ${qrBlock}
-    <p style="margin:0;font-family:monospace;letter-spacing:3px;font-size:16px;color:${GOLD};">${publicCode}</p>
+    <p style="margin:6px 0 0;font-family:monospace;letter-spacing:3px;font-size:16px;color:${GOLD};">${publicCode}</p>
+    <div style="margin:16px auto 0;max-width:300px;background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.3);border-radius:12px;padding:14px 16px;">
+      <p style="margin:0;font-size:13px;font-weight:600;color:${TEXT};line-height:1.5;">Your QR code is attached to this email as a PDF.</p>
+      <p style="margin:6px 0 0;font-size:12px;color:${MUTED};line-height:1.5;">Please download the attachment below and show the QR code at the entry.</p>
+    </div>
   </div>`;
 }
 
@@ -159,8 +160,8 @@ export function renderEmailTemplate(
           `<p style="text-align:center;font-size:15px;margin:0 0 4px;"><strong style="text-transform:capitalize;">${name}</strong>, your participation for Dandiya Night 2026 has been successfully confirmed.</p>
            <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 4px;">Dandiya Celebration Kit &mdash; &#8377;151</p>
            <p style="text-align:center;font-size:13px;color:${MUTED};margin:0 0 16px;">Your Dandiya Celebration Kit will be provided at the event venue.</p>
-           ${passCard(name, publicCode, assets.qrImageUrl)}
-           <p style="text-align:center;font-size:12px;color:${MUTED};margin:8px 0 0;">Please present this QR code at the event venue to collect your Dandiya Celebration Kit.</p>
+           ${passCard(name, publicCode)}
+           <p style="text-align:center;font-size:12px;color:${MUTED};margin:8px 0 0;">Please present the attached QR code at the event venue to collect your Dandiya Celebration Kit.</p>
            <p style="text-align:center;font-size:12px;color:${MUTED};margin:4px 0 16px;">The same QR code will be verified by the event team during venue entry.</p>
            ${entryInfoBlock()}
            ${rulesBlock()}`
@@ -193,7 +194,7 @@ export function renderEmailTemplate(
            ${credentialsBlock(loginEmail, temporaryPassword)}
            ${loginButton(portalUrl, "Login to volunteer portal")}
            <p style="text-align:center;font-size:12px;color:${MUTED};margin:0 0 4px;">You'll be asked to set your own password on first login.</p>
-           ${passCard(name, publicCode, assets.qrImageUrl)}
+           ${passCard(name, publicCode)}
            <p style="text-align:center;font-size:12px;color:${MUTED};">This is also your Dandiya Celebration Kit QR for the event.</p>`
         )
       };

@@ -30,21 +30,21 @@ function encodeRfc2047(text: string): string {
   return `=?UTF-8?B?${Buffer.from(text, "utf-8").toString("base64")}?=`;
 }
 
+// RFC 2045 recommends wrapping base64 body content at 76 chars/line -- most parsers tolerate
+// unwrapped base64, but there's no reason to rely on that tolerance for attachment data.
+function wrapBase64(base64: string): string {
+  return base64.replace(/.{1,76}/g, "$&\r\n").trimEnd();
+}
+
 function buildRawMessage(from: string, input: SendEmailInput): string {
   // A text/plain alternative alongside the HTML is a well-known deliverability signal -- an
   // HTML-only message (no multipart/alternative at all) is a pattern spam filters specifically
   // weight against, and it matters more for a newer sending domain with no reputation yet.
-  const boundary = `dandiya-${randomBytes(16).toString("hex")}`;
+  const altBoundary = `dandiya-alt-${randomBytes(16).toString("hex")}`;
   const text = htmlToPlainText(input.html);
 
-  const message = [
-    `From: ${from}`,
-    `To: ${input.to}`,
-    `Subject: ${encodeRfc2047(input.subject)}`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    "",
-    `--${boundary}`,
+  const alternativePart = [
+    `--${altBoundary}`,
     "Content-Type: text/plain; charset=UTF-8",
     // 8bit, not 7bit: the plain-text part can contain real multi-byte UTF-8 (decoded em-dashes,
     // the rupee sign) and names aren't restricted to ASCII -- declaring 7bit while the body
@@ -54,14 +54,53 @@ function buildRawMessage(from: string, input: SendEmailInput): string {
     "",
     text,
     "",
-    `--${boundary}`,
+    `--${altBoundary}`,
     "Content-Type: text/html; charset=UTF-8",
     "Content-Transfer-Encoding: 8bit",
     "",
     input.html,
     "",
-    `--${boundary}--`
+    `--${altBoundary}--`
   ].join("\r\n");
+
+  const headers = [`From: ${from}`, `To: ${input.to}`, `Subject: ${encodeRfc2047(input.subject)}`, "MIME-Version: 1.0"];
+
+  let message: string;
+  if (input.attachments && input.attachments.length > 0) {
+    // multipart/mixed wraps the multipart/alternative body as its first part, with each
+    // attachment as a sibling part -- the standard structure for "HTML email with attachments".
+    const mixedBoundary = `dandiya-mixed-${randomBytes(16).toString("hex")}`;
+    const attachmentParts = input.attachments.map((attachment) =>
+      [
+        `--${mixedBoundary}`,
+        `Content-Type: ${attachment.contentType}; name="${attachment.filename}"`,
+        `Content-Disposition: attachment; filename="${attachment.filename}"`,
+        "Content-Transfer-Encoding: base64",
+        "",
+        wrapBase64(attachment.content.toString("base64"))
+      ].join("\r\n")
+    );
+
+    message = [
+      ...headers,
+      `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+      "",
+      `--${mixedBoundary}`,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      "",
+      alternativePart,
+      "",
+      ...attachmentParts,
+      `--${mixedBoundary}--`
+    ].join("\r\n");
+  } else {
+    message = [
+      ...headers,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      "",
+      alternativePart
+    ].join("\r\n");
+  }
 
   return Buffer.from(message, "utf-8")
     .toString("base64")

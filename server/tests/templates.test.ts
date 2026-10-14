@@ -14,14 +14,13 @@ describe("renderEmailTemplate", () => {
     expect(result.html).toContain("DN26-ABC123");
   });
 
-  it("renders PAYMENT_APPROVED with the QR image as a plain externally-hosted URL, not a data: URI", () => {
-    const result = renderEmailTemplate(
-      "PAYMENT_APPROVED",
-      { name: "Asha", publicCode: "DN26-ABC123" },
-      { ...assets, qrImageUrl: "https://dandiya-api.example.test/api/v1/pass/credential/abc-123/qr.png" }
-    );
-    expect(result.html).toContain("https://dandiya-api.example.test/api/v1/pass/credential/abc-123/qr.png");
+  it("renders PAYMENT_APPROVED with no inline QR image at all, pointing instead to the PDF attachment", () => {
+    const result = renderEmailTemplate("PAYMENT_APPROVED", { name: "Asha", publicCode: "DN26-ABC123" }, assets);
+    // No <img> referencing a QR-rendering endpoint of any kind -- the QR is attached as a PDF
+    // (built separately in email-processor.ts), never rendered inline in the HTML body.
+    expect(result.html).not.toMatch(/<img[^>]*qr/i);
     expect(result.html).not.toContain("data:image");
+    expect(result.html.toLowerCase()).toContain("attached to this email as a pdf");
   });
 
   it("renders PAYMENT_REJECTED with a generic message, no specific reason text", () => {

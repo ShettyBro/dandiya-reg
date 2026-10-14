@@ -1,4 +1,24 @@
 import PDFDocument from "pdfkit";
+import type { Env } from "../../app/config/env.js";
+
+// Static assets served by the frontend (same URLs the confirmation email embeds inline) --
+// fetched once per process and cached in memory rather than re-fetched on every PDF build.
+const assetCache = new Map<string, Buffer | null>();
+
+export async function getStaticAsset(env: Env, path: string): Promise<Buffer | null> {
+  if (assetCache.has(path)) return assetCache.get(path) ?? null;
+  let buffer: Buffer | null = null;
+  try {
+    const response = await fetch(`${env.FRONTEND_ORIGIN}${path}`);
+    if (response.ok) {
+      buffer = Buffer.from(await response.arrayBuffer());
+    }
+  } catch {
+    buffer = null;
+  }
+  assetCache.set(path, buffer);
+  return buffer;
+}
 
 const GOLD = "#e8b84b";
 const BG = "#05060d";

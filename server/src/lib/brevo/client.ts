@@ -41,7 +41,15 @@ export function createBrevoSender(env: Env): EmailSender {
           to: [{ email: input.to }],
           subject: input.subject,
           htmlContent: input.html,
-          textContent: htmlToPlainText(input.html)
+          textContent: htmlToPlainText(input.html),
+          ...(input.attachments && input.attachments.length > 0
+            ? {
+                attachment: input.attachments.map((attachment) => ({
+                  name: attachment.filename,
+                  content: attachment.content.toString("base64")
+                }))
+              }
+            : {})
         }),
         signal: controller.signal
       });

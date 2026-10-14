@@ -4,7 +4,7 @@ import { z } from "zod";
 import QRCode from "qrcode";
 import { sendError } from "../../app/middleware/errors.js";
 import { qrDownloadLookupRateLimiter } from "../../lib/security/rate-limit.js";
-import { buildQrDownloadPdf } from "../../lib/qr-download/pdf.js";
+import { buildQrDownloadPdf, getStaticAsset } from "../../lib/qr-download/pdf.js";
 import { deriveSignedCredentialToken } from "../../lib/qr/credential.js";
 import { normalizeIndianPhone, INDIAN_PHONE_REGEX } from "../../lib/security/phone.js";
 import type { Env } from "../../app/config/env.js";
@@ -28,25 +28,6 @@ async function findApprovedRegistrationByIdentifier(prisma: PrismaClient, identi
     },
     orderBy: { createdAt: "desc" }
   });
-}
-
-// Static assets served by the frontend (same URLs the confirmation email embeds) — each fetched
-// once per process and cached in memory rather than re-fetched on every PDF request.
-const assetCache = new Map<string, Buffer | null>();
-
-async function getStaticAsset(env: Env, path: string): Promise<Buffer | null> {
-  if (assetCache.has(path)) return assetCache.get(path) ?? null;
-  let buffer: Buffer | null = null;
-  try {
-    const response = await fetch(`${env.FRONTEND_ORIGIN}${path}`);
-    if (response.ok) {
-      buffer = Buffer.from(await response.arrayBuffer());
-    }
-  } catch {
-    buffer = null;
-  }
-  assetCache.set(path, buffer);
-  return buffer;
 }
 
 export function createQrDownloadRouter(prisma: PrismaClient, env: Env): Router {
