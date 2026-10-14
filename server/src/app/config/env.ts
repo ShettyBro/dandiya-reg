@@ -60,12 +60,16 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32),
   QR_SECRET: z.string().min(32),
 
-  EMAIL_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(10),
+  // Lowered from 10/15s/1500ms after a large resend wave tripped Gmail's "User-rate limit
+  // exceeded (Mail sending)" 429 repeatedly -- that burst limit is about sustained send rate, not
+  // just daily volume, and ~20/min was enough to trigger it. These are conservative defaults for
+  // a backlog-draining scenario; can be raised again once sustained sending proves stable.
+  EMAIL_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(5),
   EMAIL_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
   // Deliberate pacing between individual sends within a batch -- protects a freshly created
   // sending identity (no history) from looking like a spam burst during a large wave of approvals.
   // 0 disables pacing entirely (e.g. for an established provider where this doesn't matter).
-  EMAIL_SEND_THROTTLE_MS: z.coerce.number().int().nonnegative().default(1500)
+  EMAIL_SEND_THROTTLE_MS: z.coerce.number().int().nonnegative().default(3000)
 });
 
 export type Env = z.infer<typeof envSchema>;

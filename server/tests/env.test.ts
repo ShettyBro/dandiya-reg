@@ -15,7 +15,7 @@ describe("loadEnv", () => {
     expect(env.PORT).toBe(3000);
     expect(env.R2_PRESIGN_UPLOAD_TTL).toBe(300);
     expect(env.R2_PRESIGN_READ_TTL).toBe(900);
-    expect(env.EMAIL_WORKER_BATCH_SIZE).toBe(10);
+    expect(env.EMAIL_WORKER_BATCH_SIZE).toBe(5);
   });
 
   it("succeeds even when R2/Brevo/ERP secrets are not yet configured", () => {
