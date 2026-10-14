@@ -13,6 +13,20 @@ const QrDownloadPage = lazy(() =>
   import("./routes/qr-download-page.js").then((m) => ({ default: m.QrDownloadPage }))
 );
 
+const EmergencyRegisterPage = lazy(() =>
+  import("./routes/emergency-register-page.js").then((m) => ({ default: m.EmergencyRegisterPage }))
+);
+
+const HelpDeskLoginPage = lazy(() =>
+  import("./routes/help-desk/HelpDeskLoginPage.js").then((m) => ({ default: m.HelpDeskLoginPage }))
+);
+const HelpDeskLayout = lazy(() =>
+  import("./routes/help-desk/HelpDeskLayout.js").then((m) => ({ default: m.HelpDeskLayout }))
+);
+const HelpDeskSearchPage = lazy(() =>
+  import("./routes/help-desk/HelpDeskSearchPage.js").then((m) => ({ default: m.HelpDeskSearchPage }))
+);
+
 const VolunteerLoginPage = lazy(() =>
   import("./routes/volunteer/VolunteerLoginPage.js").then((m) => ({ default: m.VolunteerLoginPage }))
 );
@@ -122,6 +136,36 @@ export function App() {
           }
         />
         <Route path="/qr-down" element={<Navigate to="/qr" replace />} />
+
+        {/* /emg is the no-payment-upload walk-in registration link -- public, unauthenticated,
+            unlinked from any nav, for people who already paid in the ERP but never finished
+            registering. Auto-approves on submit, no Help Desk login involved. */}
+        <Route
+          path="/emg"
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <EmergencyRegisterPage />
+            </Suspense>
+          }
+        />
+
+        <Route
+          path="/help"
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <HelpDeskLoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          element={
+            <Suspense fallback={<VolunteerFallback />}>
+              <HelpDeskLayout />
+            </Suspense>
+          }
+        >
+          <Route path="/help/search" element={<HelpDeskSearchPage />} />
+        </Route>
 
         <Route
           path="/vol-login"

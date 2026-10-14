@@ -19,6 +19,13 @@ import {
   NonAcharyanRegistrationClosedError,
   RegistrationClosedError
 } from "./registration.service.js";
+import {
+  completeWalkInRegistration,
+  WalkInAlreadyDecidedError,
+  WalkInIdentityMissingError,
+  WalkInPhotoMissingError,
+  WalkInRegistrationNotFoundError
+} from "./walk-in.service.js";
 import { registrationSchema } from "./registration.schemas.js";
 import { normalizeIndianPhone, INDIAN_PHONE_REGEX } from "../../lib/security/phone.js";
 import { getR2Client, R2NotConfiguredError } from "../../lib/r2/client.js";
@@ -294,6 +301,44 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
       publicCode: registration.publicCode,
       step
     });
+  });
+
+  // Public, unauthenticated -- the no-payment-upload /emg link's finishing step. Skips payment
+  // proof and identity review entirely, going straight to an approved, QR-ready registration.
+  router.post("/registrations/:id/complete-walk-in", uploadPresignRateLimiter, async (req, res) => {
+    const registrationId = stringParam(req.params.id);
+    if (!registrationId) {
+      sendError(req, res, 400, "VALIDATION_ERROR", "Missing registration id");
+      return;
+    }
+
+    try {
+      const result = await completeWalkInRegistration(
+        prisma,
+        env,
+        registrationId,
+        req.id !== undefined ? String(req.id) : null
+      );
+      res.status(200).json({ approved: true, publicCode: result.publicCode });
+    } catch (error) {
+      if (error instanceof WalkInRegistrationNotFoundError) {
+        sendError(req, res, 404, "NOT_FOUND", "Registration not found");
+        return;
+      }
+      if (error instanceof WalkInAlreadyDecidedError) {
+        sendError(req, res, 409, "ALREADY_DECIDED", "This registration has already been decided");
+        return;
+      }
+      if (error instanceof WalkInPhotoMissingError) {
+        sendError(req, res, 409, "PHOTO_MISSING", "A photo is required before this can be completed");
+        return;
+      }
+      if (error instanceof WalkInIdentityMissingError) {
+        sendError(req, res, 409, "IDENTITY_MISSING", "An identity document is required before this can be completed");
+        return;
+      }
+      throw error;
+    }
   });
 
   for (const [path, config] of Object.entries(IMAGE_BIND_PURPOSES)) {

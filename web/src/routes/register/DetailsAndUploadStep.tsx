@@ -75,12 +75,14 @@ export function DetailsAndUploadStep({
   registrationType,
   idempotencyKey,
   onBack,
-  onComplete
+  onComplete,
+  submitLabel = "Pay now"
 }: {
   registrationType: RegistrationType;
   idempotencyKey: string;
   onBack: () => void;
   onComplete: (response: CreateRegistrationResponse) => void;
+  submitLabel?: string;
 }) {
   const needsPhoto = registrationType !== "ACHARYA_FACULTY";
   const needsIdentity = registrationType === "NON_ACHARYAN_STUDENT" || registrationType === "ACHARYA_ALUMNI";
@@ -463,7 +465,7 @@ export function DetailsAndUploadStep({
           transition={{ type: "spring", stiffness: 400, damping: 24 }}
         >
           <Button type="button" onClick={handleSubmit} disabled={!allReady || submitting} className="w-full">
-            {submitting ? "Submitting..." : "Pay now"}
+            {submitting ? "Submitting..." : submitLabel}
           </Button>
         </motion.div>
       </div>

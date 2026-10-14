@@ -28,6 +28,7 @@ import { createAuditLogRouter } from "../modules/audit/audit.routes.js";
 import { createQrDownloadRouter } from "../modules/qr-download/qr-download.routes.js";
 import { createMyPeopleRouter } from "../modules/registration/my-people.routes.js";
 import { createQrImageRouter } from "../modules/qr-image/qr-image.routes.js";
+import { createHelpDeskRouter } from "../modules/help-desk/help-desk.routes.js";
 import type { Env } from "./config/env.js";
 
 export function createApp(env: Env, prisma: PrismaClient): Express {
@@ -96,6 +97,7 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
   app.use("/api/v1", createQrDownloadRouter(prisma, env));
   app.use("/api/v1", createMyPeopleRouter(prisma, env));
   app.use("/api/v1", createQrImageRouter());
+  app.use("/api/v1", createHelpDeskRouter(prisma, env));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({

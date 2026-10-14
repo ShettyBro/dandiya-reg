@@ -14,6 +14,7 @@ enum UserRole {
   VOLUNTEER
   TEAM_LEADER
   ID_VERIFIER
+  HELP_DESK
 }
 
 enum UserStatus {
@@ -139,6 +140,7 @@ model User {
   volunteerProfile      VolunteerProfile?
   verifiedPayments       Payment[]              @relation("VerifiedByUser")
   identityVerifiedRegistrations Registration[]  @relation("IdentityVerifiedByUser")
+  walkInApprovedRegistrations   Registration[]  @relation("WalkInApprovedByUser")
   attendanceOverrides    AttendanceOverride[]
   scannedAttendances     Attendance[]           @relation("LastScannerUser")
   collegeGateScannedAttendances Attendance[]    @relation("CollegeGateScannerUser")
@@ -209,6 +211,14 @@ model Registration {
   resubmissionOf   Registration?  @relation("Resubmission", fields: [resubmissionOfId], references: [id])
   resubmissionOfId String?
   resubmissions    Registration[] @relation("Resubmission")
+
+  // Set only for registrations submitted through the no-payment-upload walk-in link (/emg) --
+  // bypasses payment/identity review entirely (for people who already paid in the ERP but never
+  // finished registering), so flagging which ones these were matters for audit.
+  walkIn             Boolean   @default(false)
+  walkInApprovedBy   User?     @relation("WalkInApprovedByUser", fields: [walkInApprovedById], references: [id])
+  walkInApprovedById String?
+  walkInApprovedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
