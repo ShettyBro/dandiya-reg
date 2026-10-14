@@ -413,3 +413,25 @@ model RefreshToken {
   @@index([userId])
   @@map("refresh_tokens")
 }
+
+// A durable copy of the Acharya ERP payment export, loaded in so Help Desk staff can look up a
+// transaction directly (by ID, phone, name, or email) without anyone re-running a CSV script.
+// Re-importing is idempotent (upsert by paymentId), so a fresher export can be loaded over this
+// at any time without creating duplicates.
+model ErpTransaction {
+  id              String   @id @default(uuid())
+  name            String
+  phone           String
+  email           String
+  paymentId       String   @unique
+  transactionDate DateTime
+  amountInPaise   Int
+  remarks         String?
+  school          String?
+  importedAt      DateTime @default(now())
+
+  @@index([phone])
+  @@index([email])
+  @@index([name])
+  @@map("erp_transactions")
+}

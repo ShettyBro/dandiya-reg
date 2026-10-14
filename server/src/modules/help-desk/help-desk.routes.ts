@@ -9,6 +9,7 @@ import { publicLookupRateLimiter } from "../../lib/security/rate-limit.js";
 import {
   getHelpDeskRegistrationDetail,
   HelpDeskRegistrationNotFoundError,
+  searchErpTransactions,
   searchRegistrationsForHelpDesk
 } from "./help-desk.service.js";
 import type { Env } from "../../app/config/env.js";
@@ -32,6 +33,24 @@ export function createHelpDeskRouter(prisma: PrismaClient, env: Env): Router {
       }
 
       const items = await searchRegistrationsForHelpDesk(prisma, parsed.data.q);
+      res.status(200).json({ items });
+    }
+  );
+
+  router.get(
+    "/help-desk/erp-search",
+    requireAuth(env),
+    requireRole("HELP_DESK", "ADMIN"),
+    requireActiveUser(prisma),
+    publicLookupRateLimiter,
+    async (req, res) => {
+      const parsed = searchQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        sendError(req, res, 400, "VALIDATION_ERROR", "Enter a transaction ID, phone, name, or email");
+        return;
+      }
+
+      const items = await searchErpTransactions(prisma, parsed.data.q);
       res.status(200).json({ items });
     }
   );
