@@ -23,25 +23,26 @@ describe("renderEmailTemplate", () => {
     expect(result.html.toLowerCase()).toContain("attached to this email as a pdf");
   });
 
-  it("renders PAYMENT_REJECTED with a generic message, no specific reason text", () => {
+  it("renders PAYMENT_REJECTED with the on-spot help desk instructions, no specific reason text", () => {
     const result = renderEmailTemplate(
       "PAYMENT_REJECTED",
       { name: "Ravi", publicCode: "DN26-XYZ999", reason: "Screenshot unreadable" },
       assets
     );
-    expect(result.html).toContain("unable to verify your Dandiya Celebration Kit payment");
+    expect(result.html).toContain("unable to verify your payment proof");
+    expect(result.html).toContain("help desk located at the event entrance / Gate 3");
     expect(result.html).not.toContain("Screenshot unreadable");
   });
 
-  it("renders IDENTITY_REJECTED with a generic message and no-payment instruction, no specific reason text", () => {
+  it("renders IDENTITY_REJECTED with the on-spot help desk instructions, no specific reason text", () => {
     const result = renderEmailTemplate(
       "IDENTITY_REJECTED",
       { name: "Priya", publicCode: "DN26-NAC001", reason: "Aadhaar image unreadable" },
       assets
     );
     expect(result.html).toContain("unable to verify your identity");
+    expect(result.html).toContain("help desk located at the event entrance / Gate 3");
     expect(result.html).not.toContain("Aadhaar image unreadable");
-    expect(result.html).toContain("do not make another payment");
   });
 
   it("falls back gracefully when payload fields are missing", () => {

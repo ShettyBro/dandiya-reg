@@ -90,6 +90,38 @@ function credentialsBlock(email: string, password: string): string {
   </div>`;
 }
 
+function stepsBlock(steps: string[]): string {
+  const item = (text: string, i: number) =>
+    `<tr>
+      <td width="26" valign="top" style="padding:0 10px 10px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="22" height="22" align="center" valign="middle" style="width:22px;height:22px;border-radius:50%;background:${GOLD};font-size:11px;font-weight:800;color:${BG};">${i + 1}</td></tr></table>
+      </td>
+      <td valign="top" style="padding:0 0 10px;font-size:13px;color:${TEXT};line-height:1.55;">${text}</td>
+    </tr>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0;text-align:left;">
+    ${steps.map(item).join("")}
+  </table>`;
+}
+
+function noteBlock(html: string): string {
+  return `<div style="margin:16px 0 0;background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.3);border-radius:12px;padding:14px 16px;text-align:left;">
+    <p style="margin:0;font-size:12.5px;color:${TEXT};line-height:1.55;">${html}</p>
+  </div>`;
+}
+
+// A bolder, more visually prominent timing callout than entryInfoBlock() -- used on rejection
+// emails where the date/entry/close time is the single most important thing for someone to
+// notice at a glance, since showing up at the help desk after the gate closes is the one mistake
+// that can't be fixed there.
+function eventTimingHighlight(): string {
+  return `<div style="margin:16px 0 0;background:rgba(232,184,75,0.12);border:1px solid rgba(232,184,75,0.4);border-radius:12px;padding:16px 18px;text-align:center;">
+    <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:${GOLD};">Event Date &amp; Entry Window</p>
+    <p style="margin:0;font-size:16px;font-weight:800;color:${TEXT};">15 October 2026</p>
+    <p style="margin:4px 0 0;font-size:14px;font-weight:700;color:${GOLD};">Entry: 3:00 PM &ndash; 5:00 PM</p>
+    <p style="margin:2px 0 0;font-size:12px;color:${MUTED};">Gate closes at 5:00 PM sharp &mdash; no entry after that, so please arrive early.</p>
+  </div>`;
+}
+
 function entryInfoBlock(): string {
   return `<div style="margin-top:16px;font-size:13px;color:${MUTED};line-height:1.7;">
     <p style="margin:0;"><strong style="color:${TEXT};">Venue:</strong> Acharya Stadium</p>
@@ -172,8 +204,20 @@ export function renderEmailTemplate(
         subject: "Dandiya Night 2026 \u2014 payment verification issue",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we were unable to verify your Dandiya Celebration Kit payment.</p>
-           <p style="text-align:center;font-size:14px;color:${MUTED};line-height:1.6;"><strong style="color:${TEXT};">You do NOT need to pay again.</strong> Please register again using the same details, and upload a clear screenshot with the correct transaction ID for the same payment you already made. Only make a new payment if you were specifically told the amount or the payment itself was wrong. Your code <strong>${publicCode}</strong> stays on record.</p>`
+          `<p style="text-align:center;font-size:15px;line-height:1.6;margin:0 0 4px;">Hi <strong style="text-transform:capitalize;">${name}</strong>,</p>
+           <p style="text-align:center;font-size:14px;color:${TEXT};line-height:1.6;margin:0 0 14px;">We were unable to verify your payment proof, so your application has been rejected.</p>
+           <p style="text-align:center;font-size:13px;color:${GOLD};font-weight:700;line-height:1.5;margin:0 0 4px;">Don't worry! If you already paid through the Acharya ERP portal, you can still get your registration verified.</p>
+           <p style="text-align:left;font-size:12px;color:${MUTED};margin:14px 0 2px;">Please follow these steps on the event day:</p>
+           ${stepsBlock([
+             "Check the inbox of the email address you used while making the payment at the Acharya ERP portal — your payment receipt will be there.",
+             "Visit the help desk located at the event entrance / Gate 3 of Acharya College.",
+             "Show your payment receipt or transaction proof to the volunteers.",
+             "The volunteers will verify your payment and complete your on-spot registration.",
+             "You will receive a QR code that you can use to enter the event and collect your Dandiya Celebration Kit."
+           ])}
+           ${noteBlock(`<strong style="color:${GOLD};">Important:</strong> Please bring your payment proof for verification.`)}
+           ${eventTimingHighlight()}
+           <p style="text-align:center;font-size:12.5px;color:${MUTED};margin:16px 0 0;">Thank you for your cooperation. We look forward to seeing you at the event!</p>`
         )
       };
     case "IDENTITY_REJECTED":
@@ -181,8 +225,20 @@ export function renderEmailTemplate(
         subject: "Dandiya Night 2026 — identity verification issue",
         html: shell(
           assets,
-          `<p style="text-align:center;font-size:15px;line-height:1.6;">Hi <strong style="text-transform:capitalize;">${name}</strong>, we were unable to verify your identity.</p>
-           <p style="text-align:center;font-size:14px;color:${MUTED};line-height:1.6;">Please register again with valid identity proof, and use the same payment screenshot and transaction ID from before — <strong style="color:${TEXT};">do not make another payment.</strong></p>`
+          `<p style="text-align:center;font-size:15px;line-height:1.6;margin:0 0 4px;">Hi <strong style="text-transform:capitalize;">${name}</strong>,</p>
+           <p style="text-align:center;font-size:14px;color:${TEXT};line-height:1.6;margin:0 0 14px;">We are unable to verify your identity with the details provided.</p>
+           <p style="text-align:center;font-size:13px;color:${GOLD};font-weight:700;line-height:1.5;margin:0 0 4px;">What should you do next?</p>
+           <p style="text-align:center;font-size:12.5px;color:${MUTED};line-height:1.6;margin:4px 0 0;">If you have already paid through the Acharya ERP portal, check the inbox of the email address you used while making that payment for your receipt.</p>
+           <p style="text-align:left;font-size:12px;color:${MUTED};margin:14px 0 2px;">On the event day, please follow these steps:</p>
+           ${stepsBlock([
+             "Visit the help desk located at the event entrance / Gate 3 of Acharya College.",
+             "Show your payment receipt or transaction proof to the volunteers.",
+             "The volunteers will verify your details and complete your on-spot registration.",
+             "You will receive a QR code that you can use to enter the event and collect your Dandiya Celebration Kit."
+           ])}
+           ${noteBlock(`<strong style="color:${GOLD};">Important:</strong> Please bring your original college ID card for verification.`)}
+           ${eventTimingHighlight()}
+           <p style="text-align:center;font-size:12.5px;color:${MUTED};margin:16px 0 0;">Thank you for your cooperation. We look forward to seeing you at the event!</p>`
         )
       };
     case "VOLUNTEER_INVITE":
