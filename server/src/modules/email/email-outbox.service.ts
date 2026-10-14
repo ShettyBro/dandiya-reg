@@ -46,14 +46,25 @@ export async function markEmailJobRetry(
   prisma: PrismaClient,
   jobId: string,
   attempts: number,
-  lastError: string
+  lastError: string,
+  retryAfter?: Date
 ): Promise<void> {
+  // When the provider tells us exactly when it'll accept mail again, that wins over the generic
+  // backoff -- retrying sooner just reproduces the same rate-limit error immediately. A small
+  // buffer avoids landing exactly on the boundary the provider gave us.
+  const backoffNextAttemptAt = new Date(Date.now() + computeBackoffMs(attempts));
+  const providerNextAttemptAt = retryAfter ? new Date(retryAfter.getTime() + 5000) : undefined;
+  const nextAttemptAt =
+    providerNextAttemptAt && providerNextAttemptAt > backoffNextAttemptAt
+      ? providerNextAttemptAt
+      : backoffNextAttemptAt;
+
   await prisma.emailJob.update({
     where: { id: jobId },
     data: {
       status: "RETRY",
       attempts,
-      nextAttemptAt: new Date(Date.now() + computeBackoffMs(attempts)),
+      nextAttemptAt,
       lastError,
       lockedUntil: null
     }
@@ -64,12 +75,24 @@ export async function markEmailJobRetry(
 // toward MAX_ATTEMPTS and must never be able to land the job in FAILED. It just keeps getting
 // re-queued 12 hours out, indefinitely, until a send actually succeeds (or some other, unrelated
 // error eventually occurs and goes through the normal retry/fail path instead).
-export async function markEmailJobQuotaRetry(prisma: PrismaClient, jobId: string, lastError: string): Promise<void> {
+export async function markEmailJobQuotaRetry(
+  prisma: PrismaClient,
+  jobId: string,
+  lastError: string,
+  retryAfter?: Date
+): Promise<void> {
+  // An explicit instant from Gmail is strictly more informative than the flat 12-hour fallback --
+  // use it when given (it can be much shorter than 12h, e.g. a burst limit phrased the same way
+  // as the daily cap), falling back to the fixed cadence only when Gmail gave us nothing to go on.
+  const nextAttemptAt = retryAfter && retryAfter.getTime() > Date.now()
+    ? retryAfter
+    : new Date(Date.now() + QUOTA_RETRY_MS);
+
   await prisma.emailJob.update({
     where: { id: jobId },
     data: {
       status: "RETRY",
-      nextAttemptAt: new Date(Date.now() + QUOTA_RETRY_MS),
+      nextAttemptAt,
       lastError,
       lockedUntil: null
     }

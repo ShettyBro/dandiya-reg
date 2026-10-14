@@ -19,7 +19,20 @@ import {
 // the raw error message since the googleapis client doesn't expose a stable machine-readable
 // reason code for this specific condition.
 export const DAILY_SEND_QUOTA_PATTERN =
-  /daily user sending (limit|quota)|user-rate limit exceeded \(mail sending\)|550[ -]5\.4\.5/i;
+  /daily user sending (limit|quota)|user-rate limit exceeded.*\(mail sending\)|550[ -]5\.4\.5/i;
+
+// Gmail's 429s for this condition carry their own authoritative "retry after" instant, e.g.
+// "User-rate limit exceeded.  Retry after 2026-10-14T09:32:44.102Z (Mail sending)" -- parsed out
+// whenever present so a transient retry can honor it instead of guessing with a short backoff.
+const RETRY_AFTER_PATTERN = /retry after (\S+)/i;
+
+function parseRetryAfter(message: string): Date | undefined {
+  const match = RETRY_AFTER_PATTERN.exec(message);
+  const raw = match?.[1];
+  if (!raw) return undefined;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
 
 const GMAIL_REQUEST_TIMEOUT_MS = 20000;
 
@@ -139,7 +152,7 @@ export function createGmailSender(env: Env): EmailSender {
       const message = error instanceof Error ? error.message : "Unknown Gmail API error";
 
       if (DAILY_SEND_QUOTA_PATTERN.test(message)) {
-        throw new EmailQuotaExceededError(`Gmail daily sending quota exceeded: ${message}`);
+        throw new EmailQuotaExceededError(`Gmail daily sending quota exceeded: ${message}`, parseRetryAfter(message));
       }
 
       // Gmail API auth failures (expired/revoked refresh token, misconfigured OAuth client) and
@@ -147,7 +160,10 @@ export function createGmailSender(env: Env): EmailSender {
       // re-authorized without losing queued mail, and quota resets on its own. Only a clear
       // client-side rejection (invalid recipient, malformed message) is permanent.
       if (status === 429 || status === 401 || status === 403 || (status !== undefined && status >= 500)) {
-        throw new EmailTransientError(`Gmail transient error${status ? ` (HTTP ${status})` : ""}: ${message}`);
+        throw new EmailTransientError(
+          `Gmail transient error${status ? ` (HTTP ${status})` : ""}: ${message}`,
+          parseRetryAfter(message)
+        );
       }
       if (status !== undefined && status >= 400) {
         throw new EmailPermanentError(`Gmail rejected the request (HTTP ${status}): ${message}`);

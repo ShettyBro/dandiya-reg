@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import {
   EmailPermanentError,
   EmailQuotaExceededError,
+  EmailTransientError,
   type EmailAttachment,
   type EmailSender
 } from "../../lib/email/errors.js";
@@ -112,7 +113,7 @@ export async function processEmailJob(
     // MAX_ATTEMPTS or be able to land the job in FAILED, and uses its own much longer, indefinite
     // retry cadence (see markEmailJobQuotaRetry) instead of the short exponential backoff below.
     if (error instanceof EmailQuotaExceededError) {
-      await markEmailJobQuotaRetry(prisma, job.id, message);
+      await markEmailJobQuotaRetry(prisma, job.id, message, error.retryAfter);
       return "quota-retry";
     }
 
@@ -124,7 +125,8 @@ export async function processEmailJob(
       return "failed";
     }
 
-    await markEmailJobRetry(prisma, job.id, attempts, message);
+    const retryAfter = error instanceof EmailTransientError ? error.retryAfter : undefined;
+    await markEmailJobRetry(prisma, job.id, attempts, message, retryAfter);
     return "retry";
   }
 }
