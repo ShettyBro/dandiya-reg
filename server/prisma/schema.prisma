@@ -29,6 +29,10 @@ enum RegistrationType {
   NON_ACHARYAN_STUDENT
   MY_PEOPLE_ADMIN
   MY_PEOPLE_REGULAR
+  // Backend-only recovery category -- never selectable on the public registration form. Used for
+  // registrations reconstructed directly from a confirmed ERP payment record (person paid, but
+  // never completed registration on the site) rather than self-submitted through the wizard.
+  MISSING_REGISTRATION
 }
 
 enum IdentityDocumentType {

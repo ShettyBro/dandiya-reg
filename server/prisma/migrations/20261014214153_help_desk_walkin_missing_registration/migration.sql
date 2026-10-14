@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "RegistrationType" ADD VALUE 'MISSING_REGISTRATION';
