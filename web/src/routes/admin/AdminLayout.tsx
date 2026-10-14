@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import {
   ChartBar,
   CreditCard,
+  EnvelopeSimple,
   GearSix,
   IdentificationCard,
   ListChecks,
@@ -19,6 +20,7 @@ const NAV_ITEMS: StaffNavItem[] = [
   { to: "/admin/volunteers", label: "Volunteers", icon: UsersThree },
   { to: "/admin/payments", label: "Payments", icon: CreditCard },
   { to: "/admin/identity", label: "Identity", icon: IdentificationCard },
+  { to: "/admin/email-logs", label: "Email Logs", icon: EnvelopeSimple },
   { to: "/admin/logs", label: "Logs", icon: Terminal },
   { to: "/admin/settings", label: "Settings", icon: GearSix }
 ];

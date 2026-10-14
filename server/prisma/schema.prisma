@@ -369,6 +369,19 @@ model EmailJob {
   @@map("email_jobs")
 }
 
+// The email worker runs as its own separate process/Railway service -- it can't share the API
+// server's in-memory log ring buffer, so it persists its own log lines here instead. Trimmed back
+// to the most recent rows periodically so this never grows unbounded.
+model WorkerLogEntry {
+  id        String   @id @default(uuid())
+  level     String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("worker_log_entries")
+}
+
 model AuditLog {
   id           String   @id @default(uuid())
   actorUser    User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)

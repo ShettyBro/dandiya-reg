@@ -69,6 +69,9 @@ const AdminSettingsPage = lazy(() =>
 const AdminLogsPage = lazy(() =>
   import("./routes/admin/AdminLogsPage.js").then((m) => ({ default: m.AdminLogsPage }))
 );
+const AdminEmailLogsPage = lazy(() =>
+  import("./routes/admin/AdminEmailLogsPage.js").then((m) => ({ default: m.AdminEmailLogsPage }))
+);
 const AdminIdentityPage = lazy(() =>
   import("./routes/admin/AdminIdentityPage.js").then((m) => ({ default: m.AdminIdentityPage }))
 );
@@ -210,6 +213,7 @@ export function App() {
           <Route path="/admin/volunteers" element={<AdminVolunteersPage />} />
           <Route path="/admin/payments" element={<AdminPaymentsPage />} />
           <Route path="/admin/identity" element={<AdminIdentityPage />} />
+          <Route path="/admin/email-logs" element={<AdminEmailLogsPage />} />
           <Route path="/admin/logs" element={<AdminLogsPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
         </Route>
