@@ -25,7 +25,7 @@ function buildTestApp() {
 describe("RBAC middleware", () => {
   it("blocks a role that is not in the allowed list", async () => {
     const app = buildTestApp();
-    const token = signAccessToken({ sub: "user-1", role: "VOLUNTEER" }, env.SESSION_SECRET);
+    const token = signAccessToken({ sub: "user-1", role: "VOLUNTEER" }, env.SESSION_SECRET, 45 * 60);
 
     const response = await request(app).get("/finance-only").set("Cookie", [`access_token=${token}`]);
 
@@ -35,7 +35,7 @@ describe("RBAC middleware", () => {
 
   it("allows a role that is in the allowed list", async () => {
     const app = buildTestApp();
-    const token = signAccessToken({ sub: "user-2", role: "FINANCE" }, env.SESSION_SECRET);
+    const token = signAccessToken({ sub: "user-2", role: "FINANCE" }, env.SESSION_SECRET, 45 * 60);
 
     const response = await request(app).get("/finance-only").set("Cookie", [`access_token=${token}`]);
 

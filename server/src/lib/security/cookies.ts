@@ -1,4 +1,5 @@
 import type { CookieOptions, Request, Response } from "express";
+import { ACCESS_TOKEN_TTL_SECONDS_LONG } from "./tokens.js";
 import type { Env } from "../../app/config/env.js";
 
 export const ACCESS_TOKEN_COOKIE = "access_token";
@@ -22,9 +23,14 @@ export function setAuthCookies(
 ): void {
   const base = baseCookieOptions(env);
 
+  // The cookie's own maxAge is just a browser-side convenience, not the real enforcement -- the
+  // JWT's own `exp` claim (verified server-side on every request) is what actually ends a
+  // session, and that's role-aware (accessTokenTtlSecondsForRole). Using the longest possible
+  // TTL here means the cookie never expires before a long-session role's token does; for
+  // short-session roles the token itself still rejects requests well before this cookie would.
   res.cookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, {
     ...base,
-    maxAge: 15 * 60 * 1000
+    maxAge: ACCESS_TOKEN_TTL_SECONDS_LONG * 1000
   });
   res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
     ...base,

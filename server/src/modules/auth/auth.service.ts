@@ -1,6 +1,7 @@
 import type { PrismaClient, User } from "@prisma/client";
 import { verifyPassword } from "../../lib/security/password.js";
 import {
+  accessTokenTtlSecondsForRole,
   generateOpaqueToken,
   hashOpaqueToken,
   signAccessToken,
@@ -46,7 +47,11 @@ export async function issueSession(
   env: Env,
   user: User
 ): Promise<IssuedSession> {
-  const accessToken = signAccessToken({ sub: user.id, role: user.role }, env.SESSION_SECRET);
+  const accessToken = signAccessToken(
+    { sub: user.id, role: user.role },
+    env.SESSION_SECRET,
+    accessTokenTtlSecondsForRole(user.role)
+  );
   const refreshToken = generateOpaqueToken();
   const csrfToken = generateOpaqueToken();
 
