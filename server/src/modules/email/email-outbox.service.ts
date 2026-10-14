@@ -8,6 +8,12 @@ const MAX_BACKOFF_MS = 15 * 60 * 1000;
 // "resets at midnight") -- so there's no reliable moment to schedule a single retry for. Instead,
 // just keep checking back on a fixed cadence indefinitely.
 const QUOTA_RETRY_MS = 12 * 60 * 60 * 1000;
+// Observed in production: Gmail's "User-rate limit exceeded.  Retry after <timestamp> (Mail
+// sending)" 429 sets that timestamp to essentially the instant of the request itself, not a real
+// future cooldown -- honoring it literally caused an immediate-retry storm identical to the bug
+// this was meant to fix, just inside the quota-retry path instead of the transient-retry path. A
+// retryAfter closer than this to "now" is treated as Gmail giving no actionable hint at all.
+const MIN_MEANINGFUL_RETRY_AFTER_MS = 2 * 60 * 1000;
 
 export async function claimDueEmailJobs(prisma: PrismaClient, batchSize: number): Promise<EmailJob[]> {
   return prisma.$queryRaw<EmailJob[]>`
@@ -81,12 +87,12 @@ export async function markEmailJobQuotaRetry(
   lastError: string,
   retryAfter?: Date
 ): Promise<void> {
-  // An explicit instant from Gmail is strictly more informative than the flat 12-hour fallback --
-  // use it when given (it can be much shorter than 12h, e.g. a burst limit phrased the same way
-  // as the daily cap), falling back to the fixed cadence only when Gmail gave us nothing to go on.
-  const nextAttemptAt = retryAfter && retryAfter.getTime() > Date.now()
-    ? retryAfter
-    : new Date(Date.now() + QUOTA_RETRY_MS);
+  // Only trust a provider-given retryAfter when it's meaningfully in the future -- see
+  // MIN_MEANINGFUL_RETRY_AFTER_MS above for why a near-"now" value must NOT be honored literally.
+  const nextAttemptAt =
+    retryAfter && retryAfter.getTime() > Date.now() + MIN_MEANINGFUL_RETRY_AFTER_MS
+      ? retryAfter
+      : new Date(Date.now() + QUOTA_RETRY_MS);
 
   await prisma.emailJob.update({
     where: { id: jobId },
