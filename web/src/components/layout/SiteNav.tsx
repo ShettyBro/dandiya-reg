@@ -17,7 +17,7 @@ const NAV_LINKS = [
 const INSTAGRAM_URL = "https://www.instagram.com/acharya_sahitya?stkn=MW9zem5qeGY0Zm0zag%3D%3D";
 
 export function SiteNav({ minimal = false }: { minimal?: boolean }) {
-  // Registration is closed on the public site. /reg1 is the hidden path shared by admin only.
+  // Registration is closed on the public site. /finaly is the hidden path shared by admin only.
   const closed = true;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);

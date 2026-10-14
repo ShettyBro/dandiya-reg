@@ -14,7 +14,7 @@ export function Hero() {
   const { config } = useEventConfig();
   const eventDateIso = config?.eventDate ?? FALLBACK_EVENT_DATE_ISO;
   const venue = config?.venue ?? FALLBACK_VENUE;
-  // Registration is closed on the public site. /reg1 is the hidden path shared by admin only.
+  // Registration is closed on the public site. /finaly is the hidden path shared by admin only.
   const closed = true;
 
   return (

@@ -4,7 +4,7 @@ import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { LinkButton } from "../../components/ui/Button.js";
 
 export function FinalCta() {
-  // Registration is closed on the public site. /reg1 is the hidden path shared by admin only.
+  // Registration is closed on the public site. /finaly is the hidden path shared by admin only.
   const closed = true;
 
   return (

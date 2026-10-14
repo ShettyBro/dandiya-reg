@@ -97,14 +97,16 @@ export function App() {
       <AuthProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        {/* /reg1 is the hidden registration path — shared one-on-one by the admin only.
+        {/* /finaly is the hidden registration path — shared one-on-one by the admin only.
             It is never linked from any nav, button, or public page. All old paths
-            (/reg, /register, /register1, /register2) redirect to / so old links are dead. */}
-        <Route path="/reg1" element={<RegisterPage />} />
+            (/reg, /register, /register1, /register2, /reg1, /last) redirect to / so old links are dead. */}
+        <Route path="/finaly" element={<RegisterPage />} />
         <Route path="/reg" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/register1" element={<Navigate to="/" replace />} />
         <Route path="/register2" element={<Navigate to="/" replace />} />
+        <Route path="/reg1" element={<Navigate to="/" replace />} />
+        <Route path="/last" element={<Navigate to="/" replace />} />
         <Route path="/registration/status" element={<StatusPage />} />
         <Route path="/registration/pass" element={<PassPage />} />
         <Route path="/terms" element={<TermsPage />} />

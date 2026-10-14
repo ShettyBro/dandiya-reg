@@ -226,7 +226,7 @@ export function AdminSettingsPage() {
         <div>
           <h2 className="text-sm font-medium text-white/85">Registration by category</h2>
           <p className="mt-1 text-xs text-white/45">
-            Each category opens and closes independently on /reg1 — close any one without affecting the
+            Each category opens and closes independently on /finaly — close any one without affecting the
             others.
           </p>
         </div>
