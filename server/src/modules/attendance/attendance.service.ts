@@ -67,6 +67,29 @@ export async function lookupCredential(
   }
 
   if (credential.credentialType === "STAFF_GUEST_ADMIN") {
+    // My People Admin is the one genuinely unrestricted case (unlimited entry and kit
+    // collection). Every other STAFF_GUEST_ADMIN credential -- a volunteer/team-leader's own
+    // badge, or a Staff/Guest/VIP credential created via Admin > Credentials -- is single-use
+    // per gate, same rule as a normal participant.
+    const isUnrestrictedAdmin = credential.registration?.registrationType === "MY_PEOPLE_ADMIN";
+    if (isUnrestrictedAdmin) {
+      return {
+        credentialType: "STAFF_GUEST_ADMIN",
+        registrationId: null,
+        name: credential.label,
+        publicCode: credential.publicCode,
+        photoObjectKey: null,
+        gate,
+        attendanceState: null,
+        eligibleForAllow: true,
+        eligibleForOverride: false
+      };
+    }
+
+    if (!gate) {
+      throw new CredentialNotFoundError();
+    }
+    const enteredAt = gate === "COLLEGE_GATE" ? credential.collegeGateEnteredAt : credential.eventGateEnteredAt;
     return {
       credentialType: "STAFF_GUEST_ADMIN",
       registrationId: null,
@@ -74,8 +97,8 @@ export async function lookupCredential(
       publicCode: credential.publicCode,
       photoObjectKey: null,
       gate,
-      attendanceState: null,
-      eligibleForAllow: true,
+      attendanceState: enteredAt ? "ENTERED" : "NOT_ENTERED",
+      eligibleForAllow: enteredAt === null,
       eligibleForOverride: false
     };
   }
@@ -128,6 +151,18 @@ export async function allowEntry(
   }
 
   if (credential.credentialType === "STAFF_GUEST_ADMIN") {
+    const isUnrestrictedAdmin = credential.registration?.registrationType === "MY_PEOPLE_ADMIN";
+    if (!isUnrestrictedAdmin) {
+      const field = params.gate === "COLLEGE_GATE" ? "collegeGateEnteredAt" : "eventGateEnteredAt";
+      const result = await prisma.passCredential.updateMany({
+        where: { id: credential.id, [field]: null },
+        data: { [field]: new Date() }
+      });
+      if (result.count !== 1) {
+        throw new AlreadyEnteredError();
+      }
+    }
+
     await recordAuditLog(prisma, {
       actorUserId: params.scannerUserId,
       action: "STAFF_ENTRY_ALLOWED",

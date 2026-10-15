@@ -292,6 +292,12 @@ model PassCredential {
   label            String?
   publicCode       String?        @unique
   createdAt        DateTime       @default(now())
+  // Single-use tracking for a STAFF_GUEST_ADMIN credential that is NOT a My People Admin
+  // registration (volunteer/team-leader's own badge, or a Staff/Guest/VIP credential created
+  // via Admin > Credentials) -- one entry, one kit, same as a normal participant. A My People
+  // Admin credential is the one genuinely unrestricted case and never touches these fields.
+  collegeGateEnteredAt DateTime?
+  eventGateEnteredAt   DateTime?
 
   volunteerProfile VolunteerProfile?
 

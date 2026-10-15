@@ -72,6 +72,43 @@ async function createStaffCredential() {
   return { credentialId, token };
 }
 
+// The one genuinely unrestricted STAFF_GUEST_ADMIN case: a My People Admin registration. Created
+// directly via Prisma (not the public /registrations route, which doesn't accept this type) --
+// same shape my-people.service.ts produces.
+async function createMyPeopleAdminCredential(suffix: string) {
+  const unique = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  const registration = await prisma.registration.create({
+    data: {
+      eventId: env.EVENT_ID,
+      registrationType: "MY_PEOPLE_ADMIN",
+      publicCode: `TESTMPA${unique}`.slice(0, 20),
+      eightDigitCode: unique.replace(/\D/g, "").slice(0, 8).padStart(8, "0"),
+      name: `My People Admin ${suffix}`,
+      phone: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
+      email: `mpa-test-${suffix}-${unique}@acharya.ac.in`,
+      status: "PAYMENT_APPROVED",
+      idempotencyKey: `mpa-test-${suffix}-${unique}`
+    }
+  });
+  createdRegistrationIds.push(registration.id);
+
+  const credentialId = newCredentialId();
+  const token = deriveSignedCredentialToken(env.QR_SECRET, credentialId);
+  await prisma.passCredential.create({
+    data: {
+      id: credentialId,
+      registrationId: registration.id,
+      credentialType: "STAFF_GUEST_ADMIN",
+      opaqueTokenHash: hashCredentialToken(token),
+      active: true,
+      label: registration.name
+    }
+  });
+  createdCredentialIds.push(credentialId);
+
+  return { registrationId: registration.id, token };
+}
+
 // Normal /scan/allow entry is time-gated to the event's real entry window (Phase U9), which is
 // in the future relative to whenever these tests actually run — fake only Date (not timers used
 // by Prisma's async I/O) so entry-window checks (and everything issued afterward, like login JWTs)
@@ -257,18 +294,68 @@ describe("scan allow — participant single entry", () => {
   }, 20000);
 });
 
-describe("staff/guest/admin unrestricted credential", () => {
-  it("allows repeated entries without any single-entry restriction", async () => {
+describe("staff/guest credential (not My People Admin) -- single-use, same as a participant", () => {
+  it("allows the first scan then blocks a repeat at the same gate", async () => {
     const staff = await createStaffCredential();
 
+    const first = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
+      .send({ token: staff.token });
+
+    expect(first.status).toBe(200);
+    expect(first.body.type).toBe("STAFF_GUEST_ADMIN");
+
+    const second = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
+      .send({ token: staff.token });
+
+    expect(second.status).toBe(409);
+
+    const lookup = await request(app)
+      .post("/api/v1/scan/lookup")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
+      .send({ token: staff.token });
+
+    expect(lookup.status).toBe(200);
+    expect(lookup.body.eligibleForAllow).toBe(false);
+  });
+
+  it("tracks Event Entry and Kit Distribution independently", async () => {
+    const staff = await createStaffCredential();
+
+    const kit = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`) // assigned COLLEGE_GATE
+      .send({ token: staff.token });
+    expect(kit.status).toBe(200);
+
+    const entry = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
+      .send({ token: staff.token, gate: "EVENT_GATE" });
+    expect(entry.status).toBe(200);
+  });
+});
+
+describe("My People Admin credential -- genuinely unrestricted", () => {
+  it("allows repeated entries and repeated kit collection without any limit", async () => {
+    const admin = await createMyPeopleAdminCredential("unrestricted");
+
     for (let i = 0; i < 3; i += 1) {
-      const response = await request(app)
+      const kit = await request(app)
         .post("/api/v1/scan/allow")
         .set("Authorization", `Bearer ${volunteerAccessToken}`)
-        .send({ token: staff.token });
+        .send({ token: admin.token });
+      expect(kit.status).toBe(200);
+      expect(kit.body.type).toBe("STAFF_GUEST_ADMIN");
 
-      expect(response.status).toBe(200);
-      expect(response.body.type).toBe("STAFF_GUEST_ADMIN");
+      const entry = await request(app)
+        .post("/api/v1/scan/allow")
+        .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
+        .send({ token: admin.token, gate: "EVENT_GATE" });
+      expect(entry.status).toBe(200);
     }
   });
 });

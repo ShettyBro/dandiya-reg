@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
-import { CameraRotate, Flashlight, QrCode, ShieldCheck, Warning } from "@phosphor-icons/react";
+import { CameraRotate, Flashlight, QrCode, Warning } from "@phosphor-icons/react";
 import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 import { Button } from "../../components/ui/Button.js";
@@ -36,7 +36,7 @@ interface ScanLookupResult {
 
 type ResultState =
   | { kind: "lookup"; data: ScanLookupResult }
-  | { kind: "allowed"; label: string; isStaffAdmin: boolean }
+  | { kind: "allowed"; label: string }
   | { kind: "overridden"; label: string }
   | { kind: "blocked"; message: string }
   | { kind: "not-found" }
@@ -144,11 +144,7 @@ export function VolunteerScanPage() {
         method: "POST",
         body: { token, ...(effectiveGate ? { gate: effectiveGate } : {}) }
       });
-      setResult({
-        kind: "allowed",
-        label: response.name ?? response.label ?? "Done",
-        isStaffAdmin: response.type === "STAFF_GUEST_ADMIN"
-      });
+      setResult({ kind: "allowed", label: response.name ?? response.label ?? "Done" });
     } catch (error) {
       handleAllowError(error);
     } finally {
@@ -176,7 +172,7 @@ export function VolunteerScanPage() {
       // visually verify (no photo shown here anymore) -- a valid, eligible scan marks entry
       // immediately with no extra tap. Dandiya kit distribution always needs a deliberate tap:
       // the photo is shown specifically so a human can glance at it before handing over a kit.
-      const shouldAutoAllow = isEntryGate && (lookup.credentialType === "STAFF_GUEST_ADMIN" || lookup.eligibleForAllow);
+      const shouldAutoAllow = isEntryGate && lookup.eligibleForAllow;
 
       if (shouldAutoAllow) {
         await performAllow(token);
@@ -397,7 +393,6 @@ function ScanResultPanel({
   }
 
   if (result.kind === "allowed" || result.kind === "overridden") {
-    const showAdminBadge = result.kind === "allowed" && result.isStaffAdmin;
     return (
       <GlassPanel className="flex flex-col items-center gap-4 border-emerald-400/40 p-8 text-center">
         <p className="text-xs uppercase tracking-[0.12em] text-emerald-300">
@@ -407,12 +402,6 @@ function ScanResultPanel({
               ? "Entered"
               : "Kit given"}
         </p>
-        {showAdminBadge && (
-          <span className="flex items-center gap-1.5 rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-3 py-1 text-xs font-semibold text-festival-gold">
-            <ShieldCheck size={14} weight="fill" />
-            Admin
-          </span>
-        )}
         <p className="font-display text-xl font-semibold text-white">{result.label}</p>
         <Button type="button" onClick={onNext} className="w-full">
           Scan next
@@ -432,27 +421,12 @@ function ScanResultPanel({
           className="h-24 w-24 rounded-full border-2 border-white/20 object-cover"
         />
       )}
-      {data.credentialType === "STAFF_GUEST_ADMIN" && (
-        <span className="flex items-center gap-1.5 rounded-pill border border-festival-gold/40 bg-festival-gold/10 px-3 py-1 text-xs font-semibold text-festival-gold">
-          <ShieldCheck size={14} weight="fill" />
-          Admin
-        </span>
-      )}
       <p className="font-display text-xl font-semibold text-white">
         {data.name ?? "Staff / Guest"}
       </p>
       {data.publicCode && <p className="text-xs text-white/50">{data.publicCode}</p>}
 
-      {data.credentialType === "STAFF_GUEST_ADMIN" && (
-        <>
-          <p className="text-sm text-indigo-300">Unrestricted staff credential</p>
-          <Button type="button" onClick={onAllow} disabled={processing} className="w-full">
-            {processing ? "Working..." : isEntryGate ? "Allow entry" : "Give kit"}
-          </Button>
-        </>
-      )}
-
-      {data.credentialType === "PARTICIPANT" && data.eligibleForAllow && (
+      {data.eligibleForAllow && (
         <>
           <p className="text-sm text-emerald-300">{isEntryGate ? "Ready to enter" : "Ready — kit not yet given"}</p>
           <Button type="button" onClick={onAllow} disabled={processing} className="w-full">
@@ -461,7 +435,7 @@ function ScanResultPanel({
         </>
       )}
 
-      {data.credentialType === "PARTICIPANT" && !data.eligibleForAllow && (
+      {!data.eligibleForAllow && data.credentialType === "PARTICIPANT" && (
         <>
           <p className="text-sm text-amber-300">{isEntryGate ? "Already entered" : "Already received a kit"}</p>
           {isTeamLeader ? (
@@ -486,6 +460,10 @@ function ScanResultPanel({
             <p className="text-xs text-white/50">Ask a Team Leader if this needs an override.</p>
           ) : null}
         </>
+      )}
+
+      {!data.eligibleForAllow && data.credentialType === "STAFF_GUEST_ADMIN" && (
+        <p className="text-sm text-amber-300">{isEntryGate ? "Already entered" : "Already received a kit"}</p>
       )}
 
       <button type="button" onClick={onNext} className="text-xs text-white/40 underline">
