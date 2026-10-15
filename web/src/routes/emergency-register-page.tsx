@@ -136,6 +136,7 @@ export function EmergencyRegisterPage() {
                 onBack={() => setStep(0)}
                 onComplete={handleUploadComplete}
                 submitLabel="Complete registration"
+                skipPhoto
               />
               {completing && <p className="mt-4 text-center text-sm text-white/60">Finishing registration...</p>}
               {completeError && <p className="mt-4 text-center text-sm text-red-300">{completeError}</p>}

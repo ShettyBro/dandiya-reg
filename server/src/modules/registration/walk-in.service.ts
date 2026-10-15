@@ -6,7 +6,6 @@ import type { Env } from "../../app/config/env.js";
 
 export class WalkInRegistrationNotFoundError extends Error {}
 export class WalkInAlreadyDecidedError extends Error {}
-export class WalkInPhotoMissingError extends Error {}
 export class WalkInIdentityMissingError extends Error {}
 
 // The /emg link is for people who already paid in the ERP but never finished registering --
@@ -29,11 +28,7 @@ export async function completeWalkInRegistration(
       throw new WalkInAlreadyDecidedError();
     }
 
-    const needsPhoto = registration.registrationType !== "ACHARYA_FACULTY";
-    if (needsPhoto && !registration.photoObjectKey) {
-      throw new WalkInPhotoMissingError();
-    }
-
+    // No photo required for a walk-in registration -- filled in on the spot, nothing to collect.
     const needsIdentity = IDENTITY_REQUIRED_TYPES.includes(registration.registrationType);
     if (needsIdentity && !registration.collegeIdImageObjectKey && !registration.acharyanProofObjectKey) {
       throw new WalkInIdentityMissingError();

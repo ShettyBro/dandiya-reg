@@ -107,7 +107,7 @@ describe("POST /registrations/:id/complete-walk-in", () => {
     expect(second.body.code).toBe("ALREADY_DECIDED");
   });
 
-  it("rejects a registration type that needs a photo when none was uploaded", async () => {
+  it("completes a walk-in registration with no photo at all, for a type that normally needs one", async () => {
     const createResponse = await request(app)
       .post("/api/v1/registrations")
       .set("Idempotency-Key", `walk-in-test-nophoto-${Date.now()}`)
@@ -126,8 +126,13 @@ describe("POST /registrations/:id/complete-walk-in", () => {
     const response = await request(app).post(
       `/api/v1/registrations/${createResponse.body.registrationId}/complete-walk-in`
     );
-    expect(response.status).toBe(409);
-    expect(response.body.code).toBe("PHOTO_MISSING");
+    expect(response.status).toBe(200);
+
+    const registration = await prisma.registration.findUniqueOrThrow({
+      where: { id: createResponse.body.registrationId }
+    });
+    expect(registration.status).toBe("PAYMENT_APPROVED");
+    expect(registration.photoObjectKey).toBeNull();
   });
 
   it("returns 404 for a non-existent registration", async () => {

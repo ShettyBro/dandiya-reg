@@ -76,15 +76,18 @@ export function DetailsAndUploadStep({
   idempotencyKey,
   onBack,
   onComplete,
-  submitLabel = "Pay now"
+  submitLabel = "Pay now",
+  skipPhoto = false
 }: {
   registrationType: RegistrationType;
   idempotencyKey: string;
   onBack: () => void;
   onComplete: (response: CreateRegistrationResponse) => void;
   submitLabel?: string;
+  // Walk-in (/emg) registration: Help Desk/organizer-filled on the spot, no photo collected.
+  skipPhoto?: boolean;
 }) {
-  const needsPhoto = registrationType !== "ACHARYA_FACULTY";
+  const needsPhoto = registrationType !== "ACHARYA_FACULTY" && !skipPhoto;
   const needsIdentity = registrationType === "NON_ACHARYAN_STUDENT" || registrationType === "ACHARYA_ALUMNI";
   const requireAcharyaDomain = registrationType === "ACHARYA_STUDENT" || registrationType === "ACHARYA_FACULTY";
 

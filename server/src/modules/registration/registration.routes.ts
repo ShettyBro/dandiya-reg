@@ -23,7 +23,6 @@ import {
   completeWalkInRegistration,
   WalkInAlreadyDecidedError,
   WalkInIdentityMissingError,
-  WalkInPhotoMissingError,
   WalkInRegistrationNotFoundError
 } from "./walk-in.service.js";
 import { registrationSchema } from "./registration.schemas.js";
@@ -327,10 +326,6 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
       }
       if (error instanceof WalkInAlreadyDecidedError) {
         sendError(req, res, 409, "ALREADY_DECIDED", "This registration has already been decided");
-        return;
-      }
-      if (error instanceof WalkInPhotoMissingError) {
-        sendError(req, res, 409, "PHOTO_MISSING", "A photo is required before this can be completed");
         return;
       }
       if (error instanceof WalkInIdentityMissingError) {
