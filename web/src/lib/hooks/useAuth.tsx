@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiRequest, ApiError } from "../api.js";
+import { clearTokens, getRefreshToken, setTokens } from "../auth-tokens.js";
 
 export type AssignedGate = "COLLEGE_GATE" | "EVENT_GATE";
 
@@ -21,6 +22,14 @@ export interface AuthUser {
   profile: VolunteerProfile | null;
 }
 
+interface LoginResponse {
+  role: string;
+  email: string;
+  mustChangePassword: boolean;
+  accessToken: string;
+  refreshToken: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
@@ -38,6 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refetch = useCallback(async () => {
     setLoading(true);
     try {
+      // No access token yet on a fresh page load (it only lives in memory) -- apiRequest's own
+      // 401-triggers-refresh handling transparently mints one from the stored refresh token
+      // before this call ever reaches the server, as long as one exists.
+      if (!getRefreshToken()) {
+        setUser(null);
+        return;
+      }
       const me = await apiRequest<AuthUser>("/auth/me");
       setUser(me);
     } catch (error) {
@@ -53,16 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refetch();
   }, [refetch]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      await apiRequest("/auth/login", { method: "POST", body: { email, password } });
-      await refetch();
-    },
-    [refetch]
-  );
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await apiRequest<LoginResponse>("/auth/login", { method: "POST", body: { email, password } });
+    setTokens(result.accessToken, result.refreshToken);
+    await refetch();
+  }, [refetch]);
 
   const logout = useCallback(async () => {
-    await apiRequest("/auth/logout", { method: "POST" });
+    const refreshToken = getRefreshToken();
+    try {
+      await apiRequest("/auth/logout", { method: "POST", body: refreshToken ? { refreshToken } : undefined });
+    } catch {
+      // Still clear local state even if the server call fails (offline, already-expired session,
+      // etc.) -- the user asked to log out, and there's nothing else useful to do with the error.
+    }
+    clearTokens();
     setUser(null);
   }, []);
 

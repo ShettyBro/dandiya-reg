@@ -4,13 +4,6 @@ import { z } from "zod";
 import { sendError } from "../../app/middleware/errors.js";
 import { loginRateLimiter } from "../../lib/security/rate-limit.js";
 import {
-  ACCESS_TOKEN_COOKIE,
-  clearAuthCookies,
-  CSRF_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-  setAuthCookies
-} from "../../lib/security/cookies.js";
-import {
   AccountDisabledError,
   authenticate,
   InvalidCredentialsError,
@@ -27,6 +20,14 @@ import type { Env } from "../../app/config/env.js";
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1)
+});
+
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1)
+});
+
+const logoutSchema = z.object({
+  refreshToken: z.string().min(1).optional()
 });
 
 const changePasswordSchema = z.object({
@@ -47,7 +48,6 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
     try {
       const user = await authenticate(prisma, parsed.data.email, parsed.data.password);
       const session = await issueSession(prisma, env, user);
-      setAuthCookies(res, env, session);
 
       await prisma.user.update({
         where: { id: user.id },
@@ -68,7 +68,8 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
         role: user.role,
         email: user.email,
         mustChangePassword: profile?.mustChangePassword ?? false,
-        csrfToken: session.csrfToken
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken
       });
     } catch (error) {
       if (error instanceof AccountDisabledError) {
@@ -84,7 +85,8 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
   });
 
   router.post("/auth/logout", requireAuth(env), async (req, res) => {
-    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    const parsed = logoutSchema.safeParse(req.body);
+    const refreshToken = parsed.success ? parsed.data.refreshToken : undefined;
     if (refreshToken) {
       await revokeRefreshToken(prisma, refreshToken);
     }
@@ -97,29 +99,26 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
       requestId: req.id !== undefined ? String(req.id) : null
     });
 
-    clearAuthCookies(res, env);
     res.status(204).send();
   });
 
   router.post("/auth/refresh", loginRateLimiter, async (req, res) => {
-    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
-
-    if (!refreshToken) {
+    const parsed = refreshSchema.safeParse(req.body);
+    if (!parsed.success) {
       sendError(req, res, 401, "UNAUTHENTICATED", "Missing refresh token");
       return;
     }
 
     try {
-      const session = await rotateRefreshToken(prisma, env, refreshToken);
-      setAuthCookies(res, env, session);
+      const session = await rotateRefreshToken(prisma, env, parsed.data.refreshToken);
       res.status(200).json({
         role: session.user.role,
         email: session.user.email,
-        csrfToken: session.csrfToken
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken
       });
     } catch (error) {
       if (error instanceof InvalidRefreshTokenError) {
-        clearAuthCookies(res, env);
         sendError(req, res, 401, "UNAUTHENTICATED", "Invalid or expired refresh token");
         return;
       }
@@ -144,7 +143,6 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
       email: user?.email,
       status: user?.status,
       mustChangePassword: user?.volunteerProfile?.mustChangePassword ?? false,
-      csrfToken: req.cookies?.[CSRF_TOKEN_COOKIE] as string | undefined,
       profile: user?.volunteerProfile
         ? {
             name: user.volunteerProfile.name,
@@ -195,5 +193,3 @@ export function createAuthRouter(prisma: PrismaClient, env: Env): Router {
 
   return router;
 }
-
-export { ACCESS_TOKEN_COOKIE };

@@ -39,7 +39,6 @@ export async function authenticate(
 export interface IssuedSession {
   accessToken: string;
   refreshToken: string;
-  csrfToken: string;
 }
 
 export async function issueSession(
@@ -53,7 +52,6 @@ export async function issueSession(
     accessTokenTtlSecondsForRole(user.role)
   );
   const refreshToken = generateOpaqueToken();
-  const csrfToken = generateOpaqueToken();
 
   await prisma.refreshToken.create({
     data: {
@@ -63,7 +61,7 @@ export async function issueSession(
     }
   });
 
-  return { accessToken, refreshToken, csrfToken };
+  return { accessToken, refreshToken };
 }
 
 export async function revokeRefreshToken(prisma: PrismaClient, rawToken: string): Promise<void> {

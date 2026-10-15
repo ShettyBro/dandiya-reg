@@ -19,15 +19,9 @@ const createdRegistrationIds: string[] = [];
 const createdUserIds: string[] = [];
 const createdCredentialIds: string[] = [];
 
-let adminCookies: string[];
-let adminCsrf: string;
-let volunteerCookies: string[];
+let adminAccessToken: string;
+let volunteerAccessToken: string;
 let originalPaymentInstructions: string;
-
-function extractCookie(setCookieHeader: string[] | undefined, name: string): string | undefined {
-  const line = setCookieHeader?.find((entry) => entry.startsWith(`${name}=`));
-  return line?.split(";")[0]?.split("=")[1];
-}
 
 beforeAll(async () => {
   const event = await prisma.event.findUniqueOrThrow({ where: { id: env.EVENT_ID } });
@@ -44,13 +38,12 @@ beforeAll(async () => {
   createdUserIds.push(volunteer.id);
 
   const adminLogin = await request(app).post("/api/v1/auth/login").send({ email: ADMIN_EMAIL, password: PASSWORD });
-  adminCookies = adminLogin.headers["set-cookie"] as unknown as string[];
-  adminCsrf = extractCookie(adminCookies, "csrf_token") ?? "";
+  adminAccessToken = adminLogin.body.accessToken;
 
   const volunteerLogin = await request(app)
     .post("/api/v1/auth/login")
     .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
-  volunteerCookies = volunteerLogin.headers["set-cookie"] as unknown as string[];
+  volunteerAccessToken = volunteerLogin.body.accessToken;
 
   const registration = await request(app)
     .post("/api/v1/registrations")
@@ -89,12 +82,16 @@ afterAll(async () => {
 
 describe("admin dashboard", () => {
   it("requires ADMIN role", async () => {
-    const response = await request(app).get("/api/v1/admin/dashboard").set("Cookie", volunteerCookies);
+    const response = await request(app)
+      .get("/api/v1/admin/dashboard")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`);
     expect(response.status).toBe(403);
   });
 
   it("returns metrics for ADMIN", async () => {
-    const response = await request(app).get("/api/v1/admin/dashboard").set("Cookie", adminCookies);
+    const response = await request(app)
+      .get("/api/v1/admin/dashboard")
+      .set("Authorization", `Bearer ${adminAccessToken}`);
     expect(response.status).toBe(200);
     expect(typeof response.body.totalRegistrations).toBe("number");
     expect(typeof response.body.totalCollectionInPaise).toBe("number");
@@ -105,7 +102,7 @@ describe("admin registrations search", () => {
   it("finds a registration by partial name search", async () => {
     const response = await request(app)
       .get("/api/v1/admin/registrations?search=Admin Test Participant")
-      .set("Cookie", adminCookies);
+      .set("Authorization", `Bearer ${adminAccessToken}`);
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBeGreaterThanOrEqual(1);
@@ -116,8 +113,7 @@ describe("admin event settings", () => {
   it("updates event settings and records an audit entry", async () => {
     const response = await request(app)
       .post("/api/v1/admin/settings")
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf)
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ paymentInstructions: "Updated payment instructions for testing" });
 
     expect(response.status).toBe(200);
@@ -136,8 +132,7 @@ describe("volunteer management", () => {
     const email = `new-volunteer-${Date.now()}@acharya.ac.in`;
     const createResponse = await request(app)
       .post("/api/v1/admin/volunteers")
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf)
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ name: "New Volunteer", email, phone: "9001122334", role: "VOLUNTEER", gate: "Gate A" });
 
     expect(createResponse.status).toBe(201);
@@ -152,8 +147,7 @@ describe("volunteer management", () => {
 
     const disableResponse = await request(app)
       .patch(`/api/v1/admin/volunteers/${createResponse.body.userId}`)
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf)
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ status: "DISABLED" });
 
     expect(disableResponse.status).toBe(200);
@@ -166,8 +160,7 @@ describe("volunteer management", () => {
     const email = `login-volunteer-${Date.now()}@acharya.ac.in`;
     const createResponse = await request(app)
       .post("/api/v1/admin/volunteers")
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf)
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ name: "Login Volunteer", email, phone: "9001122335", role: "VOLUNTEER" });
     createdUserIds.push(createResponse.body.userId);
 
@@ -178,13 +171,9 @@ describe("volunteer management", () => {
     expect(login.status).toBe(200);
     expect(login.body.mustChangePassword).toBe(true);
 
-    const cookies = login.headers["set-cookie"] as unknown as string[];
-    const csrf = extractCookie(cookies, "csrf_token") ?? "";
-
     const changeResponse = await request(app)
       .post("/api/v1/auth/change-password")
-      .set("Cookie", cookies)
-      .set("X-CSRF-Token", csrf)
+      .set("Authorization", `Bearer ${login.body.accessToken}`)
       .send({ currentPassword: createResponse.body.temporaryPassword, newPassword: "a-new-strong-password" });
 
     expect(changeResponse.status).toBe(200);
@@ -200,8 +189,7 @@ describe("volunteer management", () => {
     const email = `me-volunteer-${Date.now()}@acharya.ac.in`;
     const createResponse = await request(app)
       .post("/api/v1/admin/volunteers")
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf)
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({
         name: "Me Volunteer",
         email,
@@ -215,9 +203,10 @@ describe("volunteer management", () => {
     const login = await request(app)
       .post("/api/v1/auth/login")
       .send({ email, password: createResponse.body.temporaryPassword });
-    const cookies = login.headers["set-cookie"] as unknown as string[];
 
-    const me = await request(app).get("/api/v1/auth/me").set("Cookie", cookies);
+    const me = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${login.body.accessToken}`);
 
     expect(me.status).toBe(200);
     expect(me.body.role).toBe("TEAM_LEADER");
@@ -231,8 +220,7 @@ describe("staff/guest/admin credential management", () => {
   it("creates a credential, retrieves its QR deterministically, then revokes it", async () => {
     const createResponse = await request(app)
       .post("/api/v1/admin/credentials")
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf)
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ label: "Test Gate Staff" });
 
     expect(createResponse.status).toBe(201);
@@ -240,20 +228,18 @@ describe("staff/guest/admin credential management", () => {
 
     const qrResponse = await request(app)
       .get(`/api/v1/admin/credentials/${createResponse.body.id}/qr`)
-      .set("Cookie", adminCookies);
+      .set("Authorization", `Bearer ${adminAccessToken}`);
     expect(qrResponse.status).toBe(200);
     expect(qrResponse.body.qrPayload).toBe(createResponse.body.qrPayload);
 
     const revokeResponse = await request(app)
       .post(`/api/v1/admin/credentials/${createResponse.body.id}/revoke`)
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf);
+      .set("Authorization", `Bearer ${adminAccessToken}`);
     expect(revokeResponse.status).toBe(200);
 
     const secondRevoke = await request(app)
       .post(`/api/v1/admin/credentials/${createResponse.body.id}/revoke`)
-      .set("Cookie", adminCookies)
-      .set("X-CSRF-Token", adminCsrf);
+      .set("Authorization", `Bearer ${adminAccessToken}`);
     expect(secondRevoke.status).toBe(404);
   });
 });
@@ -262,7 +248,7 @@ describe("exports", () => {
   it("streams a CSV export of registrations", async () => {
     const response = await request(app)
       .get("/api/v1/admin/exports/registrations")
-      .set("Cookie", adminCookies);
+      .set("Authorization", `Bearer ${adminAccessToken}`);
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toContain("text/csv");
@@ -273,21 +259,25 @@ describe("exports", () => {
   it("rejects an unsupported export type", async () => {
     const response = await request(app)
       .get("/api/v1/admin/exports/not-a-type")
-      .set("Cookie", adminCookies);
+      .set("Authorization", `Bearer ${adminAccessToken}`);
     expect(response.status).toBe(400);
   });
 });
 
 describe("audit log visibility", () => {
   it("lists audit log entries for ADMIN", async () => {
-    const response = await request(app).get("/api/v1/admin/audit-logs").set("Cookie", adminCookies);
+    const response = await request(app)
+      .get("/api/v1/admin/audit-logs")
+      .set("Authorization", `Bearer ${adminAccessToken}`);
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.items)).toBe(true);
     expect(response.body.total).toBeGreaterThan(0);
   });
 
   it("is not visible to a normal Volunteer", async () => {
-    const response = await request(app).get("/api/v1/admin/audit-logs").set("Cookie", volunteerCookies);
+    const response = await request(app)
+      .get("/api/v1/admin/audit-logs")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`);
     expect(response.status).toBe(403);
   });
 });

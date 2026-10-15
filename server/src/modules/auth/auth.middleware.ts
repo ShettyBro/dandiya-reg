@@ -2,11 +2,6 @@ import type { NextFunction, Request, Response } from "express";
 import type { UserRole } from "@prisma/client";
 import { sendError } from "../../app/middleware/errors.js";
 import { verifyAccessToken } from "../../lib/security/tokens.js";
-import {
-  ACCESS_TOKEN_COOKIE,
-  CSRF_TOKEN_COOKIE,
-  isCsrfSafeRequest
-} from "../../lib/security/cookies.js";
 import type { Env } from "../../app/config/env.js";
 
 declare global {
@@ -18,9 +13,18 @@ declare global {
   }
 }
 
+const BEARER_PREFIX = "Bearer ";
+
+// Bearer-token auth, not cookies -- iOS Safari (and every iOS browser, which all share WebKit)
+// blocks third-party cookies by default, and this app's frontend and API live on unrelated
+// domains (different eTLD+1), so cookie-based auth was silently failing on every iOS device
+// regardless of browser. An Authorization header isn't subject to that restriction at all, and
+// isn't automatically attached by the browser to other sites' requests either, so the CSRF
+// double-submit check this used to need is no longer meaningful and has been removed entirely.
 export function requireAuth(env: Env) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const token = req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined;
+    const header = req.header("authorization");
+    const token = header?.startsWith(BEARER_PREFIX) ? header.slice(BEARER_PREFIX.length) : undefined;
 
     if (!token) {
       sendError(req, res, 401, "UNAUTHENTICATED", "Missing access token");
@@ -33,16 +37,6 @@ export function requireAuth(env: Env) {
     } catch {
       sendError(req, res, 401, "UNAUTHENTICATED", "Invalid or expired access token");
       return;
-    }
-
-    if (!isCsrfSafeRequest(req)) {
-      const csrfCookie = req.cookies?.[CSRF_TOKEN_COOKIE] as string | undefined;
-      const csrfHeader = req.header("x-csrf-token");
-
-      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
-        sendError(req, res, 403, "CSRF_REJECTED", "Missing or invalid CSRF token");
-        return;
-      }
     }
 
     next();

@@ -1,6 +1,5 @@
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { randomUUID } from "node:crypto";
 import { pinoHttp } from "pino-http";
@@ -73,7 +72,6 @@ export function createApp(env: Env, prisma: PrismaClient): Express {
       credentials: true
     })
   );
-  app.use(cookieParser());
   app.use(express.json({ limit: "1mb" }));
 
   app.use("/api/v1", healthRouter);

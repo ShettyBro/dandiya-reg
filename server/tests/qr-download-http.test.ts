@@ -35,13 +35,7 @@ const FINANCE_EMAIL = `test-qrdl-finance-${Date.now()}@acharya.ac.in`;
 const PASSWORD = "correct horse battery staple";
 const createdRegistrationIds: string[] = [];
 
-function extractCookie(setCookieHeader: string[] | undefined, name: string): string | undefined {
-  const line = setCookieHeader?.find((entry) => entry.startsWith(`${name}=`));
-  return line?.split(";")[0]?.split("=")[1];
-}
-
-let financeCookies: string[];
-let financeCsrfToken: string;
+let financeAccessToken: string;
 
 function randomPhone(): string {
   return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
@@ -99,8 +93,7 @@ async function createApprovedRegistration(suffix: string, phone: string, auid?: 
   });
   await request(app)
     .post(`/api/v1/admin/payments/${payment.id}/approve`)
-    .set("Cookie", financeCookies)
-    .set("X-CSRF-Token", financeCsrfToken);
+    .set("Authorization", `Bearer ${financeAccessToken}`);
 
   return { ...(created.body as { registrationId: string; publicCode: string }), email };
 }
@@ -111,8 +104,7 @@ beforeAll(async () => {
     data: { email: FINANCE_EMAIL, passwordHash, role: "FINANCE", status: "ACTIVE" }
   });
   const login = await request(app).post("/api/v1/auth/login").send({ email: FINANCE_EMAIL, password: PASSWORD });
-  financeCookies = login.headers["set-cookie"] as unknown as string[];
-  financeCsrfToken = extractCookie(financeCookies, "csrf_token") ?? "";
+  financeAccessToken = login.body.accessToken;
 });
 
 afterAll(async () => {

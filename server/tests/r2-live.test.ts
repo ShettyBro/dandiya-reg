@@ -208,11 +208,10 @@ describe("live R2 upload flow", () => {
     const login = await request(app)
       .post("/api/v1/auth/login")
       .send({ email: financeEmail, password: "correct horse battery staple" });
-    const cookies = login.headers["set-cookie"] as unknown as string[];
 
     const proofUrlResponse = await request(app)
       .get(`/api/v1/admin/payments/${payment.id}/proof-url`)
-      .set("Cookie", cookies);
+      .set("Authorization", `Bearer ${login.body.accessToken}`);
 
     expect(proofUrlResponse.status).toBe(200);
 

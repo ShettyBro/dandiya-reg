@@ -39,19 +39,12 @@ const VERIFIER_EMAIL = `test-na-verifier-${Date.now()}@acharya.ac.in`;
 const PASSWORD = "correct horse battery staple";
 const createdRegistrationIds: string[] = [];
 
-function extractCookie(setCookieHeader: string[] | undefined, name: string): string | undefined {
-  const line = setCookieHeader?.find((entry) => entry.startsWith(`${name}=`));
-  return line?.split(";")[0]?.split("=")[1];
-}
-
 function randomPhone(): string {
   return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
 }
 
-let financeCookies: string[];
-let financeCsrf: string;
-let verifierCookies: string[];
-let verifierCsrf: string;
+let financeAccessToken: string;
+let verifierAccessToken: string;
 
 async function createNonAcharyanRegistration(suffix: string) {
   const created = await request(app)
@@ -108,12 +101,10 @@ beforeAll(async () => {
     data: { email: VERIFIER_EMAIL, passwordHash, role: "ID_VERIFIER", status: "ACTIVE" }
   });
   const login = await request(app).post("/api/v1/auth/login").send({ email: FINANCE_EMAIL, password: PASSWORD });
-  financeCookies = login.headers["set-cookie"] as unknown as string[];
-  financeCsrf = extractCookie(financeCookies, "csrf_token") ?? "";
+  financeAccessToken = login.body.accessToken;
 
   const verifierLogin = await request(app).post("/api/v1/auth/login").send({ email: VERIFIER_EMAIL, password: PASSWORD });
-  verifierCookies = verifierLogin.headers["set-cookie"] as unknown as string[];
-  verifierCsrf = extractCookie(verifierCookies, "csrf_token") ?? "";
+  verifierAccessToken = verifierLogin.body.accessToken;
 
   const event = await prisma.event.findUnique({ where: { id: env.EVENT_ID } });
   if (event) {
@@ -167,21 +158,18 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
 
     const blockedApprove = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrf);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
     expect(blockedApprove.status).toBe(409);
     expect(blockedApprove.body.code).toBe("IDENTITY_NOT_APPROVED");
 
     const financeBlockedFromIdentity = await request(app)
       .post(`/api/v1/admin/identity/non-acharyan/${registration.registrationId}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrf);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
     expect(financeBlockedFromIdentity.status).toBe(403);
 
     const approveIdentity = await request(app)
       .post(`/api/v1/admin/identity/non-acharyan/${registration.registrationId}/approve`)
-      .set("Cookie", verifierCookies)
-      .set("X-CSRF-Token", verifierCsrf);
+      .set("Authorization", `Bearer ${verifierAccessToken}`);
     expect(approveIdentity.status).toBe(200);
 
     const afterIdentityApproved = await prisma.registration.findUniqueOrThrow({
@@ -192,8 +180,7 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
 
     const approvePayment = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrf);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
     expect(approvePayment.status).toBe(200);
 
     const finalRegistration = await prisma.registration.findUniqueOrThrow({
@@ -220,8 +207,7 @@ describe("Non-Acharyan two-stage identity + payment flow", () => {
 
     const rejectIdentity = await request(app)
       .post(`/api/v1/admin/identity/non-acharyan/${registration.registrationId}/reject`)
-      .set("Cookie", verifierCookies)
-      .set("X-CSRF-Token", verifierCsrf)
+      .set("Authorization", `Bearer ${verifierAccessToken}`)
       .send({ reason: "Aadhaar image unreadable" });
     expect(rejectIdentity.status).toBe(200);
 

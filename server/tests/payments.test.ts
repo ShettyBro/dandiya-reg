@@ -44,14 +44,8 @@ const VOLUNTEER_EMAIL = `test-vol-${Date.now()}@acharya.ac.in`;
 const PASSWORD = "correct horse battery staple";
 
 const createdRegistrationIds: string[] = [];
-let financeCookies: string[];
-let volunteerCookies: string[];
-let financeCsrfToken: string;
-
-function extractCookie(setCookieHeader: string[] | undefined, name: string): string | undefined {
-  const line = setCookieHeader?.find((entry) => entry.startsWith(`${name}=`));
-  return line?.split(";")[0]?.split("=")[1];
-}
+let financeAccessToken: string;
+let volunteerAccessToken: string;
 
 function randomPhone(): string {
   return `9${Math.floor(100000000 + Math.random() * 899999999)}`;
@@ -110,13 +104,12 @@ beforeAll(async () => {
   const financeLogin = await request(app)
     .post("/api/v1/auth/login")
     .send({ email: FINANCE_EMAIL, password: PASSWORD });
-  financeCookies = financeLogin.headers["set-cookie"] as unknown as string[];
-  financeCsrfToken = extractCookie(financeCookies, "csrf_token") ?? "";
+  financeAccessToken = financeLogin.body.accessToken;
 
   const volunteerLogin = await request(app)
     .post("/api/v1/auth/login")
     .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
-  volunteerCookies = volunteerLogin.headers["set-cookie"] as unknown as string[];
+  volunteerAccessToken = volunteerLogin.body.accessToken;
 });
 
 afterAll(async () => {
@@ -223,7 +216,7 @@ describe("finance approve/reject", () => {
 
     const response = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", volunteerCookies);
+      .set("Authorization", `Bearer ${volunteerAccessToken}`);
 
     expect(response.status).toBe(403);
   });
@@ -236,8 +229,7 @@ describe("finance approve/reject", () => {
 
     const response = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrfToken);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe("NOT_REVIEWABLE");
@@ -255,8 +247,7 @@ describe("finance approve/reject", () => {
 
     const response = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/reject`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrfToken)
+      .set("Authorization", `Bearer ${financeAccessToken}`)
       .send({});
 
     expect(response.status).toBe(400);
@@ -274,8 +265,7 @@ describe("finance approve/reject", () => {
 
     const rejectResponse = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/reject`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrfToken)
+      .set("Authorization", `Bearer ${financeAccessToken}`)
       .send({ reason: "Screenshot is blurry, transaction ID unreadable" });
 
     expect(rejectResponse.status).toBe(200);
@@ -314,8 +304,7 @@ describe("finance approve/reject", () => {
 
     const approveResponse = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrfToken);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
 
     expect(approveResponse.status).toBe(200);
 
@@ -351,14 +340,12 @@ describe("finance approve/reject", () => {
 
     const first = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrfToken);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
     expect(first.status).toBe(200);
 
     const second = await request(app)
       .post(`/api/v1/admin/payments/${payment.id}/approve`)
-      .set("Cookie", financeCookies)
-      .set("X-CSRF-Token", financeCsrfToken);
+      .set("Authorization", `Bearer ${financeAccessToken}`);
     expect(second.status).toBe(409);
   });
 
@@ -374,7 +361,7 @@ describe("finance approve/reject", () => {
 
     const response = await request(app)
       .get(`/api/v1/admin/payments/${payment.id}/proof-url`)
-      .set("Cookie", volunteerCookies);
+      .set("Authorization", `Bearer ${volunteerAccessToken}`);
 
     expect(response.status).toBe(403);
   });
