@@ -67,6 +67,9 @@ export async function lookupCredential(
   }
 
   if (credential.credentialType === "STAFF_GUEST_ADMIN") {
+    // Kit distribution (College Gate) is single-use even for an unrestricted staff/admin
+    // credential; event entry stays fully unrestricted and untracked, as before.
+    const kitAlreadyCollected = gate === "COLLEGE_GATE" && credential.kitCollectedAt !== null;
     return {
       credentialType: "STAFF_GUEST_ADMIN",
       registrationId: null,
@@ -74,8 +77,8 @@ export async function lookupCredential(
       publicCode: credential.publicCode,
       photoObjectKey: null,
       gate,
-      attendanceState: null,
-      eligibleForAllow: true,
+      attendanceState: gate === "COLLEGE_GATE" ? (kitAlreadyCollected ? "ENTERED" : "NOT_ENTERED") : null,
+      eligibleForAllow: !kitAlreadyCollected,
       eligibleForOverride: false
     };
   }
@@ -128,6 +131,16 @@ export async function allowEntry(
   }
 
   if (credential.credentialType === "STAFF_GUEST_ADMIN") {
+    if (params.gate === "COLLEGE_GATE") {
+      const result = await prisma.passCredential.updateMany({
+        where: { id: credential.id, kitCollectedAt: null },
+        data: { kitCollectedAt: new Date() }
+      });
+      if (result.count !== 1) {
+        throw new AlreadyEnteredError();
+      }
+    }
+
     await recordAuditLog(prisma, {
       actorUserId: params.scannerUserId,
       action: "STAFF_ENTRY_ALLOWED",

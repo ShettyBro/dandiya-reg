@@ -20,15 +20,8 @@ const DISABLED_VOLUNTEER_EMAIL = `test-att-disabled-${Date.now()}@acharya.ac.in`
 const createdRegistrationIds: string[] = [];
 const createdCredentialIds: string[] = [];
 
-let volunteerCookies: string[];
-let volunteerCsrf: string;
-let teamLeaderCookies: string[];
-let teamLeaderCsrf: string;
-
-function extractCookie(setCookieHeader: string[] | undefined, name: string): string | undefined {
-  const line = setCookieHeader?.find((entry) => entry.startsWith(`${name}=`));
-  return line?.split(";")[0]?.split("=")[1];
-}
+let volunteerAccessToken: string;
+let teamLeaderAccessToken: string;
 
 async function createParticipantWithCredential(suffix: string) {
   const created = await request(app)
@@ -119,14 +112,12 @@ beforeAll(async () => {
   const volunteerLogin = await request(app)
     .post("/api/v1/auth/login")
     .send({ email: VOLUNTEER_EMAIL, password: PASSWORD });
-  volunteerCookies = volunteerLogin.headers["set-cookie"] as unknown as string[];
-  volunteerCsrf = extractCookie(volunteerCookies, "csrf_token") ?? "";
+  volunteerAccessToken = volunteerLogin.body.accessToken;
 
   const teamLeaderLogin = await request(app)
     .post("/api/v1/auth/login")
     .send({ email: TEAM_LEADER_EMAIL, password: PASSWORD });
-  teamLeaderCookies = teamLeaderLogin.headers["set-cookie"] as unknown as string[];
-  teamLeaderCsrf = extractCookie(teamLeaderCookies, "csrf_token") ?? "";
+  teamLeaderAccessToken = teamLeaderLogin.body.accessToken;
 });
 
 afterAll(async () => {
@@ -153,8 +144,7 @@ describe("scan lookup", () => {
   it("rejects an unknown token", async () => {
     const response = await request(app)
       .post("/api/v1/scan/lookup")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: "not-a-real-token" });
 
     expect(response.status).toBe(404);
@@ -166,8 +156,7 @@ describe("scan lookup", () => {
 
     const response = await request(app)
       .post("/api/v1/scan/lookup")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token });
 
     expect(response.status).toBe(200);
@@ -183,8 +172,7 @@ describe("scan allow — participant single entry", () => {
 
     const first = await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token });
 
     expect(first.status).toBe(200);
@@ -193,8 +181,7 @@ describe("scan allow — participant single entry", () => {
 
     const second = await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token });
 
     expect(second.status).toBe(409);
@@ -214,23 +201,20 @@ describe("scan allow — participant single entry", () => {
 
     const collegeGateEntry = await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token, gate: "COLLEGE_GATE" });
     expect(collegeGateEntry.status).toBe(200);
 
     const eventGateEntry = await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, gate: "EVENT_GATE" });
     expect(eventGateEntry.status).toBe(200);
     expect(eventGateEntry.body.gate).toBe("EVENT_GATE");
 
     const secondEventGateAttempt = await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, gate: "EVENT_GATE" });
     expect(secondEventGateAttempt.status).toBe(409);
     expect(secondEventGateAttempt.body.code).toBe("ALREADY_ENTERED");
@@ -250,8 +234,7 @@ describe("scan allow — participant single entry", () => {
       Array.from({ length: attempts }, () =>
         request(app)
           .post("/api/v1/scan/allow")
-          .set("Cookie", volunteerCookies)
-          .set("X-CSRF-Token", volunteerCsrf)
+          .set("Authorization", `Bearer ${volunteerAccessToken}`)
           .send({ token: participant.token })
       )
     );
@@ -275,19 +258,48 @@ describe("scan allow — participant single entry", () => {
 });
 
 describe("staff/guest/admin unrestricted credential", () => {
-  it("allows repeated entries without any single-entry restriction", async () => {
+  it("allows repeated event-entry scans without any single-entry restriction", async () => {
     const staff = await createStaffCredential();
 
     for (let i = 0; i < 3; i += 1) {
       const response = await request(app)
         .post("/api/v1/scan/allow")
-        .set("Cookie", volunteerCookies)
-        .set("X-CSRF-Token", volunteerCsrf)
-        .send({ token: staff.token });
+        .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
+        .send({ token: staff.token, gate: "EVENT_GATE" });
 
       expect(response.status).toBe(200);
       expect(response.body.type).toBe("STAFF_GUEST_ADMIN");
     }
+  });
+
+  it("only allows kit distribution once, even for an unrestricted staff/admin credential", async () => {
+    const staff = await createStaffCredential();
+
+    // volunteerAccessToken's assigned gate is COLLEGE_GATE (kit distribution) -- a physical kit
+    // can't be handed out an unlimited number of times the way event entry can, so this is
+    // single-use even for an otherwise-unrestricted credential.
+    const first = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
+      .send({ token: staff.token });
+
+    expect(first.status).toBe(200);
+    expect(first.body.type).toBe("STAFF_GUEST_ADMIN");
+
+    const second = await request(app)
+      .post("/api/v1/scan/allow")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
+      .send({ token: staff.token });
+
+    expect(second.status).toBe(409);
+
+    const lookup = await request(app)
+      .post("/api/v1/scan/lookup")
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
+      .send({ token: staff.token });
+
+    expect(lookup.status).toBe(200);
+    expect(lookup.body.eligibleForAllow).toBe(false);
   });
 });
 
@@ -296,14 +308,12 @@ describe("Team Leader override", () => {
     const participant = await createParticipantWithCredential("vol-override-blocked");
     await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token });
 
     const response = await request(app)
       .post("/api/v1/scan/override")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token, reason: "trying to bypass as a normal volunteer" });
 
     expect(response.status).toBe(403);
@@ -313,14 +323,12 @@ describe("Team Leader override", () => {
     const participant = await createParticipantWithCredential("reason-required");
     await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token });
 
     const response = await request(app)
       .post("/api/v1/scan/override")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, reason: "hi" });
 
     expect(response.status).toBe(400);
@@ -331,8 +339,7 @@ describe("Team Leader override", () => {
 
     const response = await request(app)
       .post("/api/v1/scan/override")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, reason: "should not work, not entered yet" });
 
     expect(response.status).toBe(409);
@@ -343,14 +350,12 @@ describe("Team Leader override", () => {
     const participant = await createParticipantWithCredential("override-flow");
     await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", volunteerCookies)
-      .set("X-CSRF-Token", volunteerCsrf)
+      .set("Authorization", `Bearer ${volunteerAccessToken}`)
       .send({ token: participant.token });
 
     const response = await request(app)
       .post("/api/v1/scan/override")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, reason: "Lost original device, verified identity manually" });
 
     expect(response.status).toBe(200);
@@ -383,14 +388,12 @@ describe("Team Leader override", () => {
     // either gate explicitly) to enter the Event Gate here.
     await request(app)
       .post("/api/v1/scan/allow")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, gate: "EVENT_GATE" });
 
     const response = await request(app)
       .post("/api/v1/scan/override")
-      .set("Cookie", teamLeaderCookies)
-      .set("X-CSRF-Token", teamLeaderCsrf)
+      .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
       .send({ token: participant.token, reason: "Event Gate override test", gate: "EVENT_GATE" });
 
     expect(response.status).toBe(200);
@@ -424,14 +427,11 @@ describe("gate assignment enforcement", () => {
     });
     try {
       const login = await request(app).post("/api/v1/auth/login").send({ email, password: PASSWORD });
-      const cookies = login.headers["set-cookie"] as unknown as string[];
-      const csrf = extractCookie(cookies, "csrf_token") ?? "";
 
       const participant = await createParticipantWithCredential("unassigned-gate");
       const response = await request(app)
         .post("/api/v1/scan/lookup")
-        .set("Cookie", cookies)
-        .set("X-CSRF-Token", csrf)
+        .set("Authorization", `Bearer ${login.body.accessToken}`)
         .send({ token: participant.token });
 
       expect(response.status).toBe(409);
@@ -453,8 +453,7 @@ describe("no fixed entry window", () => {
     try {
       const response = await request(app)
         .post("/api/v1/scan/allow")
-        .set("Cookie", volunteerCookies)
-        .set("X-CSRF-Token", volunteerCsrf)
+        .set("Authorization", `Bearer ${volunteerAccessToken}`)
         .send({ token: participant.token });
 
       expect(response.status).toBe(200);
@@ -481,8 +480,7 @@ describe("attendanceEnabled toggle", () => {
     await withAttendanceDisabled(async () => {
       const response = await request(app)
         .post("/api/v1/scan/allow")
-        .set("Cookie", volunteerCookies)
-        .set("X-CSRF-Token", volunteerCsrf)
+        .set("Authorization", `Bearer ${volunteerAccessToken}`)
         .send({ token: participant.token });
 
       expect(response.status).toBe(409);
@@ -495,8 +493,7 @@ describe("attendanceEnabled toggle", () => {
     await withAttendanceDisabled(async () => {
       const response = await request(app)
         .post("/api/v1/scan/override")
-        .set("Cookie", teamLeaderCookies)
-        .set("X-CSRF-Token", teamLeaderCsrf)
+        .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
         .send({ token: participant.token, reason: "testing disabled attendance" });
 
       expect(response.status).toBe(409);
