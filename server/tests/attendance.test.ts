@@ -258,48 +258,18 @@ describe("scan allow — participant single entry", () => {
 });
 
 describe("staff/guest/admin unrestricted credential", () => {
-  it("allows repeated event-entry scans without any single-entry restriction", async () => {
+  it("allows repeated entries without any single-entry restriction", async () => {
     const staff = await createStaffCredential();
 
     for (let i = 0; i < 3; i += 1) {
       const response = await request(app)
         .post("/api/v1/scan/allow")
-        .set("Authorization", `Bearer ${teamLeaderAccessToken}`)
-        .send({ token: staff.token, gate: "EVENT_GATE" });
+        .set("Authorization", `Bearer ${volunteerAccessToken}`)
+        .send({ token: staff.token });
 
       expect(response.status).toBe(200);
       expect(response.body.type).toBe("STAFF_GUEST_ADMIN");
     }
-  });
-
-  it("only allows kit distribution once, even for an unrestricted staff/admin credential", async () => {
-    const staff = await createStaffCredential();
-
-    // volunteerAccessToken's assigned gate is COLLEGE_GATE (kit distribution) -- a physical kit
-    // can't be handed out an unlimited number of times the way event entry can, so this is
-    // single-use even for an otherwise-unrestricted credential.
-    const first = await request(app)
-      .post("/api/v1/scan/allow")
-      .set("Authorization", `Bearer ${volunteerAccessToken}`)
-      .send({ token: staff.token });
-
-    expect(first.status).toBe(200);
-    expect(first.body.type).toBe("STAFF_GUEST_ADMIN");
-
-    const second = await request(app)
-      .post("/api/v1/scan/allow")
-      .set("Authorization", `Bearer ${volunteerAccessToken}`)
-      .send({ token: staff.token });
-
-    expect(second.status).toBe(409);
-
-    const lookup = await request(app)
-      .post("/api/v1/scan/lookup")
-      .set("Authorization", `Bearer ${volunteerAccessToken}`)
-      .send({ token: staff.token });
-
-    expect(lookup.status).toBe(200);
-    expect(lookup.body.eligibleForAllow).toBe(false);
   });
 });
 

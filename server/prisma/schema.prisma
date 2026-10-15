@@ -292,11 +292,6 @@ model PassCredential {
   label            String?
   publicCode       String?        @unique
   createdAt        DateTime       @default(now())
-  // Kit distribution is single-use even for an otherwise-unrestricted STAFF_GUEST_ADMIN
-  // credential -- a physical Dandiya kit can't be handed out an unlimited number of times to the
-  // same credential the way event entry can. Event entry itself stays fully unrestricted and
-  // untracked for these credentials; this field only ever gets set for a College Gate scan.
-  kitCollectedAt   DateTime?
 
   volunteerProfile VolunteerProfile?
 

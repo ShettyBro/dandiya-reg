@@ -443,26 +443,11 @@ function ScanResultPanel({
       </p>
       {data.publicCode && <p className="text-xs text-white/50">{data.publicCode}</p>}
 
-      {/* A staff/admin credential is only truly unrestricted at the Event Entry gate -- a
-          physical Dandiya kit still only gets handed out once per credential, same as everyone
-          else, so Kit Distribution shows the same "ready" / "already given" states a normal
-          participant would, not an "unrestricted" label that would no longer be accurate there. */}
-      {data.credentialType === "STAFF_GUEST_ADMIN" && (isEntryGate || data.eligibleForAllow) && (
+      {data.credentialType === "STAFF_GUEST_ADMIN" && (
         <>
-          <p className="text-sm text-indigo-300">
-            {isEntryGate ? "Unrestricted staff credential" : "Ready — kit not yet given"}
-          </p>
+          <p className="text-sm text-indigo-300">Unrestricted staff credential</p>
           <Button type="button" onClick={onAllow} disabled={processing} className="w-full">
             {processing ? "Working..." : isEntryGate ? "Allow entry" : "Give kit"}
-          </Button>
-        </>
-      )}
-
-      {data.credentialType === "STAFF_GUEST_ADMIN" && !isEntryGate && !data.eligibleForAllow && (
-        <>
-          <p className="text-sm text-amber-300">Already received a kit</p>
-          <Button type="button" variant="secondary" onClick={onNext} className="w-full">
-            Scan next
           </Button>
         </>
       )}
