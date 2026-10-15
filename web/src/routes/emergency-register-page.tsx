@@ -137,6 +137,7 @@ export function EmergencyRegisterPage() {
                 onComplete={handleUploadComplete}
                 submitLabel="Complete registration"
                 skipPhoto
+                skipIdentity
               />
               {completing && <p className="mt-4 text-center text-sm text-white/60">Finishing registration...</p>}
               {completeError && <p className="mt-4 text-center text-sm text-red-300">{completeError}</p>}

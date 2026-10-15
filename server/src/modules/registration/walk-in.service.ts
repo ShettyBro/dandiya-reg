@@ -6,7 +6,6 @@ import type { Env } from "../../app/config/env.js";
 
 export class WalkInRegistrationNotFoundError extends Error {}
 export class WalkInAlreadyDecidedError extends Error {}
-export class WalkInIdentityMissingError extends Error {}
 
 // The /emg link is for people who already paid in the ERP but never finished registering --
 // it skips payment proof and identity review entirely (no PaymentStep, no finance/identity
@@ -28,11 +27,10 @@ export async function completeWalkInRegistration(
       throw new WalkInAlreadyDecidedError();
     }
 
-    // No photo required for a walk-in registration -- filled in on the spot, nothing to collect.
+    // No photo or identity document required for a walk-in registration -- filled in on the
+    // spot, nothing to collect; identity-required types still get identityStatus marked
+    // APPROVED below, consistent with bypassing review entirely rather than leaving it PENDING.
     const needsIdentity = IDENTITY_REQUIRED_TYPES.includes(registration.registrationType);
-    if (needsIdentity && !registration.collegeIdImageObjectKey && !registration.acharyanProofObjectKey) {
-      throw new WalkInIdentityMissingError();
-    }
 
     await tx.registration.update({
       where: { id: registration.id },

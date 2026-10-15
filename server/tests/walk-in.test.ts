@@ -135,6 +135,34 @@ describe("POST /registrations/:id/complete-walk-in", () => {
     expect(registration.photoObjectKey).toBeNull();
   });
 
+  it("completes a walk-in registration with no identity document, for a type that normally needs one", async () => {
+    const createResponse = await request(app)
+      .post("/api/v1/registrations")
+      .set("Idempotency-Key", `walk-in-test-noidentity-${Date.now()}`)
+      .send({
+        registrationType: "ACHARYA_ALUMNI",
+        name: "Walk In Alumni",
+        phone: randomPhone(),
+        email: `walk-in-alumni-noidentity-${Date.now()}@gmail.com`,
+        auid: `walk-in-alumni-auid-${Date.now()}`
+      });
+    expect(createResponse.status).toBe(201);
+    createdRegistrationIds.push(createResponse.body.registrationId);
+
+    const response = await request(app).post(
+      `/api/v1/registrations/${createResponse.body.registrationId}/complete-walk-in`
+    );
+    expect(response.status).toBe(200);
+
+    const registration = await prisma.registration.findUniqueOrThrow({
+      where: { id: createResponse.body.registrationId }
+    });
+    expect(registration.status).toBe("PAYMENT_APPROVED");
+    expect(registration.identityStatus).toBe("APPROVED");
+    expect(registration.acharyanProofObjectKey).toBeNull();
+    expect(registration.collegeIdImageObjectKey).toBeNull();
+  });
+
   it("returns 404 for a non-existent registration", async () => {
     const response = await request(app).post(
       "/api/v1/registrations/00000000-0000-0000-0000-000000000000/complete-walk-in"

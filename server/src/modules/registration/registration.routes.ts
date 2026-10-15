@@ -22,7 +22,6 @@ import {
 import {
   completeWalkInRegistration,
   WalkInAlreadyDecidedError,
-  WalkInIdentityMissingError,
   WalkInRegistrationNotFoundError
 } from "./walk-in.service.js";
 import { registrationSchema } from "./registration.schemas.js";
@@ -326,10 +325,6 @@ export function createRegistrationRouter(prisma: PrismaClient, env: Env): Router
       }
       if (error instanceof WalkInAlreadyDecidedError) {
         sendError(req, res, 409, "ALREADY_DECIDED", "This registration has already been decided");
-        return;
-      }
-      if (error instanceof WalkInIdentityMissingError) {
-        sendError(req, res, 409, "IDENTITY_MISSING", "An identity document is required before this can be completed");
         return;
       }
       throw error;
