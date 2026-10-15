@@ -4,24 +4,25 @@ import { Container } from "../../components/ui/Container.js";
 import { GlassPanel } from "../../components/ui/GlassPanel.js";
 
 const DOS = [
-  "Be on time and plan your day to avoid a last-minute rush.",
-  "Carry your College ID Card and invitation/confirmation mail for entry checking.",
-  "Wear ethnic/traditional attire compulsorily — kurta, lehenga, saree, chaniya choli, etc. Avoid casual Western wear.",
-  "Cooperate with security personnel, police officials, and event volunteers.",
-  "Enjoy responsibly and maintain discipline throughout the event."
+  "Carry your valid college ID and registration confirmation.",
+  "Arrive on time and follow entry instructions.",
+  "Wear traditional or festive attire.",
+  "Cooperate with security, faculty and volunteers.",
+  "Dance responsibly and maintain a safe distance.",
+  "Use Dandiya sticks carefully and follow volunteer instructions.",
+  "Keep the venue clean and use designated bins.",
+  "Follow event announcements, emergency exits and other safety instructions."
 ];
 
 const DONTS = [
-  "Do not bring bags, cosmetics, keychains, sharp objects, watches, bangles, rings, metal bracelets, or other metal accessories.",
-  "Male participants: kadas, rings, and metal accessories are strictly prohibited.",
-  "Do not bring water bottles, liquids, food, or any edible items inside the campus/event area.",
-  "Do not engage in suspicious activity, misbehaviour, or anything that disrupts peace.",
-  "Do not misbehave with women. Misconduct can lead to action by management and police.",
-  "Do not carry valuables. Management is not responsible for lost or misplaced belongings.",
-  "No cloakroom facility is provided.",
-  "Do not enter under the influence of alcohol or intoxicating substances. Such individuals will be denied entry or removed from the venue.",
-  "Police, security, and management personnel have the authority to detain students involved in misconduct or activities disrupting peace.",
-  "Violations can result in immediate suspension/removal from the event and disciplinary action."
+  "Do not carry bags, backpacks or handbags into the venue.",
+  "Consumption or possession of intoxicants is strictly prohibited. Anyone under the influence will be removed from the premises.",
+  "Do not bring sharp objects, weapons, fireworks or prohibited items.",
+  "Do not harass anyone or take photos/videos without consent.",
+  "Do not push, shove, fight, threaten others or engage in ragging.",
+  "Do not climb barricades, stage structures or enter restricted areas.",
+  "Do not litter, smoke or vape in the event area.",
+  "Do not leave expecting re-entry unless explicitly permitted."
 ];
 
 export function Rules() {
@@ -40,6 +41,10 @@ export function Rules() {
         <p className="mt-3 max-w-xl text-sm text-white/60">
           Non-Acharyan participants must additionally carry their physical College ID Card — the uploaded
           copy is for verification only and does not replace it.
+        </p>
+        <p className="mt-2 max-w-xl text-sm font-medium text-festival-gold/90">
+          Your QR code is strictly personal and non-transferable. Once you exit the venue, re-entry will not be
+          permitted.
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">

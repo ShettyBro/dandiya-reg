@@ -27,18 +27,25 @@ const TEXT = "#f4f4f8";
 const MUTED = "#9a9db4";
 
 const DOS = [
-  "Be on time and plan your day to avoid a last-minute rush.",
-  "Carry your College ID Card and this QR code for entry checking.",
-  "Wear ethnic/traditional attire compulsorily — kurta, lehenga, saree, chaniya choli, etc.",
-  "Cooperate with security personnel, police officials, and event volunteers."
+  "Carry your valid college ID and registration confirmation.",
+  "Arrive on time and follow entry instructions.",
+  "Wear traditional or festive attire.",
+  "Cooperate with security, faculty and volunteers.",
+  "Dance responsibly and maintain a safe distance.",
+  "Use Dandiya sticks carefully and follow volunteer instructions.",
+  "Keep the venue clean and use designated bins.",
+  "Follow event announcements, emergency exits and other safety instructions."
 ];
 
 const DONTS = [
-  "No bags, cosmetics, keychains, sharp objects, watches, or metal accessories.",
-  "No water bottles, liquids, food, or edible items inside the venue.",
-  "No cloakroom facility is provided — do not carry valuables.",
-  "No entry under the influence of alcohol or intoxicating substances.",
-  "Entry is one-time only — once you exit, you cannot re-enter."
+  "Do not carry bags, backpacks or handbags into the venue.",
+  "Consumption or possession of intoxicants is strictly prohibited; violators will be removed.",
+  "Do not bring sharp objects, weapons, fireworks or prohibited items.",
+  "Do not harass anyone or take photos/videos without consent.",
+  "Do not push, shove, fight, threaten others or engage in ragging.",
+  "Do not climb barricades, stage structures or enter restricted areas.",
+  "Do not litter, smoke or vape in the event area.",
+  "Do not leave expecting re-entry unless explicitly permitted."
 ];
 
 export interface QrDownloadPdfInput {
@@ -169,7 +176,7 @@ export async function buildQrDownloadPdf(input: QrDownloadPdfInput): Promise<Buf
   infoLine("Entry:", "3:00 PM – 5:00 PM (gate closes at 5:00 PM)");
   infoLine("Event:", "4:00 PM – 9:00 PM");
   doc.moveDown(0.25);
-  doc.fillColor(GOLD).font("Helvetica").fontSize(8.5).text("Entry is one-time only — once you exit, you cannot re-enter.", marginX, doc.y, { width: contentWidth });
+  doc.fillColor(GOLD).font("Helvetica").fontSize(8.5).text("Your QR code is strictly personal and non-transferable. Once you exit the venue, re-entry will not be permitted.", marginX, doc.y, { width: contentWidth });
   doc.fillColor(GOLD).text("No-refund policy applies to all registrations.", marginX, doc.y, { width: contentWidth });
   doc.moveDown(0.8);
 

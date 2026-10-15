@@ -128,24 +128,31 @@ function entryInfoBlock(): string {
     <p style="margin:0;"><strong style="color:${TEXT};">Date:</strong> 15 October 2026</p>
     <p style="margin:0;"><strong style="color:${TEXT};">Entry:</strong> 3:00 PM &ndash; 5:00 PM (gate closes at 5:00 PM, no normal entry after)</p>
     <p style="margin:0;"><strong style="color:${TEXT};">Event:</strong> 4:00 PM &ndash; 9:00 PM</p>
-    <p style="margin:8px 0 0;color:${GOLD};">Entry is one-time only — once you exit, you cannot re-enter.</p>
+    <p style="margin:8px 0 0;color:${GOLD};">Your QR code is strictly personal and non-transferable. Once you exit the venue, re-entry will not be permitted.</p>
     <p style="margin:4px 0 0;color:${GOLD};">No-refund policy applies to all registrations.</p>
   </div>`;
 }
 
 function rulesBlock(): string {
   const dos = [
-    "Be on time and plan your day to avoid a last-minute rush.",
-    "Carry your College ID Card and this confirmation email for entry checking.",
-    "Wear ethnic/traditional attire compulsorily &mdash; kurta, lehenga, saree, chaniya choli, etc.",
-    "Cooperate with security personnel, police officials, and event volunteers."
+    "Carry your valid college ID and registration confirmation.",
+    "Arrive on time and follow entry instructions.",
+    "Wear traditional or festive attire.",
+    "Cooperate with security, faculty and volunteers.",
+    "Dance responsibly and maintain a safe distance.",
+    "Use Dandiya sticks carefully and follow volunteer instructions.",
+    "Keep the venue clean and use designated bins.",
+    "Follow event announcements, emergency exits and other safety instructions."
   ];
   const donts = [
-    "No bags, cosmetics, keychains, sharp objects, watches, or metal accessories (bangles, rings, kadas).",
-    "No water bottles, liquids, food, or edible items inside the venue.",
-    "No cloakroom facility is provided &mdash; do not carry valuables.",
-    "No entry under the influence of alcohol or intoxicating substances.",
-    "Entry is one-time only &mdash; once you exit the venue, you cannot re-enter."
+    "Do not carry bags, backpacks or handbags into the venue.",
+    "Consumption or possession of intoxicants is strictly prohibited. Anyone under the influence will be removed from the premises.",
+    "Do not bring sharp objects, weapons, fireworks or prohibited items.",
+    "Do not harass anyone or take photos/videos without consent.",
+    "Do not push, shove, fight, threaten others or engage in ragging.",
+    "Do not climb barricades, stage structures or enter restricted areas.",
+    "Do not litter, smoke or vape in the event area.",
+    "Do not leave expecting re-entry unless explicitly permitted."
   ];
   const item = (text: string) =>
     `<li style="margin:0 0 6px;">${text}</li>`;
